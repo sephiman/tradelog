@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+package com.sephilabs.tradelog.position
+
+import com.fasterxml.jackson.annotation.JsonFormat
+import com.sephilabs.tradelog.datasource.SourceKind
+import jakarta.validation.constraints.Size
+import java.math.BigDecimal
+import java.time.Instant
+import java.util.UUID
+
+data class PositionTagView(
+    val groupId: UUID,
+    val groupCode: String,
+    val groupName: String,
+    val tagId: UUID,
+    val tagName: String,
+)
+
+data class PositionFillDto(
+    val seq: Int,
+    val action: FillAction,
+    val side: FillSide,
+    val ts: Instant,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val price: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val qty: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val value: BigDecimal?,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val fee: BigDecimal?,
+) {
+    companion object {
+        fun of(f: PositionFill) = PositionFillDto(f.seq, f.action, f.side, f.ts, f.price, f.qty, f.value, f.fee)
+    }
+}
+
+data class PositionDto(
+    val id: UUID,
+    val source: SourceKind,
+    val symbolBase: String,
+    val symbolQuote: String,
+    val side: PositionSide,
+    val openedAt: Instant,
+    val closedAt: Instant,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val qty: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val entryPrice: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val exitPrice: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val realizedPnl: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val fees: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val funding: BigDecimal,
+    val pnlCurrency: String,
+    val note: String?,
+    val tags: List<PositionTagView>,
+    val fillCount: Int,
+)
+
+data class PositionDetailDto(
+    val position: PositionDto,
+    val fills: List<PositionFillDto>,
+)
+
+data class NoteRequest(
+    @field:Size(max = 4000, message = "validation.too.long")
+    val note: String? = null,
+)
+
+data class SetTagRequest(
+    val tagId: UUID,
+)

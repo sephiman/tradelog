@@ -1,0 +1,31 @@
+# Env / secrets
+.env
+*.local
+
+# Gradle
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
+
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local Quantfury exports at repo root (contain personal trading data).
+# Test fixtures under src/test/resources are intentionally NOT ignored.
+/*.pdf

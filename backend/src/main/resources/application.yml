@@ -1,0 +1,120 @@
+spring:
+  application:
+    name: tradelog
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:tradelog}
+    username: ${DB_USERNAME:tradelog}
+    password: ${DB_PASSWORD:tradelog}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      pool-name: tradelog-pool
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: never
+      table-name: SPRING_SESSION
+    timeout: 30d
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 15MB
+      max-request-size: 15MB
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+
+server:
+  port: 8080
+  servlet:
+    session:
+      cookie:
+        name: SESSION
+        http-only: true
+        secure: ${APP_COOKIE_SECURE:true}
+        same-site: lax
+        max-age: 30d
+  forward-headers-strategy: framework
+  shutdown: graceful
+
+management:
+  server:
+    port: 9090
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    tags:
+      application: tradelog
+
+logging:
+  level:
+    # Sync/connector logging. Set LOG_LEVEL_SYNC=DEBUG to see each outgoing exchange request
+    # (path + params, never secrets). Exchange errors are always logged at WARN with the real reason.
+    com.sephilabs.tradelog.sync: ${LOG_LEVEL_SYNC:INFO}
+    com.sephilabs.tradelog.connector: ${LOG_LEVEL_SYNC:INFO}
+  structured:
+    format:
+      console: logstash
+    json:
+      add:
+        app: tradelog
+
+app:
+  security:
+    cookie-secure: ${APP_COOKIE_SECURE:true}
+    login-rate:
+      per-minute: 5
+      per-hour: 20
+    import-rate:
+      per-hour: 20
+  registration:
+    mode: ${REGISTRATION_MODE:open}
+  bootstrap:
+    admin-email: ${ADMIN_EMAIL:}
+    admin-password: ${ADMIN_PASSWORD:}
+  crypto:
+    # Base64-encoded AES key (16/24/32 bytes) for encrypting exchange API credentials at rest.
+    key: ${TRADELOG_CRYPTO_KEY:}
+  sync:
+    # Per-exchange request throttle for synchronisation calls.
+    rate:
+      bitunix-per-minute: 30
+      bingx-per-minute: 30
+    # Bound the on-login async kickoff so a slow exchange can never exhaust threads.
+    executor:
+      core-pool-size: 2
+      max-pool-size: 4
+      queue-capacity: 100
+    # On first connect, do not backfill earlier than this many days (0 = as far as the API allows).
+    max-backfill-days: 0
+  connectors:
+    bitunix:
+      base-url: ${BITUNIX_BASE_URL:https://fapi.bitunix.com}
+      timeout-ms: ${BITUNIX_TIMEOUT_MS:10000}
+    bingx:
+      base-url: ${BINGX_BASE_URL:https://open-api.bingx.com}
+      timeout-ms: ${BINGX_TIMEOUT_MS:10000}

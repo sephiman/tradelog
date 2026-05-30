@@ -1,0 +1,16 @@
+spring:
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+app:
+  registration:
+    mode: open
+  crypto:
+    # Deterministic 32-byte AES key (base64 of "01234567890123456789012345678901") for tests.
+    key: "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="
+  bootstrap:
+    admin-email: ""
+    admin-password: ""

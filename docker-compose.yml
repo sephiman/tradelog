@@ -1,0 +1,74 @@
+services:
+  # Service name is unique (not the generic "backend") so its Docker network alias does not collide
+  # with other stacks on the shared `all_dockers` network — otherwise the frontend's nginx would
+  # round-robin `backend` across both apps' backends and randomly 401 on the wrong session.
+  tradelog-backend:
+    build:
+      context: ./backend
+    image: tradelog-backend:latest
+    container_name: tradelog-backend
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-true}
+      REGISTRATION_MODE: ${REGISTRATION_MODE:-open}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      # Base64 AES key (16/24/32 bytes) encrypting exchange API credentials at rest.
+      TRADELOG_CRYPTO_KEY: ${TRADELOG_CRYPTO_KEY:-}
+      JAVA_OPTS: ${JAVA_OPTS:-}
+    networks:
+      - my-network
+    expose:
+      - "8080"
+      - "9090"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/actuator/health/liveness | grep -q UP"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  tradelog-frontend:
+    build:
+      context: ./frontend
+    image: tradelog-frontend:latest
+    container_name: tradelog-frontend
+    depends_on:
+      tradelog-backend:
+        condition: service_healthy
+    networks:
+      - my-network
+    ports:
+      - "${FRONTEND_BIND_ADDR:-0.0.0.0}:${FRONTEND_PORT:-8088}:80"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/healthz | grep -q ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# Externally-managed Postgres on a shared Docker network.
+# The backend joins this network and resolves Postgres by DNS alias = DB_HOST.
+# SHARED_NETWORK_NAME defaults to "all_dockers" but can be overridden via .env.
+networks:
+  my-network:
+    external: true
+    name: ${SHARED_NETWORK_NAME:-all_dockers}
