@@ -117,6 +117,9 @@
     "syncAll": "Sync all",
     "readOnlyHint": "Use a READ-ONLY API key (no trading, no withdrawal). Credentials are encrypted at rest and never shown again.",
     "credentialsStored": "Credentials stored",
+    "credentialsSaved": "Credentials saved",
+    "noCredentials": "No API keys — add them to sync",
+    "addKeys": "Add keys",
     "rotate": "Replace credentials",
     "deleteConfirm": "Delete this data source and its positions?",
     "never": "Never",
@@ -201,6 +204,19 @@
     "email": "Email",
     "timeZone": "Time zone",
     "timeZoneHint": "Used to group analytics by hour of day and weekday in your local time."
+  },
+  "backup": {
+    "title": "Backup & restore",
+    "description": "Download a portable JSON copy of everything in your account — profiles, tags, and your full position history with fills and annotations. API keys are not included.",
+    "download": "Download backup",
+    "restore": "Restore from backup",
+    "restoreHint": "Restoring replaces ALL of your current data with the file's contents. Use it to rebuild from scratch; you'll re-enter API keys afterwards.",
+    "replaceWarning": "This replaces ALL your current profiles, data sources and positions with the contents of this file. API keys are not in the backup — you'll re-enter them afterwards to resume syncing. This cannot be undone.",
+    "confirmReplace": "Replace everything",
+    "restoredTitle": "Backup restored",
+    "imported": "Restored {{profiles}} profile(s) and {{positions}} position(s). Re-enter your API keys to resume syncing.",
+    "reload": "Reload app",
+    "invalidFile": "That file isn't a valid tradelog backup."
   },
   "analytics": {
     "title": "Dashboard",

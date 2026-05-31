@@ -4,6 +4,7 @@ import {
   useCreateDataSource,
   useDataSources,
   useDeleteDataSource,
+  useUpdateDataSource,
   type DataSource,
 } from "@/api/dataSources";
 import type { SourceKind } from "@/api/positions";
@@ -106,6 +107,7 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
 function SourceRow({ profileId, source, onDelete }: { profileId: string; source: DataSource; onDelete: () => void }) {
   const { t } = useTranslation();
   const syncOne = useSyncOne(profileId);
+  const [editingKeys, setEditingKeys] = useState(false);
   const isApi = source.kind === "BITUNIX" || source.kind === "BINGX";
 
   const statusTone = source.status === "ACTIVE" ? "green" : source.status === "ERROR" ? "red" : "gray";
@@ -129,6 +131,13 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
         {source.status === "ERROR" && source.statusDetail && (
           <span className="text-xs text-red-600 dark:text-red-400">{source.statusDetail}</span>
         )}
+        {isApi && (
+          source.hasCredentials ? (
+            <span className="text-xs text-green-700 dark:text-green-400">{t("dataSources.credentialsStored")}</span>
+          ) : (
+            <span className="text-xs text-amber-700 dark:text-amber-400">{t("dataSources.noCredentials")}</span>
+          )
+        )}
         <span className="text-xs text-gray-500 dark:text-gray-400">
           {t("dataSources.positions")}: {source.positionCount}
         </span>
@@ -137,11 +146,19 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
         </span>
         <div className="ml-auto flex items-center gap-2">
           {isApi && (
+            <Button variant="ghost" onClick={() => setEditingKeys((v) => !v)}>
+              {source.hasCredentials ? t("dataSources.rotate") : t("dataSources.addKeys")}
+            </Button>
+          )}
+          {isApi && (
             <Button variant="secondary" disabled={syncOne.isPending} onClick={onSync}>{t("dataSources.sync")}</Button>
           )}
           <Button variant="ghost" onClick={onDelete}>{t("common.delete")}</Button>
         </div>
       </div>
+      {isApi && editingKeys && (
+        <CredentialsEditor profileId={profileId} source={source} onDone={() => setEditingKeys(false)} />
+      )}
       <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">{t(`dataSources.coverage.${source.kind}`)}</p>
       {source.kind === "QUANTFURY" && (
         <div className="mt-3">
@@ -154,5 +171,49 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
         </div>
       )}
     </li>
+  );
+}
+
+/**
+ * Inline editor to set or rotate an API source's credentials without recreating it. Recreating would
+ * cascade-delete the source's positions, so this is the safe path for expired keys and for attaching
+ * keys to a credential-less source restored from a backup.
+ */
+function CredentialsEditor({ profileId, source, onDone }: { profileId: string; source: DataSource; onDone: () => void }) {
+  const { t } = useTranslation();
+  const updateMut = useUpdateDataSource(profileId);
+  const [apiKey, setApiKey] = useState("");
+  const [apiSecret, setApiSecret] = useState("");
+
+  const onSave = () => {
+    if (!apiKey.trim() || !apiSecret.trim()) return;
+    updateMut.mutate(
+      { id: source.id, body: { apiKey: apiKey.trim(), apiSecret: apiSecret.trim() } },
+      {
+        onSuccess: () => {
+          showToast(t("dataSources.credentialsSaved"), "success");
+          setApiKey("");
+          setApiSecret("");
+          onDone();
+        },
+        onError: () => showToast(t("sync.failed"), "error"),
+      },
+    );
+  };
+
+  return (
+    <div className="mt-3 rounded-md border border-dashed border-border p-3 dark:border-gray-600">
+      <p className="mb-2 text-xs text-amber-700 dark:text-amber-400">{t("dataSources.readOnlyHint")}</p>
+      <div className="flex flex-wrap gap-3">
+        <Input className="flex-1" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t("dataSources.apiKey")} autoComplete="off" />
+        <Input className="flex-1" type="password" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} placeholder={t("dataSources.apiSecret")} autoComplete="off" />
+      </div>
+      <div className="mt-2 flex justify-end gap-2">
+        <Button variant="ghost" onClick={onDone}>{t("common.cancel")}</Button>
+        <Button disabled={updateMut.isPending || !apiKey.trim() || !apiSecret.trim()} onClick={onSave}>
+          {t("common.save")}
+        </Button>
+      </div>
+    </div>
   );
 }

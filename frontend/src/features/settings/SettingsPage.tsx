@@ -4,6 +4,7 @@ import { AccountCard } from "./AccountCard";
 import { ProfilesCard } from "./ProfilesCard";
 import { DataSourcesCard } from "./DataSourcesCard";
 import { TaxonomyCard } from "./TaxonomyCard";
+import { BackupRestoreCard } from "./BackupRestoreCard";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -16,6 +17,7 @@ export function SettingsPage() {
       <ProfilesCard />
       {activeProfile && <DataSourcesCard profileId={activeProfile.id} profileName={activeProfile.name} />}
       <TaxonomyCard />
+      <BackupRestoreCard />
     </div>
   );
 }

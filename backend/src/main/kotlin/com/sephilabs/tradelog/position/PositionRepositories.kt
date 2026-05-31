@@ -46,6 +46,9 @@ interface PositionRepository : JpaRepository<Position, UUID>, JpaSpecificationEx
 
     fun findByDataSourceIdAndExternalId(dataSourceId: UUID, externalId: String): Position?
 
+    /** Full position entities of one data source, oldest close first — used by the backup export. */
+    fun findAllByDataSourceIdOrderByClosedAtAsc(dataSourceId: UUID): List<Position>
+
     /** All closed positions in the profile, oldest close first, for the analytics dashboard. */
     fun findAllByProfileIdOrderByClosedAtAsc(profileId: UUID): List<ClosedPositionSummary>
 

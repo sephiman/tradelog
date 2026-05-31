@@ -117,6 +117,9 @@
     "syncAll": "Sincronizar todo",
     "readOnlyHint": "Usa una clave API de SOLO LECTURA (sin trading ni retiradas). Las credenciales se cifran y no se vuelven a mostrar.",
     "credentialsStored": "Credenciales guardadas",
+    "credentialsSaved": "Credenciales guardadas",
+    "noCredentials": "Sin claves API — añádelas para sincronizar",
+    "addKeys": "Añadir claves",
     "rotate": "Reemplazar credenciales",
     "deleteConfirm": "¿Eliminar esta fuente y sus posiciones?",
     "never": "Nunca",
@@ -201,6 +204,19 @@
     "email": "Correo",
     "timeZone": "Zona horaria",
     "timeZoneHint": "Se usa para agrupar la analítica por hora del día y día de la semana en tu hora local."
+  },
+  "backup": {
+    "title": "Copia y restauración",
+    "description": "Descarga una copia JSON portátil de todo tu contenido — perfiles, etiquetas y tu historial completo de posiciones con ejecuciones y anotaciones. Las claves API no se incluyen.",
+    "download": "Descargar copia",
+    "restore": "Restaurar desde copia",
+    "restoreHint": "Restaurar reemplaza TODOS tus datos actuales por el contenido del archivo. Úsalo para reconstruir desde cero; volverás a introducir las claves API después.",
+    "replaceWarning": "Esto reemplaza TODOS tus perfiles, fuentes de datos y posiciones por el contenido de este archivo. Las claves API no están en la copia — las volverás a introducir después para reanudar la sincronización. Esto no se puede deshacer.",
+    "confirmReplace": "Reemplazar todo",
+    "restoredTitle": "Copia restaurada",
+    "imported": "Restaurados {{profiles}} perfil(es) y {{positions}} posición(es). Vuelve a introducir tus claves API para reanudar la sincronización.",
+    "reload": "Recargar app",
+    "invalidFile": "Ese archivo no es una copia válida de tradelog."
   },
   "analytics": {
     "title": "Panel",
