@@ -69,12 +69,12 @@ class PositionUpsertIntegrationTest @Autowired constructor(
     @Test
     fun `upsert inserts once and is idempotent on (data source, external id)`() {
         setup()
-        val c1 = upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, listOf(record("ext-1", "10", "110", 2)))
+        val c1 = upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(record("ext-1", "10", "110", 2)))
         assertThat(c1.inserted).isEqualTo(1)
         assertThat(c1.updated).isEqualTo(0)
 
         // Re-run an overlapping window with the SAME external id but changed values + fewer fills.
-        val c2 = upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, listOf(record("ext-1", "-5", "95", 1)))
+        val c2 = upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(record("ext-1", "-5", "95", 1)))
         assertThat(c2.inserted).isEqualTo(0)
         assertThat(c2.updated).isEqualTo(1)
 
@@ -89,7 +89,7 @@ class PositionUpsertIntegrationTest @Autowired constructor(
     @Test
     fun `re-sync preserves the user's note and tag`() {
         setup()
-        upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, listOf(record("ext-keep", "10", "110", 2)))
+        upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(record("ext-keep", "10", "110", 2)))
         val p = positions.findByDataSourceIdAndExternalId(dataSourceId, "ext-keep")!!
 
         // user annotations
@@ -101,7 +101,7 @@ class PositionUpsertIntegrationTest @Autowired constructor(
         positionTags.save(PositionTag(PositionTagId(p.id, group.id), tag.id))
 
         // re-sync the same position
-        upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, listOf(record("ext-keep", "12", "112", 2)))
+        upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(record("ext-keep", "12", "112", 2)))
 
         val reloaded = positions.findByDataSourceIdAndExternalId(dataSourceId, "ext-keep")!!
         assertThat(reloaded.note).isEqualTo("my analysis")

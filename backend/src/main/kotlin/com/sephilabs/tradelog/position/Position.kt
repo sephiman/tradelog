@@ -77,6 +77,10 @@ class Position(
     @Column(name = "pnl_currency", nullable = false, length = 8)
     var pnlCurrency: String = "USDT",
 
+    /** Trading venue (e.g. Bitunix, BingX, Quantfury, or a CSV-supplied dead exchange like FTX). */
+    @Column(name = "exchange", length = 64)
+    var exchange: String? = null,
+
     /** Free-text user annotation. */
     @Column(name = "note")
     var note: String? = null,

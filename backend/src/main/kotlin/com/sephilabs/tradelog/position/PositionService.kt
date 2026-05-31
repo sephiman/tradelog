@@ -41,6 +41,9 @@ class PositionService(
     }
 
     @Transactional(readOnly = true)
+    fun exchanges(profileId: UUID): List<String> = positions.findDistinctExchanges(profileId)
+
+    @Transactional(readOnly = true)
     fun get(profileId: UUID, positionId: UUID): PositionDetailDto {
         val position = loadOwn(profileId, positionId)
         val tagViews = tagViewsByPosition(listOf(position.id))[position.id] ?: emptyList()
@@ -99,6 +102,7 @@ class PositionService(
 private fun Position.toDto(tags: List<PositionTagView>, fillCount: Int) = PositionDto(
     id = id,
     source = source,
+    exchange = exchange,
     symbolBase = symbolBase,
     symbolQuote = symbolQuote,
     side = side,

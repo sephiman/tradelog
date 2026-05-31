@@ -24,6 +24,7 @@ class PositionController(
         @RequestParam(required = false) symbol: String?,
         @RequestParam(required = false) side: PositionSide?,
         @RequestParam(required = false) source: SourceKind?,
+        @RequestParam(required = false) exchange: String?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) from: Instant?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) to: Instant?,
         @RequestParam(required = false) tagId: UUID?,
@@ -32,8 +33,11 @@ class PositionController(
         @RequestParam(defaultValue = "closed_desc") sort: String,
     ): PageResponse<PositionDto> =
         service.search(
-            PositionSearchCriteria(profileId, symbol, side, source, from, to, tagId, page, size, sort)
+            PositionSearchCriteria(profileId, symbol, side, source, exchange, from, to, tagId, page, size, sort)
         )
+
+    @GetMapping("/exchanges")
+    fun exchanges(@PathVariable profileId: UUID): List<String> = service.exchanges(profileId)
 
     @GetMapping("/{positionId}")
     fun get(@PathVariable profileId: UUID, @PathVariable positionId: UUID): PositionDetailDto =

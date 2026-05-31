@@ -44,6 +44,12 @@ data class PositionRecord(
     val pnlCurrency: String = "USDT",
     val fills: List<FillRecord> = emptyList(),
     val raw: String? = null,
+    /** Optional note seeded on first insert only; never overwrites a user-edited note on re-import. */
+    val note: String? = null,
+    /** Trading venue supplied by the source (e.g. a Journal CSV's dead exchange). Null = derive from source. */
+    val exchange: String? = null,
+    /** 1-based source row (CSV line including the header) for file imports; null for API connectors. Lets the preview point users at flagged rows. */
+    val sourceRow: Int? = null,
 )
 
 /** Read-only API credentials passed to an [ApiConnector]; decrypted only inside the sync worker. */

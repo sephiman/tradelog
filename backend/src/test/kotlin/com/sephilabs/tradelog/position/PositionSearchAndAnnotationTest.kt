@@ -52,7 +52,7 @@ class PositionSearchAndAnnotationTest @Autowired constructor(
     @Test
     fun `search filters by symbol and side`() {
         setup()
-        upsert.upsert(dsId, profileId, SourceKind.BITUNIX, listOf(rec("e", "ETH", PositionSide.LONG), rec("b", "BTC", PositionSide.SHORT)))
+        upsert.upsert(dsId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(rec("e", "ETH", PositionSide.LONG), rec("b", "BTC", PositionSide.SHORT)))
 
         assertThat(service.search(PositionSearchCriteria(profileId)).total).isEqualTo(2)
         assertThat(service.search(PositionSearchCriteria(profileId, symbolBase = "eth")).items.map { it.symbolBase }).containsExactly("ETH")
@@ -64,7 +64,7 @@ class PositionSearchAndAnnotationTest @Autowired constructor(
     @Test
     fun `note and single-select tag annotate a position and are searchable`() {
         setup()
-        upsert.upsert(dsId, profileId, SourceKind.BITUNIX, listOf(rec("e", "ETH", PositionSide.LONG)))
+        upsert.upsert(dsId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(rec("e", "ETH", PositionSide.LONG)))
         val positionId = service.search(PositionSearchCriteria(profileId)).items.first().id
         val origen = taxonomy.listGroups(userId).first { it.code == "origen" }
         val tagA = origen.tags[0]
@@ -93,7 +93,7 @@ class PositionSearchAndAnnotationTest @Autowired constructor(
     @Test
     fun `cannot tag with another user's tag`() {
         setup()
-        upsert.upsert(dsId, profileId, SourceKind.BITUNIX, listOf(rec("e", "ETH", PositionSide.LONG)))
+        upsert.upsert(dsId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(rec("e", "ETH", PositionSide.LONG)))
         val positionId = service.search(PositionSearchCriteria(profileId)).items.first().id
 
         val otherUser = users.save(User(email = "other${System.nanoTime()}@example.com", passwordHash = "x")).id

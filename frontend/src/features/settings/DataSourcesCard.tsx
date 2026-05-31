@@ -12,6 +12,7 @@ import { Badge, Button, Card, CardBody, CardHeader, Input, Select } from "@/comp
 import { showToast } from "@/lib/toastBus";
 import { fmtDateTime } from "@/lib/format";
 import { QuantfuryUploadCard } from "./QuantfuryUploadCard";
+import { JournalCsvUploadCard } from "./JournalCsvUploadCard";
 
 export function DataSourcesCard({ profileId, profileName }: { profileId: string; profileName: string }) {
   const { t } = useTranslation();
@@ -75,6 +76,7 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
                 <option value="BITUNIX">Bitunix</option>
                 <option value="BINGX">BingX</option>
                 <option value="QUANTFURY">Quantfury</option>
+                <option value="JOURNAL_CSV">Journal CSV</option>
               </Select>
             </label>
             <label className="flex flex-1 flex-col gap-1">
@@ -144,6 +146,11 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
       {source.kind === "QUANTFURY" && (
         <div className="mt-3">
           <QuantfuryUploadCard profileId={profileId} dataSourceId={source.id} />
+        </div>
+      )}
+      {source.kind === "JOURNAL_CSV" && (
+        <div className="mt-3">
+          <JournalCsvUploadCard profileId={profileId} dataSourceId={source.id} />
         </div>
       )}
     </li>

@@ -57,6 +57,8 @@
     "long": "Largo",
     "short": "Corto",
     "source": "Fuente",
+    "exchange": "Exchange",
+    "allExchanges": "Todos los exchanges",
     "opened": "Apertura",
     "closed": "Cierre",
     "qty": "Cantidad",
@@ -80,7 +82,10 @@
     "action": "Acción",
     "time": "Hora",
     "price": "Precio",
-    "value": "Valor"
+    "value": "Valor",
+    "showing": "Mostrando {{from}}–{{to}} de {{total}}",
+    "prev": "Anterior",
+    "next": "Siguiente"
   },
   "dataSources": {
     "title": "Fuentes de datos",
@@ -107,7 +112,54 @@
     "coverage": {
       "BITUNIX": "Historial completo desde que abriste la cuenta.",
       "BINGX": "Solo ~los últimos 30 días — la API de BingX no ofrece operaciones más antiguas, así que sincroniza con frecuencia; lo anterior no se puede recuperar.",
-      "QUANTFURY": "Todo tu historial — lo que contenga el PDF subido (sin API, no se sincroniza nada automáticamente)."
+      "QUANTFURY": "Todo tu historial — lo que contenga el PDF subido (sin API, no se sincroniza nada automáticamente).",
+      "JOURNAL_CSV": "Lo que importes — un CSV manual de posiciones cerradas, p. ej. de exchanges que ya no existen. No se sincroniza nada automáticamente."
+    }
+  },
+  "journalCsv": {
+    "title": "Importar CSV de diario de operaciones",
+    "hint": "Sube un CSV de posiciones cerradas en el formato canónico de tradelog (abajo). Ideal para diarios manuales o exchanges desaparecidos. Volver a subir el mismo archivo es seguro (los duplicados se actualizan).",
+    "preview": "Previsualizar",
+    "import": "Importar",
+    "totalPositions": "Posiciones cerradas",
+    "dateRange": "Rango de fechas",
+    "netPnl": "PnL neto (tras comisiones)",
+    "grossPnl": "PnL bruto",
+    "fees": "Comisiones",
+    "symbols": "Símbolos",
+    "imported": "Importadas {{inserted}} nuevas, {{updated}} actualizadas",
+    "warningsTitle": "Antes de importar",
+    "warnClosedBeforeOpened": "{{count}} fila(s) tienen una fecha de cierre anterior a la de apertura — revísalas.",
+    "warnOverlap": "{{count}} fila(s) parecen posiciones ya importadas desde otra fuente en este perfil. Importarlas duplicaría su PnL.",
+    "warnRow": "Fila {{row}}:",
+    "warnMore": "…y {{count}} más"
+  },
+  "import": {
+    "format": {
+      "toggle": "Ver referencia del formato CSV",
+      "ai_hint": "Consejo: pega toda esta referencia en cualquier asistente de IA (ChatGPT, Claude, Gemini, …) junto con tu historial de operaciones antiguo — una captura, un PDF de extracto o una hoja de cálculo desordenada de un exchange que ya no existe — y pídele que genere un CSV que siga exactamente este formato. Luego vuelve aquí, pulsa Previsualizar para validar e Importar.",
+      "intro": "Dialecto: UTF-8, punto y coma (;) como separador de columnas, coma (,) o punto (.) como separador decimal, comillas RFC-4180 (envuelve un campo entre comillas dobles si contiene ;, \" o un salto de línea). La primera fila es la cabecera literal de abajo; una posición cerrada por fila. Las líneas que empiezan por # se ignoran.",
+      "headers_label": "Cabecera (cópiala tal cual)",
+      "columns_label": "Columnas",
+      "example_label": "Ejemplo",
+      "required": "obligatorio",
+      "optional": "opcional",
+      "pnlNote": "realized_pnl es el resultado ANTES de comisiones (bruto). Déjalo vacío para calcularlo como (exit_price − entry_price) × quantity, negado para cortos. Pon las comisiones en fees.",
+      "notionalNote": "¿Sin precio por unidad? Pon quantity a 1 y usa el VALOR TOTAL de la posición como entry_price (importe invertido / nocional) y exit_price (importe devuelto) — no tu margen.",
+      "cols": {
+        "symbol": "Activo base o BASE/QUOTE, p. ej. BTC o SUI/USDT. El quote por defecto es USDT.",
+        "side": "long o short.",
+        "opened_at": "Fecha de apertura: AAAA-MM-DD, o un instante AAAA-MM-DDTHH:MM:SSZ (UTC).",
+        "closed_at": "Fecha de cierre, mismo formato que opened_at.",
+        "quantity": "Unidades del activo base. Usa 1 si solo tienes totales. Por defecto 1.",
+        "entry_price": "Precio de entrada por unidad — o total invertido cuando quantity=1.",
+        "exit_price": "Precio de salida por unidad — o total devuelto cuando quantity=1.",
+        "realized_pnl": "Resultado bruto antes de comisiones. Vacío = calculado a partir de los precios.",
+        "fees": "Comisiones totales. Por defecto 0.",
+        "funding": "Funding total pagado/recibido. Por defecto 0.",
+        "exchange": "Plataforma de origen (p. ej. FTX). Pasa a ser el exchange de la posición; si está vacío, se usa la etiqueta de esta fuente de datos.",
+        "note": "Texto libre, p. ej. tu razonamiento."
+      }
     }
   },
   "quantfury": {

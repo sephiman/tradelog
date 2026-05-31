@@ -57,6 +57,8 @@
     "long": "Long",
     "short": "Short",
     "source": "Source",
+    "exchange": "Exchange",
+    "allExchanges": "All exchanges",
     "opened": "Opened",
     "closed": "Closed",
     "qty": "Quantity",
@@ -80,7 +82,10 @@
     "action": "Action",
     "time": "Time",
     "price": "Price",
-    "value": "Value"
+    "value": "Value",
+    "showing": "Showing {{from}}–{{to}} of {{total}}",
+    "prev": "Previous",
+    "next": "Next"
   },
   "dataSources": {
     "title": "Data sources",
@@ -107,7 +112,54 @@
     "coverage": {
       "BITUNIX": "Full history since you opened the account.",
       "BINGX": "Only ~the last 30 days — BingX's API serves no older fills, so sync regularly; older trades can't be recovered.",
-      "QUANTFURY": "Your entire history — whatever is in the uploaded PDF (no API, so nothing syncs automatically)."
+      "QUANTFURY": "Your entire history — whatever is in the uploaded PDF (no API, so nothing syncs automatically).",
+      "JOURNAL_CSV": "Whatever you import — a manual CSV of closed positions, e.g. from exchanges that no longer exist. Nothing syncs automatically."
+    }
+  },
+  "journalCsv": {
+    "title": "Trade journal CSV import",
+    "hint": "Upload a CSV of closed positions in tradelog's canonical format (below). Ideal for hand-kept journals or dead exchanges. Re-uploading the same file is safe (duplicates are updated in place).",
+    "preview": "Preview",
+    "import": "Import",
+    "totalPositions": "Closed positions",
+    "dateRange": "Date range",
+    "netPnl": "Net PnL (after fees)",
+    "grossPnl": "Gross PnL",
+    "fees": "Fees",
+    "symbols": "Symbols",
+    "imported": "Imported {{inserted}} new, {{updated}} updated",
+    "warningsTitle": "Before you import",
+    "warnClosedBeforeOpened": "{{count}} row(s) have a close date earlier than the open date — check those entries.",
+    "warnOverlap": "{{count}} row(s) look like positions already imported from another source in this profile. Importing them would double-count their PnL.",
+    "warnRow": "Row {{row}}:",
+    "warnMore": "…and {{count}} more"
+  },
+  "import": {
+    "format": {
+      "toggle": "Show CSV format reference",
+      "ai_hint": "Tip: paste this whole reference into any AI assistant (ChatGPT, Claude, Gemini, …) together with your old trade history — a screenshot, a PDF statement, or a messy spreadsheet from an exchange that no longer exists — and ask it to produce a CSV that follows exactly this format. Then come back here, Preview to validate, and Import.",
+      "intro": "Dialect: UTF-8, semicolon (;) column separator, comma (,) or dot (.) decimal mark, RFC-4180 quoting (wrap a field in double quotes if it contains ;, \" or a line break). First row is the literal header below; one closed position per row. Lines starting with # are ignored.",
+      "headers_label": "Header (copy exactly)",
+      "columns_label": "Columns",
+      "example_label": "Example",
+      "required": "required",
+      "optional": "optional",
+      "pnlNote": "realized_pnl is the result BEFORE fees (gross). Leave it empty to have it computed as (exit_price − entry_price) × quantity, negated for shorts. Put commissions in fees.",
+      "notionalNote": "No per-unit price? Set quantity to 1 and use the TOTAL position value as entry_price (amount invested / notional) and exit_price (amount returned) — not your margin.",
+      "cols": {
+        "symbol": "Base asset or BASE/QUOTE, e.g. BTC or SUI/USDT. Quote defaults to USDT.",
+        "side": "long or short.",
+        "opened_at": "Open date: YYYY-MM-DD, or an instant YYYY-MM-DDTHH:MM:SSZ (UTC).",
+        "closed_at": "Close date, same format as opened_at.",
+        "quantity": "Base-asset units. Use 1 if you only have totals. Defaults to 1.",
+        "entry_price": "Per-unit entry price — or total invested when quantity=1.",
+        "exit_price": "Per-unit exit price — or total returned when quantity=1.",
+        "realized_pnl": "Gross result before fees. Empty = computed from prices.",
+        "fees": "Total commissions. Defaults to 0.",
+        "funding": "Total funding paid/received. Defaults to 0.",
+        "exchange": "Venue this trade came from (e.g. FTX). Becomes the position's exchange; if blank, this data source's label is used.",
+        "note": "Free text, e.g. your rationale."
+      }
     }
   },
   "quantfury": {

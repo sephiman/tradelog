@@ -20,6 +20,7 @@ anyone running a modified version as a network service must publish the source.
 - [Connecting your accounts](#connecting-your-accounts)
   - [Bitunix / BingX (API)](#bitunix--bingx-api)
   - [Quantfury (PDF import)](#quantfury-pdf-import)
+  - [Journal CSV import](#journal-csv-import)
 - [Development](#development)
 - [Status & caveats](#status--caveats)
 
@@ -117,8 +118,9 @@ History coverage differs **per source** — it's a limit of each platform, not o
 | **Bitunix** | Full — since you opened the account | Signed REST; backfilled on first sync |
 | **BingX** | **Only ~the last 30 days** | The `allFillOrders` API serves no older fills; older trades can't be retrieved |
 | **Quantfury** | Full — whatever is in the exported PDF (typically your entire history) | Manual PDF import |
+| **Journal CSV** | Whatever you import | Manual CSV in the canonical format — for hand-kept journals or exchanges that no longer exist |
 
-So for **BingX**, sync it regularly — anything older than ~30 days is gone for good once it ages out of the API. For full long-term history on a platform that doesn't expose it via API, a Quantfury-style PDF/export import is the only path.
+So for **BingX**, sync it regularly — anything older than ~30 days is gone for good once it ages out of the API. For full long-term history on a platform that doesn't expose it via API, a Quantfury-style PDF/export import is the only path. For **dead exchanges** with no export at all, convert whatever records you kept into the **Journal CSV** format (see [Journal CSV import](#journal-csv-import)) — the in-app format reference is written so any AI assistant can do the conversion for you.
 
 ### Bitunix / BingX (API)
 
@@ -156,6 +158,40 @@ printed totals.
 
 > Steps follow Quantfury's [Trading History help article](https://help.quantfury.com/en/articles/5448773-trading-history)
 > and may change with app versions.
+
+### Journal CSV import
+
+For trades that live nowhere else — a hand-kept spreadsheet, an exchange that has since shut down — you
+import a CSV in tradelog's **canonical closed-position format**. Each row is one flat-to-flat closed
+position, so no reconstruction is needed.
+
+1. Add (or open) a data source of kind **Journal CSV**.
+2. Expand **Show CSV format reference** on its upload card. It documents the dialect (UTF-8, `;`
+   separator, `,`/`.` decimals, ISO dates), every column, and a worked example.
+3. The reference includes an **AI hint**: paste the whole reference into any AI assistant together with
+   your old records (a screenshot, a PDF statement, a messy spreadsheet) and ask it to emit a CSV in
+   exactly that format. tradelog never parses your original mess — only the clean canonical CSV.
+4. **Preview** validates the file and surfaces non-fatal warnings (rows whose close date precedes the
+   open date; rows that look like positions already imported from another source — which would
+   double-count PnL). Then **Import**.
+
+The canonical header is:
+
+```
+symbol;side;opened_at;closed_at;quantity;entry_price;exit_price;realized_pnl;fees;funding;exchange;note
+```
+
+Only `symbol`, `side`, `opened_at`, `closed_at`, `entry_price` and `exit_price` are required. Realized
+PnL is the supplied `realized_pnl` (gross, before fees) when present, otherwise computed from the leg
+prices `(exit − entry) × qty`, negated for shorts — the same convention the other connectors use. If
+you only have position totals and no per-unit price, set `quantity=1` and put the total invested /
+returned in `entry_price` / `exit_price`. The optional `exchange` column records the venue the trade
+happened on (e.g. `FTX`); when blank, the data source's label is used — so naming the source after the
+venue and omitting the column works for a single-venue file. Every position carries this **exchange**
+(for the live connectors it's simply Bitunix/BingX/Quantfury), and the Positions page lets you filter
+by it. Re-importing the same file is idempotent (positions are keyed by a deterministic hash); each
+Journal CSV source has its own id namespace, so its rows can never collide with positions synced from
+an exchange.
 
 ## Development
 

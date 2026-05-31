@@ -4,16 +4,29 @@ package com.sephilabs.tradelog.position
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Modifying
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
-/** Projection for the cumulative realized-PnL-per-profile chart. */
+/** Projection for the cumulative net-PnL-per-profile chart (net = realizedPnl − fees − funding). */
 interface PnlPoint {
     val profileId: UUID
     val closedAt: Instant
     val realizedPnl: BigDecimal
+    val fees: BigDecimal
+    val funding: BigDecimal
+}
+
+/** Lightweight identity used to detect a file-import row overlapping an already-stored position. */
+interface PositionKeyView {
+    val symbolBase: String
+    val symbolQuote: String
+    val side: PositionSide
+    val openedAt: Instant
+    val closedAt: Instant
 }
 
 interface PositionRepository : JpaRepository<Position, UUID>, JpaSpecificationExecutor<Position> {
@@ -24,7 +37,13 @@ interface PositionRepository : JpaRepository<Position, UUID>, JpaSpecificationEx
 
     fun findAllByProfileIdInOrderByClosedAtAsc(profileIds: Collection<UUID>): List<PnlPoint>
 
+    /** All positions in the profile that did NOT come from [dataSourceId] — for cross-source overlap detection. */
+    fun findAllByProfileIdAndDataSourceIdNot(profileId: UUID, dataSourceId: UUID): List<PositionKeyView>
+
     fun countByDataSourceId(dataSourceId: UUID): Long
+
+    @Query("SELECT DISTINCT p.exchange FROM Position p WHERE p.profileId = :profileId AND p.exchange IS NOT NULL ORDER BY p.exchange")
+    fun findDistinctExchanges(@Param("profileId") profileId: UUID): List<String>
 }
 
 interface PositionFillRepository : JpaRepository<PositionFill, UUID> {

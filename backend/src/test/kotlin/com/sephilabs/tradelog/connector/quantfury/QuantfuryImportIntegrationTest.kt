@@ -23,7 +23,7 @@ import java.io.ByteArrayOutputStream
 import java.util.UUID
 
 class QuantfuryImportIntegrationTest @Autowired constructor(
-    private val importService: QuantfuryImportService,
+    private val importService: com.sephilabs.tradelog.connector.FileImportService,
     private val positions: PositionRepository,
     private val dataSources: DataSourceRepository,
     private val profiles: ProfileRepository,

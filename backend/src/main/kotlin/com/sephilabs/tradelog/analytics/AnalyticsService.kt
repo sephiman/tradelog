@@ -28,7 +28,7 @@ class AnalyticsService(
     private val positions: PositionRepository,
 ) {
 
-    /** Cumulative realized PnL per profile (daily, UTC), for the dashboard chart. */
+    /** Cumulative net realized PnL per profile (daily, UTC), for the dashboard chart. */
     @Transactional(readOnly = true)
     fun cumulativePnlPerProfile(userId: UUID): List<PnlSeriesDto> {
         val userProfiles = profiles.findAllByUserIdOrderByCreatedAtAsc(userId)
@@ -38,11 +38,13 @@ class AnalyticsService(
 
         return userProfiles.map { profile ->
             val raw = pointsByProfile[profile.id].orEmpty()
+            // Net = realized PnL minus fees and funding (realizedPnl is gross; see PositionRecord).
             // Sum per UTC day, then accumulate.
             val perDay = sortedMapOf<LocalDate, BigDecimal>()
             for (p in raw) {
                 val day = p.closedAt.atZone(ZoneOffset.UTC).toLocalDate()
-                perDay[day] = (perDay[day] ?: BigDecimal.ZERO).add(p.realizedPnl)
+                val net = p.realizedPnl.subtract(p.fees).subtract(p.funding)
+                perDay[day] = (perDay[day] ?: BigDecimal.ZERO).add(net)
             }
             var running = BigDecimal.ZERO
             val series = perDay.map { (day, sum) ->

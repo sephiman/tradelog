@@ -31,7 +31,7 @@ class SyncStore(
     @Transactional
     fun completeApiSuccess(dataSourceId: UUID, runId: UUID, records: List<PositionRecord>, nextCursor: SyncCursor): SyncRun {
         val ds = dataSources.findById(dataSourceId).orElseThrow()
-        val counts = upsert.upsert(ds.id, ds.profileId, ds.kind, records)
+        val counts = upsert.upsert(ds.id, ds.profileId, ds.kind, ds.label, records)
         dataSourceService.writeCursor(ds, nextCursor)
         ds.lastSyncedAt = Instant.now()
         ds.status = DataSourceStatus.ACTIVE
@@ -43,7 +43,7 @@ class SyncStore(
     @Transactional
     fun completeFileSuccess(dataSourceId: UUID, runId: UUID, records: List<PositionRecord>): SyncRun {
         val ds = dataSources.findById(dataSourceId).orElseThrow()
-        val counts = upsert.upsert(ds.id, ds.profileId, ds.kind, records)
+        val counts = upsert.upsert(ds.id, ds.profileId, ds.kind, ds.label, records)
         ds.lastSyncedAt = Instant.now()
         ds.status = DataSourceStatus.ACTIVE
         ds.statusDetail = null

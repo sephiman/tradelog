@@ -34,6 +34,7 @@ data class PositionFillDto(
 data class PositionDto(
     val id: UUID,
     val source: SourceKind,
+    val exchange: String?,
     val symbolBase: String,
     val symbolQuote: String,
     val side: PositionSide,

@@ -26,13 +26,20 @@ class PositionUpsertService(
 ) {
 
     @Transactional
-    fun upsert(dataSourceId: UUID, profileId: UUID, source: SourceKind, records: List<PositionRecord>): UpsertCounts {
+    fun upsert(
+        dataSourceId: UUID,
+        profileId: UUID,
+        source: SourceKind,
+        sourceLabel: String,
+        records: List<PositionRecord>,
+    ): UpsertCounts {
         var inserted = 0
         var updated = 0
         for (r in records) {
+            val exchange = resolveExchange(r, source, sourceLabel)
             val existing = positions.findByDataSourceIdAndExternalId(dataSourceId, r.externalId)
             val position = if (existing != null) {
-                applySourceFields(existing, r); updated++; existing
+                applySourceFields(existing, r, exchange); updated++; existing
             } else {
                 Position(
                     profileId = profileId,
@@ -52,6 +59,8 @@ class PositionUpsertService(
                     funding = Usdt.normalize(r.funding),
                     pnlCurrency = r.pnlCurrency,
                     raw = r.raw,
+                    note = r.note?.trim()?.takeIf { it.isNotEmpty() },
+                    exchange = exchange,
                 ).also { positions.save(it); inserted++ }
             }
             replaceFills(position.id, r)
@@ -59,7 +68,17 @@ class PositionUpsertService(
         return UpsertCounts(inserted, updated)
     }
 
-    private fun applySourceFields(p: Position, r: PositionRecord) {
+    /**
+     * The venue is the source itself for the live connectors; for a Journal CSV it is the row's
+     * supplied exchange, falling back to the data source label when the row leaves it blank.
+     */
+    private fun resolveExchange(r: PositionRecord, source: SourceKind, sourceLabel: String): String? =
+        r.exchange?.trim()?.takeIf { it.isNotEmpty() }
+            ?: source.venueLabel
+            ?: sourceLabel.trim().takeIf { it.isNotEmpty() }?.take(64)
+
+    private fun applySourceFields(p: Position, r: PositionRecord, exchange: String?) {
+        p.exchange = exchange
         p.symbolBase = r.symbol.base
         p.symbolQuote = r.symbol.quote
         p.side = r.side

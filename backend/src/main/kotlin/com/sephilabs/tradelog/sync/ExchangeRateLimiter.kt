@@ -24,7 +24,7 @@ class ExchangeRateLimiter(private val props: AppProperties) {
     private fun perMinute(kind: SourceKind): Long = when (kind) {
         SourceKind.BITUNIX -> props.sync.rate.bitunixPerMinute
         SourceKind.BINGX -> props.sync.rate.bingxPerMinute
-        SourceKind.QUANTFURY -> Long.MAX_VALUE
+        SourceKind.QUANTFURY, SourceKind.JOURNAL_CSV -> Long.MAX_VALUE
     }
 
     private fun build(perMinute: Long): Bucket {

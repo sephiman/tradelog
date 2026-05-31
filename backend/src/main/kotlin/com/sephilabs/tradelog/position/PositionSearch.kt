@@ -11,6 +11,7 @@ data class PositionSearchCriteria(
     val symbolBase: String? = null,
     val side: PositionSide? = null,
     val source: SourceKind? = null,
+    val exchange: String? = null,
     val from: Instant? = null,
     val to: Instant? = null,
     val tagId: UUID? = null,
@@ -28,6 +29,7 @@ object PositionSpecs {
             }
             c.side?.let { predicates += cb.equal(root.get<PositionSide>("side"), it) }
             c.source?.let { predicates += cb.equal(root.get<SourceKind>("source"), it) }
+            c.exchange?.takeIf { it.isNotBlank() }?.let { predicates += cb.equal(root.get<String>("exchange"), it) }
             c.from?.let { predicates += cb.greaterThanOrEqualTo(root.get("closedAt"), it) }
             c.to?.let { predicates += cb.lessThanOrEqualTo(root.get("closedAt"), it) }
             c.tagId?.let { tagId ->

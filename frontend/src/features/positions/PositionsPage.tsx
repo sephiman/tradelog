@@ -5,6 +5,7 @@ import { NoActiveProfile } from "@/features/profiles/NoActiveProfile";
 import {
   useClearTag,
   usePositionDetail,
+  usePositionExchanges,
   usePositions,
   useSetNote,
   useSetTag,
@@ -21,12 +22,19 @@ export function PositionsPage() {
   const { activeProfileId } = useActiveProfile();
   const [filters, setFilters] = useState<PositionFilters>({ sort: "closed_desc", page: 0, size: 50 });
   const { data, isLoading } = usePositions(activeProfileId, filters);
+  const { data: exchanges = [] } = usePositionExchanges(activeProfileId);
   const { data: taxonomy = [] } = useTaxonomy();
   const origen = useMemo(() => taxonomy.find((g) => g.code === "origen") ?? taxonomy[0], [taxonomy]);
 
   if (!activeProfileId) return <NoActiveProfile />;
 
   const set = (patch: Partial<PositionFilters>) => setFilters((f) => ({ ...f, ...patch, page: 0 }));
+
+  const page = data?.page ?? 0;
+  const size = data?.size ?? filters.size ?? 50;
+  const total = data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / size));
+  const goToPage = (p: number) => setFilters((f) => ({ ...f, page: p }));
 
   return (
     <div className="space-y-4">
@@ -52,6 +60,16 @@ export function PositionsPage() {
               <option value="QUANTFURY">Quantfury</option>
             </Select>
           </FilterField>
+          {exchanges.length > 0 && (
+            <FilterField label={t("positions.exchange")}>
+              <Select className="w-36" value={filters.exchange ?? ""} onChange={(e) => set({ exchange: e.target.value })}>
+                <option value="">{t("positions.allExchanges")}</option>
+                {exchanges.map((ex) => (
+                  <option key={ex} value={ex}>{ex}</option>
+                ))}
+              </Select>
+            </FilterField>
+          )}
           {origen && origen.tags.length > 0 && (
             <FilterField label={t("positions.origen")}>
               <Select className="w-36" value={filters.tagId ?? ""} onChange={(e) => set({ tagId: e.target.value })}>
@@ -85,6 +103,7 @@ export function PositionsPage() {
                 <th>{t("positions.symbol")}</th>
                 <th>{t("positions.side")}</th>
                 <th>{t("positions.source")}</th>
+                <th>{t("positions.exchange")}</th>
                 <th className="text-right">{t("positions.qty")}</th>
                 <th className="text-right">{t("positions.entry")}</th>
                 <th className="text-right">{t("positions.exit")}</th>
@@ -95,9 +114,9 @@ export function PositionsPage() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={10} className="py-8 text-center text-gray-500">{t("common.loading")}</td></tr>
+                <tr><td colSpan={11} className="py-8 text-center text-gray-500">{t("common.loading")}</td></tr>
               ) : (data?.items.length ?? 0) === 0 ? (
-                <tr><td colSpan={10} className="py-8 text-center text-gray-500 dark:text-gray-400">{t("positions.noPositions")}</td></tr>
+                <tr><td colSpan={11} className="py-8 text-center text-gray-500 dark:text-gray-400">{t("positions.noPositions")}</td></tr>
               ) : (
                 data!.items.map((p) => (
                   <PositionRow key={p.id} profileId={activeProfileId} position={p} origen={origen} />
@@ -106,6 +125,26 @@ export function PositionsPage() {
             </tbody>
           </table>
         </div>
+        {total > 0 && (
+          <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+            <span className="tabular-nums">
+              {t("positions.showing", {
+                from: page * size + 1,
+                to: Math.min((page + 1) * size, total),
+                total,
+              })}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" disabled={page <= 0} onClick={() => goToPage(page - 1)}>
+                {t("positions.prev")}
+              </Button>
+              <span className="tabular-nums">{page + 1} / {pageCount}</span>
+              <Button variant="ghost" disabled={page + 1 >= pageCount} onClick={() => goToPage(page + 1)}>
+                {t("positions.next")}
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -145,6 +184,7 @@ function PositionRow({ profileId, position, origen }: { profileId: string; posit
           </Badge>
         </td>
         <td className="text-gray-500 dark:text-gray-400">{position.source}</td>
+        <td className="text-gray-600 dark:text-gray-300">{position.exchange ?? "—"}</td>
         <td className="text-right tabular-nums">{fmtNum(position.qty)}</td>
         <td className="text-right tabular-nums">{fmtNum(position.entryPrice)}</td>
         <td className="text-right tabular-nums">{fmtNum(position.exitPrice)}</td>
@@ -169,7 +209,7 @@ function PositionRow({ profileId, position, origen }: { profileId: string; posit
       </tr>
       {expanded && (
         <tr className="bg-gray-50 dark:bg-gray-900/40">
-          <td colSpan={10} className="p-4">
+          <td colSpan={11} className="p-4">
             <ExpandedPanel profileId={profileId} position={position} />
           </td>
         </tr>

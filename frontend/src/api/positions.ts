@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
 
 export type PositionSide = "LONG" | "SHORT";
-export type SourceKind = "BITUNIX" | "BINGX" | "QUANTFURY";
+export type SourceKind = "BITUNIX" | "BINGX" | "QUANTFURY" | "JOURNAL_CSV";
 export type FillAction = "OPEN" | "ADD" | "REDUCE" | "CLOSE";
 
 export interface PositionTagView {
@@ -16,6 +16,7 @@ export interface PositionTagView {
 export interface Position {
   id: string;
   source: SourceKind;
+  exchange: string | null;
   symbolBase: string;
   symbolQuote: string;
   side: PositionSide;
@@ -60,6 +61,7 @@ export interface PositionFilters {
   symbol?: string;
   side?: PositionSide | "";
   source?: SourceKind | "";
+  exchange?: string;
   from?: string;
   to?: string;
   tagId?: string;
@@ -77,6 +79,7 @@ export function usePositions(profileId: string | null, filters: PositionFilters)
       if (filters.symbol) params.symbol = filters.symbol;
       if (filters.side) params.side = filters.side;
       if (filters.source) params.source = filters.source;
+      if (filters.exchange) params.exchange = filters.exchange;
       if (filters.from) params.from = filters.from;
       if (filters.to) params.to = filters.to;
       if (filters.tagId) params.tagId = filters.tagId;
@@ -86,6 +89,15 @@ export function usePositions(profileId: string | null, filters: PositionFilters)
       const res = await apiClient.get<PageResponse<Position>>(`/profiles/${profileId}/positions`, { params });
       return res.data;
     },
+  });
+}
+
+export function usePositionExchanges(profileId: string | null) {
+  return useQuery({
+    enabled: !!profileId,
+    queryKey: ["positionExchanges", profileId],
+    queryFn: async () =>
+      (await apiClient.get<string[]>(`/profiles/${profileId}/positions/exchanges`)).data,
   });
 }
 
