@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 
 @Service
@@ -56,10 +57,15 @@ class AuthService(
         user.passwordHash = encoder.encode(newPassword)!!
     }
 
+    /** Partial profile update: applies only the provided fields. A bad time zone is rejected. */
     @Transactional
-    fun updateLocale(userId: UUID, locale: String): User {
+    fun updateProfile(userId: UUID, locale: String?, timeZone: String?): User {
+        timeZone?.let {
+            if (it !in ZoneId.getAvailableZoneIds()) throw AppException.badRequest("INVALID_PARAMETER", "timeZone")
+        }
         val user = loadManaged(userId)
-        user.locale = locale
+        locale?.let { user.locale = it }
+        timeZone?.let { user.timeZone = it }
         return user
     }
 

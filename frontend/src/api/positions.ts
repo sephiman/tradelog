@@ -26,6 +26,7 @@ export interface Position {
   entryPrice: string;
   exitPrice: string;
   realizedPnl: string;
+  netPnl: string;
   fees: string;
   funding: string;
   pnlCurrency: string;

@@ -57,7 +57,9 @@ class JournalCsvImportIntegrationTest @Autowired constructor(
         val btc = positions.findAll().first { it.symbolBase == "BTC" && it.dataSourceId == dsId }
         assertThat(btc.exchange).isEqualTo("FTX")
         assertThat(btc.note).isEqualTo("swing")
+        // realizedPnl is GROSS (before fees); netPnl = gross − fees − funding = 1366.52 − 171.76 = 1194.76.
         assertThat(btc.realizedPnl.setScale(2, java.math.RoundingMode.HALF_EVEN)).isEqualByComparingTo("1366.52")
+        assertThat(btc.netPnl.setScale(2, java.math.RoundingMode.HALF_EVEN)).isEqualByComparingTo("1194.76")
 
         val sui = positions.findAll().first { it.symbolBase == "SUI" && it.dataSourceId == dsId }
         assertThat(sui.exchange).isEqualTo("Dead Exchanges") // fell back to the data source label

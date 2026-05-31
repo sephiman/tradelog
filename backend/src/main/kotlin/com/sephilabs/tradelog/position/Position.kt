@@ -65,8 +65,13 @@ class Position(
     @Column(name = "exit_price", nullable = false, precision = 38, scale = 18)
     var exitPrice: BigDecimal,
 
+    /** GROSS realized PnL — price movement only, before fees and funding. */
     @Column(name = "realized_pnl", nullable = false, precision = 38, scale = 8)
     var realizedPnl: BigDecimal,
+
+    /** Net profit = [realizedPnl] − [fees] − [funding]. The bottom line actually kept. */
+    @Column(name = "net_pnl", nullable = false, precision = 38, scale = 8)
+    var netPnl: BigDecimal,
 
     @Column(name = "fees", nullable = false, precision = 38, scale = 8)
     var fees: BigDecimal,

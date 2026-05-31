@@ -6,6 +6,7 @@ export interface Me {
   id: string;
   email: string;
   locale: "en" | "es";
+  timeZone: string;
 }
 
 interface AuthContextValue {
@@ -16,6 +17,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   setLocale: (locale: "en" | "es") => Promise<void>;
+  setTimeZone: (timeZone: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -72,9 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     syncI18n(locale);
   }, []);
 
+  const setTimeZone = useCallback(async (timeZone: string) => {
+    const res = await apiClient.patch<Me>("/auth/me", { timeZone });
+    setUser(res.data);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, login, register, logout, refresh, setLocale }),
-    [user, loading, login, register, logout, refresh, setLocale],
+    () => ({ user, loading, login, register, logout, refresh, setLocale, setTimeZone }),
+    [user, loading, login, register, logout, refresh, setLocale, setTimeZone],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

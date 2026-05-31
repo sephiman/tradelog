@@ -55,7 +55,8 @@ export function useQuantfuryExecute(profileId: string, dataSourceId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dataSources", profileId] });
       qc.invalidateQueries({ queryKey: ["positions", profileId] });
-      qc.invalidateQueries({ queryKey: ["pnlCumulative"] });
+      qc.invalidateQueries({ queryKey: ["positionExchanges", profileId] });
+      qc.invalidateQueries({ queryKey: ["analyticsClosed", profileId] });
     },
   });
 }

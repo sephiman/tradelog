@@ -25,6 +25,10 @@ class User(
     @Column(name = "locale", nullable = false, length = 2)
     var locale: String = "en",
 
+    /** IANA time-zone id (e.g. "Europe/Madrid") used to bucket analytics in the user's local time. */
+    @Column(name = "time_zone", nullable = false, length = 64)
+    var timeZone: String = "UTC",
+
     @Column(name = "last_login_at")
     var lastLoginAt: Instant? = null,
 ) : TimestampedEntity()

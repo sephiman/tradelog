@@ -18,7 +18,8 @@ export interface SyncRun {
 function invalidate(qc: ReturnType<typeof useQueryClient>, profileId: string) {
   qc.invalidateQueries({ queryKey: ["dataSources", profileId] });
   qc.invalidateQueries({ queryKey: ["positions", profileId] });
-  qc.invalidateQueries({ queryKey: ["pnlCumulative"] });
+  qc.invalidateQueries({ queryKey: ["positionExchanges", profileId] });
+  qc.invalidateQueries({ queryKey: ["analyticsClosed", profileId] });
 }
 
 export function useSyncOne(profileId: string) {

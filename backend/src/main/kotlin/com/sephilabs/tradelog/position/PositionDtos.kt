@@ -44,6 +44,7 @@ data class PositionDto(
     @JsonFormat(shape = JsonFormat.Shape.STRING) val entryPrice: BigDecimal,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val exitPrice: BigDecimal,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val realizedPnl: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val netPnl: BigDecimal,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val fees: BigDecimal,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val funding: BigDecimal,
     val pnlCurrency: String,
@@ -55,6 +56,25 @@ data class PositionDto(
 data class PositionDetailDto(
     val position: PositionDto,
     val fills: List<PositionFillDto>,
+)
+
+/**
+ * Lightweight closed-position row for the analytics dashboard. [netPnl] is the bottom line
+ * (gross realizedPnl − fees − funding), pre-computed; amounts are JSON strings to preserve scale.
+ */
+data class ClosedPositionSummaryDto(
+    val id: UUID,
+    val source: SourceKind,
+    val exchange: String?,
+    val symbolBase: String,
+    val symbolQuote: String,
+    val side: PositionSide,
+    val openedAt: Instant,
+    val closedAt: Instant,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val realizedPnl: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val netPnl: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val fees: BigDecimal,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val funding: BigDecimal,
 )
 
 data class NoteRequest(

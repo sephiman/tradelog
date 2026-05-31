@@ -100,7 +100,7 @@ class AuthController(
     @PatchMapping("/me")
     fun updateMe(@Valid @RequestBody body: MeUpdateRequest): MeResponse {
         val current = currentUser.requireUser()
-        return buildMe(authService.updateLocale(current.id, body.locale))
+        return buildMe(authService.updateProfile(current.id, body.locale, body.timeZone))
     }
 
     @PostMapping("/password")
@@ -110,5 +110,5 @@ class AuthController(
         return mapOf("status" to "ok")
     }
 
-    private fun buildMe(user: User): MeResponse = MeResponse(user.id, user.email, user.locale)
+    private fun buildMe(user: User): MeResponse = MeResponse(user.id, user.email, user.locale, user.timeZone)
 }
