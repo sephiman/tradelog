@@ -41,6 +41,23 @@ export function fmtDate(iso: string): string {
   }
 }
 
+/** A date input value ("YYYY-MM-DD") → ISO instant at local start (or end) of that day. */
+export function dateInputToIso(dateStr: string, endOfDay = false): string | undefined {
+  if (!dateStr) return undefined;
+  const d = new Date(`${dateStr}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}`);
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
+/** ISO instant → "YYYY-MM-DD" in local time, for binding a date input's value. */
+export function isoToDateInput(iso?: string): string {
+  if (!iso) return "";
+  try {
+    return format(parseISO(iso), "yyyy-MM-dd");
+  } catch {
+    return "";
+  }
+}
+
 /** Tailwind text-color class for a signed PnL value. */
 export function pnlTone(value: string | number): string {
   const d = toDecimal(value);

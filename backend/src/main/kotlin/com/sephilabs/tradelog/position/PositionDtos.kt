@@ -85,3 +85,29 @@ data class NoteRequest(
 data class SetTagRequest(
     val tagId: UUID,
 )
+
+/**
+ * Set (or clear) one tag group on many positions at once. Two selection modes:
+ *  - [positionIds] non-empty → apply to exactly those positions (explicit row selection).
+ *  - otherwise → apply to every position matching [filters] (the current list filters).
+ * A null [tagId] clears the group link instead of assigning a tag.
+ */
+data class BulkSetTagRequest(
+    val tagId: UUID? = null,
+    val positionIds: List<UUID>? = null,
+    val filters: BulkTagFilters? = null,
+)
+
+data class BulkTagFilters(
+    val symbol: String? = null,
+    val side: PositionSide? = null,
+    val source: SourceKind? = null,
+    val exchange: String? = null,
+    val from: Instant? = null,
+    val to: Instant? = null,
+    val tagId: UUID? = null,
+)
+
+data class BulkTagResult(
+    val updated: Int,
+)

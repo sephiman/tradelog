@@ -45,4 +45,13 @@ object PositionSpecs {
             }
             cb.and(*predicates.toTypedArray())
         }
+
+    /** Positions in [profileId] whose id is one of [ids] — drops any id from another profile. */
+    fun byIds(profileId: UUID, ids: Collection<UUID>): Specification<Position> =
+        Specification<Position> { root, _, cb ->
+            cb.and(
+                cb.equal(root.get<UUID>("profileId"), profileId),
+                root.get<UUID>("id").`in`(ids),
+            )
+        }
 }

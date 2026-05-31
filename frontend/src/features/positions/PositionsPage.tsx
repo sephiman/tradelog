@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { NoActiveProfile } from "@/features/profiles/NoActiveProfile";
 import {
+  useBulkSetTag,
   useClearTag,
   usePositionDetail,
   usePositionExchanges,
@@ -15,7 +16,8 @@ import {
 import { useTaxonomy, type TagGroup } from "@/api/taxonomy";
 import { Badge, Button, Card, CardBody, Input, Select, Textarea } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
-import { fmtDateTime, fmtNum, fmtUsd, pnlTone } from "@/lib/format";
+import { dateInputToIso, fmtDateTime, fmtNum, fmtUsd, isoToDateInput, pnlTone } from "@/lib/format";
+import { showToast } from "@/lib/toastBus";
 
 export function PositionsPage() {
   const { t } = useTranslation();
@@ -26,9 +28,24 @@ export function PositionsPage() {
   const { data: taxonomy = [] } = useTaxonomy();
   const origen = useMemo(() => taxonomy.find((g) => g.code === "origen") ?? taxonomy[0], [taxonomy]);
 
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [allMatching, setAllMatching] = useState(false);
+  const [bulkTagId, setBulkTagId] = useState("");
+  const bulkSetTag = useBulkSetTag(activeProfileId ?? "");
+
   if (!activeProfileId) return <NoActiveProfile />;
 
-  const set = (patch: Partial<PositionFilters>) => setFilters((f) => ({ ...f, ...patch, page: 0 }));
+  const clearSelection = () => {
+    setSelected(new Set());
+    setAllMatching(false);
+    setBulkTagId("");
+  };
+
+  // Selection is scoped to a filter set; changing filters invalidates it.
+  const set = (patch: Partial<PositionFilters>) => {
+    setFilters((f) => ({ ...f, ...patch, page: 0 }));
+    clearSelection();
+  };
 
   const page = data?.page ?? 0;
   const size = data?.size ?? filters.size ?? 50;
@@ -36,69 +53,187 @@ export function PositionsPage() {
   const pageCount = Math.max(1, Math.ceil(total / size));
   const goToPage = (p: number) => setFilters((f) => ({ ...f, page: p }));
 
+  const items = data?.items ?? [];
+  const visibleIds = items.map((p) => p.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+  const someVisibleSelected = visibleIds.some((id) => selected.has(id));
+
+  const toggleRow = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleAllVisible = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id));
+      else visibleIds.forEach((id) => next.add(id));
+      return next;
+    });
+
+  const cleanFilters = (): PositionFilters => {
+    const f: PositionFilters = {};
+    if (filters.symbol) f.symbol = filters.symbol;
+    if (filters.side) f.side = filters.side;
+    if (filters.source) f.source = filters.source;
+    if (filters.exchange) f.exchange = filters.exchange;
+    if (filters.from) f.from = filters.from;
+    if (filters.to) f.to = filters.to;
+    if (filters.tagId) f.tagId = filters.tagId;
+    return f;
+  };
+
+  const selectionCount = allMatching ? total : selected.size;
+
+  const applyBulk = () => {
+    if (!origen || selectionCount === 0) return;
+    const body = {
+      tagId: bulkTagId === "" ? null : bulkTagId,
+      ...(allMatching ? { filters: cleanFilters() } : { positionIds: [...selected] }),
+    };
+    bulkSetTag.mutate(
+      { groupId: origen.id, body },
+      {
+        onSuccess: (r) => {
+          showToast(t("positions.bulkUpdated", { count: r.updated }), "success");
+          clearSelection();
+        },
+      },
+    );
+  };
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{t("positions.title")}</h1>
 
       <Card>
-        <CardBody className="flex flex-wrap items-end gap-3">
-          <FilterField label={t("positions.symbol")}>
-            <Input className="w-32" value={filters.symbol ?? ""} onChange={(e) => set({ symbol: e.target.value })} placeholder="BTC" />
-          </FilterField>
-          <FilterField label={t("positions.side")}>
-            <Select className="w-28" value={filters.side ?? ""} onChange={(e) => set({ side: e.target.value as PositionFilters["side"] })}>
-              <option value="">{t("common.all")}</option>
-              <option value="LONG">{t("positions.long")}</option>
-              <option value="SHORT">{t("positions.short")}</option>
-            </Select>
-          </FilterField>
-          <FilterField label={t("positions.source")}>
-            <Select className="w-32" value={filters.source ?? ""} onChange={(e) => set({ source: e.target.value as PositionFilters["source"] })}>
-              <option value="">{t("common.all")}</option>
-              <option value="BITUNIX">Bitunix</option>
-              <option value="BINGX">BingX</option>
-              <option value="QUANTFURY">Quantfury</option>
-            </Select>
-          </FilterField>
-          {exchanges.length > 0 && (
-            <FilterField label={t("positions.exchange")}>
-              <Select className="w-36" value={filters.exchange ?? ""} onChange={(e) => set({ exchange: e.target.value })}>
-                <option value="">{t("positions.allExchanges")}</option>
-                {exchanges.map((ex) => (
-                  <option key={ex} value={ex}>{ex}</option>
-                ))}
-              </Select>
+        <CardBody>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <FilterField label={t("positions.symbol")}>
+              <Input className="w-full" value={filters.symbol ?? ""} onChange={(e) => set({ symbol: e.target.value })} placeholder="BTC" />
             </FilterField>
-          )}
-          {origen && origen.tags.length > 0 && (
-            <FilterField label={t("positions.origen")}>
-              <Select className="w-36" value={filters.tagId ?? ""} onChange={(e) => set({ tagId: e.target.value })}>
+            <FilterField label={t("positions.side")}>
+              <Select className="w-full" value={filters.side ?? ""} onChange={(e) => set({ side: e.target.value as PositionFilters["side"] })}>
                 <option value="">{t("common.all")}</option>
-                {origen.tags.map((tag) => (
-                  <option key={tag.id} value={tag.id}>{tag.name}</option>
-                ))}
+                <option value="LONG">{t("positions.long")}</option>
+                <option value="SHORT">{t("positions.short")}</option>
               </Select>
             </FilterField>
-          )}
-          <FilterField label={t("positions.sort")}>
-            <Select className="w-40" value={filters.sort} onChange={(e) => set({ sort: e.target.value })}>
-              <option value="closed_desc">{t("positions.closed")} ↓</option>
-              <option value="closed_asc">{t("positions.closed")} ↑</option>
-              <option value="pnl_desc">{t("positions.pnl")} ↓</option>
-              <option value="pnl_asc">{t("positions.pnl")} ↑</option>
-            </Select>
-          </FilterField>
-          <Button variant="ghost" onClick={() => setFilters({ sort: "closed_desc", page: 0, size: 50 })}>
-            {t("positions.clearFilters")}
-          </Button>
+            <FilterField label={t("positions.source")}>
+              <Select className="w-full" value={filters.source ?? ""} onChange={(e) => set({ source: e.target.value as PositionFilters["source"] })}>
+                <option value="">{t("common.all")}</option>
+                <option value="BITUNIX">Bitunix</option>
+                <option value="BINGX">BingX</option>
+                <option value="QUANTFURY">Quantfury</option>
+              </Select>
+            </FilterField>
+            {exchanges.length > 0 && (
+              <FilterField label={t("positions.exchange")}>
+                <Select className="w-full" value={filters.exchange ?? ""} onChange={(e) => set({ exchange: e.target.value })}>
+                  <option value="">{t("positions.allExchanges")}</option>
+                  {exchanges.map((ex) => (
+                    <option key={ex} value={ex}>{ex}</option>
+                  ))}
+                </Select>
+              </FilterField>
+            )}
+            <FilterField label={t("positions.from")}>
+              <Input
+                type="date"
+                className="w-full"
+                value={isoToDateInput(filters.from)}
+                onChange={(e) => set({ from: dateInputToIso(e.target.value) })}
+              />
+            </FilterField>
+            <FilterField label={t("positions.to")}>
+              <Input
+                type="date"
+                className="w-full"
+                value={isoToDateInput(filters.to)}
+                onChange={(e) => set({ to: dateInputToIso(e.target.value, true) })}
+              />
+            </FilterField>
+            {origen && origen.tags.length > 0 && (
+              <FilterField label={t("positions.origen")}>
+                <Select className="w-full" value={filters.tagId ?? ""} onChange={(e) => set({ tagId: e.target.value })}>
+                  <option value="">{t("common.all")}</option>
+                  {origen.tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>{tag.name}</option>
+                  ))}
+                </Select>
+              </FilterField>
+            )}
+            <FilterField label={t("positions.sort")}>
+              <Select className="w-full" value={filters.sort} onChange={(e) => set({ sort: e.target.value })}>
+                <option value="closed_desc">{t("positions.closed")} ↓</option>
+                <option value="closed_asc">{t("positions.closed")} ↑</option>
+                <option value="pnl_desc">{t("positions.pnl")} ↓</option>
+                <option value="pnl_asc">{t("positions.pnl")} ↑</option>
+              </Select>
+            </FilterField>
+            <div className="col-span-full flex justify-end">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFilters({ sort: "closed_desc", page: 0, size: 50 });
+                  clearSelection();
+                }}
+              >
+                {t("positions.clearFilters")}
+              </Button>
+            </div>
+          </div>
         </CardBody>
       </Card>
 
       <Card>
-        <div className="overflow-x-auto">
+        {selectionCount > 0 && origen && (
+          <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3 text-sm dark:border-gray-700">
+            <span className="font-medium">
+              {allMatching
+                ? t("positions.allMatchingSelected", { total })
+                : t("positions.selected", { count: selected.size })}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 dark:text-gray-400">{t("positions.bulkSetOrigen")}</span>
+              <Select className="w-36" value={bulkTagId} onChange={(e) => setBulkTagId(e.target.value)}>
+                <option value="">{t("common.none")}</option>
+                {origen.tags.map((tag) => (
+                  <option key={tag.id} value={tag.id}>{tag.name}</option>
+                ))}
+              </Select>
+              <Button variant="primary" disabled={bulkSetTag.isPending} onClick={applyBulk}>
+                {t("positions.apply")}
+              </Button>
+            </div>
+            <Button variant="ghost" onClick={clearSelection}>{t("positions.clearSelection")}</Button>
+          </div>
+        )}
+        {allVisibleSelected && !allMatching && total > visibleIds.length && (
+          <div className="flex flex-wrap items-center justify-center gap-2 border-b border-border bg-primary/5 px-4 py-2 text-sm dark:border-gray-700">
+            <span className="text-gray-600 dark:text-gray-300">
+              {t("positions.pageSelected", { count: visibleIds.length })}
+            </span>
+            <button type="button" className="font-medium text-primary hover:underline" onClick={() => setAllMatching(true)}>
+              {t("positions.selectAllMatching", { total })}
+            </button>
+          </div>
+        )}
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead className="border-b border-border text-left text-xs uppercase text-gray-500 dark:border-gray-700 dark:text-gray-400">
               <tr>
+                <th className="w-8 py-2">
+                  <SelectAllCheckbox
+                    checked={allMatching || allVisibleSelected}
+                    indeterminate={!allMatching && someVisibleSelected && !allVisibleSelected}
+                    disabled={allMatching || visibleIds.length === 0}
+                    onChange={toggleAllVisible}
+                  />
+                </th>
                 <th className="py-2">{t("positions.closed")}</th>
                 <th>{t("positions.symbol")}</th>
                 <th>{t("positions.side")}</th>
@@ -114,16 +249,57 @@ export function PositionsPage() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={11} className="py-8 text-center text-gray-500">{t("common.loading")}</td></tr>
-              ) : (data?.items.length ?? 0) === 0 ? (
-                <tr><td colSpan={11} className="py-8 text-center text-gray-500 dark:text-gray-400">{t("positions.noPositions")}</td></tr>
+                <tr><td colSpan={12} className="py-8 text-center text-gray-500">{t("common.loading")}</td></tr>
+              ) : items.length === 0 ? (
+                <tr><td colSpan={12} className="py-8 text-center text-gray-500 dark:text-gray-400">{t("positions.noPositions")}</td></tr>
               ) : (
-                data!.items.map((p) => (
-                  <PositionRow key={p.id} profileId={activeProfileId} position={p} origen={origen} />
+                items.map((p) => (
+                  <PositionRow
+                    key={p.id}
+                    profileId={activeProfileId}
+                    position={p}
+                    origen={origen}
+                    selected={allMatching || selected.has(p.id)}
+                    selectDisabled={allMatching}
+                    onToggleSelect={() => toggleRow(p.id)}
+                  />
                 ))
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="md:hidden">
+          {isLoading ? (
+            <div className="py-8 text-center text-gray-500">{t("common.loading")}</div>
+          ) : items.length === 0 ? (
+            <div className="py-8 text-center text-gray-500 dark:text-gray-400">{t("positions.noPositions")}</div>
+          ) : (
+            <>
+              <label className="flex items-center gap-2 border-b border-border px-4 py-2 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+                <SelectAllCheckbox
+                  checked={allMatching || allVisibleSelected}
+                  indeterminate={!allMatching && someVisibleSelected && !allVisibleSelected}
+                  disabled={allMatching || visibleIds.length === 0}
+                  onChange={toggleAllVisible}
+                />
+                {t("positions.selectAll")}
+              </label>
+              <div className="divide-y divide-border dark:divide-gray-700">
+                {items.map((p) => (
+                  <PositionCard
+                    key={p.id}
+                    profileId={activeProfileId}
+                    position={p}
+                    origen={origen}
+                    selected={allMatching || selected.has(p.id)}
+                    selectDisabled={allMatching}
+                    onToggleSelect={() => toggleRow(p.id)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
         {total > 0 && (
           <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
@@ -150,6 +326,35 @@ export function PositionsPage() {
   );
 }
 
+function SelectAllCheckbox({
+  checked,
+  indeterminate,
+  disabled,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  disabled: boolean;
+  onChange: () => void;
+}) {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className="h-4 w-4 cursor-pointer accent-primary"
+      checked={checked}
+      disabled={disabled}
+      onChange={onChange}
+      aria-label={t("positions.selectAll")}
+    />
+  );
+}
+
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
@@ -159,23 +364,68 @@ function FilterField({ label, children }: { label: string; children: React.React
   );
 }
 
-function PositionRow({ profileId, position, origen }: { profileId: string; position: Position; origen?: TagGroup }) {
-  const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
+interface RowProps {
+  profileId: string;
+  position: Position;
+  origen?: TagGroup;
+  selected: boolean;
+  selectDisabled: boolean;
+  onToggleSelect: () => void;
+}
+
+/** Current origen tag id for a position + a setter that upserts/clears the link. Shared by row and card. */
+function useOrigenTag(profileId: string, position: Position, origen?: TagGroup) {
   const setTag = useSetTag(profileId);
   const clearTag = useClearTag(profileId);
-
   const currentTagId = origen ? position.tags.find((tg) => tg.groupId === origen.id)?.tagId ?? "" : "";
-
   const onTagChange = (tagId: string) => {
     if (!origen) return;
     if (tagId === "") clearTag.mutate({ positionId: position.id, groupId: origen.id });
     else setTag.mutate({ positionId: position.id, groupId: origen.id, tagId });
   };
+  return { currentTagId, onTagChange };
+}
+
+function OrigenSelect({
+  origen,
+  value,
+  onChange,
+  className,
+}: {
+  origen: TagGroup;
+  value: string;
+  onChange: (tagId: string) => void;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Select className={className} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{t("common.none")}</option>
+      {origen.tags.map((tag) => (
+        <option key={tag.id} value={tag.id}>{tag.name}</option>
+      ))}
+    </Select>
+  );
+}
+
+function PositionRow({ profileId, position, origen, selected, selectDisabled, onToggleSelect }: RowProps) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const { currentTagId, onTagChange } = useOrigenTag(profileId, position, origen);
 
   return (
     <>
-      <tr className="border-b border-border last:border-0 dark:border-gray-700">
+      <tr className={cn("border-b border-border last:border-0 dark:border-gray-700", selected && "bg-primary/5")}>
+        <td className="py-2 text-center">
+          <input
+            type="checkbox"
+            className="h-4 w-4 cursor-pointer accent-primary"
+            checked={selected}
+            disabled={selectDisabled}
+            onChange={onToggleSelect}
+            aria-label={t("positions.selectRow")}
+          />
+        </td>
         <td className="whitespace-nowrap py-2 text-gray-600 dark:text-gray-300">{fmtDateTime(position.closedAt)}</td>
         <td className="font-medium">{position.symbolBase}/{position.symbolQuote}</td>
         <td>
@@ -192,14 +442,7 @@ function PositionRow({ profileId, position, origen }: { profileId: string; posit
           {fmtUsd(position.netPnl, { sign: true })}
         </td>
         <td>
-          {origen && (
-            <Select className="w-32" value={currentTagId} onChange={(e) => onTagChange(e.target.value)}>
-              <option value="">{t("common.none")}</option>
-              {origen.tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>{tag.name}</option>
-              ))}
-            </Select>
-          )}
+          {origen && <OrigenSelect origen={origen} value={currentTagId} onChange={onTagChange} className="w-32" />}
         </td>
         <td className="text-right">
           <button type="button" onClick={() => setExpanded((v) => !v)} className="px-2 text-gray-500 hover:text-primary">
@@ -209,12 +452,73 @@ function PositionRow({ profileId, position, origen }: { profileId: string; posit
       </tr>
       {expanded && (
         <tr className="bg-gray-50 dark:bg-gray-900/40">
-          <td colSpan={11} className="p-4">
+          <td colSpan={12} className="p-4">
             <ExpandedPanel profileId={profileId} position={position} />
           </td>
         </tr>
       )}
     </>
+  );
+}
+
+function PositionCard({ profileId, position, origen, selected, selectDisabled, onToggleSelect }: RowProps) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const { currentTagId, onTagChange } = useOrigenTag(profileId, position, origen);
+
+  return (
+    <div className={cn("px-4 py-3", selected && "bg-primary/5")}>
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-primary"
+          checked={selected}
+          disabled={selectDisabled}
+          onChange={onToggleSelect}
+          aria-label={t("positions.selectRow")}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{position.symbolBase}/{position.symbolQuote}</span>
+              <Badge tone={position.side === "LONG" ? "green" : "red"}>
+                {position.side === "LONG" ? t("positions.long") : t("positions.short")}
+              </Badge>
+            </div>
+            <span className={cn("font-medium tabular-nums", pnlTone(position.netPnl))}>
+              {fmtUsd(position.netPnl, { sign: true })}
+            </span>
+          </div>
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {fmtDateTime(position.closedAt)} · {position.source}
+            {position.exchange ? ` · ${position.exchange}` : ""}
+          </div>
+          <div className="mt-1 text-xs tabular-nums text-gray-500 dark:text-gray-400">
+            {t("positions.qty")}: {fmtNum(position.qty)} · {t("positions.entry")}: {fmtNum(position.entryPrice)} ·{" "}
+            {t("positions.exit")}: {fmtNum(position.exitPrice)}
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            {origen ? (
+              <OrigenSelect origen={origen} value={currentTagId} onChange={onTagChange} className="w-40" />
+            ) : (
+              <span />
+            )}
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="shrink-0 px-2 text-gray-500 hover:text-primary"
+            >
+              {position.note ? "📝" : ""} {expanded ? "▲" : "▼"}
+            </button>
+          </div>
+        </div>
+      </div>
+      {expanded && (
+        <div className="mt-3 rounded-md bg-gray-50 p-3 dark:bg-gray-900/40">
+          <ExpandedPanel profileId={profileId} position={position} />
+        </div>
+      )}
+    </div>
   );
 }
 

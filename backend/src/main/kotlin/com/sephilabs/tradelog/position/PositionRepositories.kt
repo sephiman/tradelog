@@ -75,4 +75,8 @@ interface PositionTagRepository : JpaRepository<PositionTag, PositionTagId> {
     @Modifying
     @Transactional
     fun deleteByIdPositionIdAndIdGroupId(positionId: UUID, groupId: UUID)
+
+    @Modifying
+    @Transactional
+    fun deleteByIdGroupIdAndIdPositionIdIn(groupId: UUID, positionIds: Collection<UUID>)
 }

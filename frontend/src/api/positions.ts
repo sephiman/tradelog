@@ -132,6 +132,27 @@ export function useSetTag(profileId: string) {
   });
 }
 
+export interface BulkSetTagBody {
+  tagId: string | null;
+  positionIds?: string[];
+  filters?: PositionFilters;
+}
+
+export function useBulkSetTag(profileId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { silentSuccess: true },
+    mutationFn: async ({ groupId, body }: { groupId: string; body: BulkSetTagBody }) => {
+      const res = await apiClient.post<{ updated: number }>(
+        `/profiles/${profileId}/positions/tags/${groupId}/bulk`,
+        body,
+      );
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["positions", profileId] }),
+  });
+}
+
 export function useClearTag(profileId: string) {
   const qc = useQueryClient();
   return useMutation({

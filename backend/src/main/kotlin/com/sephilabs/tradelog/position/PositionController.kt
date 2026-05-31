@@ -68,6 +68,14 @@ class PositionController(
         return ResponseEntity.noContent().build()
     }
 
+    @PostMapping("/tags/{groupId}/bulk")
+    fun bulkSetTag(
+        @PathVariable profileId: UUID,
+        @PathVariable groupId: UUID,
+        @Valid @RequestBody body: BulkSetTagRequest,
+    ): BulkTagResult =
+        BulkTagResult(service.bulkSetTag(currentUser.requireUser().id, profileId, groupId, body))
+
     @DeleteMapping("/{positionId}/tags/{groupId}")
     fun clearTag(
         @PathVariable profileId: UUID,

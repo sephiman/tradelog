@@ -87,7 +87,17 @@
     "value": "Value",
     "showing": "Showing {{from}}–{{to}} of {{total}}",
     "prev": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "selectAll": "Select all on this page",
+    "selectRow": "Select position",
+    "selected": "{{count}} selected",
+    "allMatchingSelected": "All {{total}} matching selected",
+    "pageSelected": "All {{count}} on this page selected.",
+    "selectAllMatching": "Select all {{total}} matching filters",
+    "bulkSetOrigen": "Set origen:",
+    "apply": "Apply",
+    "clearSelection": "Clear selection",
+    "bulkUpdated": "Updated {{count}} positions"
   },
   "dataSources": {
     "title": "Data sources",

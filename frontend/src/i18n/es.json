@@ -87,7 +87,17 @@
     "value": "Valor",
     "showing": "Mostrando {{from}}–{{to}} de {{total}}",
     "prev": "Anterior",
-    "next": "Siguiente"
+    "next": "Siguiente",
+    "selectAll": "Seleccionar todo en esta página",
+    "selectRow": "Seleccionar posición",
+    "selected": "{{count}} seleccionadas",
+    "allMatchingSelected": "Todas las {{total}} coincidentes seleccionadas",
+    "pageSelected": "Las {{count}} de esta página están seleccionadas.",
+    "selectAllMatching": "Seleccionar las {{total}} que coinciden con los filtros",
+    "bulkSetOrigen": "Asignar origen:",
+    "apply": "Aplicar",
+    "clearSelection": "Quitar selección",
+    "bulkUpdated": "{{count}} posiciones actualizadas"
   },
   "dataSources": {
     "title": "Fuentes de datos",

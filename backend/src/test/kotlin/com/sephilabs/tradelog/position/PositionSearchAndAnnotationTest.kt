@@ -125,6 +125,61 @@ class PositionSearchAndAnnotationTest @Autowired constructor(
     }
 
     @Test
+    fun `bulkSetTag sets and clears origen across explicit ids and filters`() {
+        setup()
+        upsert.upsert(
+            dsId, profileId, SourceKind.BITUNIX, "Bitunix",
+            listOf(rec("e", "ETH", PositionSide.LONG), rec("b", "BTC", PositionSide.LONG), rec("s", "SOL", PositionSide.LONG)),
+        )
+        val bySymbol = service.search(PositionSearchCriteria(profileId)).items.associateBy { it.symbolBase }
+        val eth = bySymbol.getValue("ETH").id
+        val btc = bySymbol.getValue("BTC").id
+        val origen = taxonomy.listGroups(userId).first { it.code == "origen" }
+        val tagA = origen.tags[0]
+        val tagB = origen.tags[1]
+
+        // Mode A — explicit ids
+        val n1 = service.bulkSetTag(userId, profileId, origen.id, BulkSetTagRequest(tagId = tagA.id, positionIds = listOf(eth, btc)))
+        assertThat(n1).isEqualTo(2)
+        assertThat(service.search(PositionSearchCriteria(profileId, tagId = tagA.id)).total).isEqualTo(2)
+
+        // Mode B — all matching filters (whole profile) reassigns to tagB
+        val n2 = service.bulkSetTag(userId, profileId, origen.id, BulkSetTagRequest(tagId = tagB.id, filters = BulkTagFilters()))
+        assertThat(n2).isEqualTo(3)
+        assertThat(service.search(PositionSearchCriteria(profileId, tagId = tagB.id)).total).isEqualTo(3)
+        assertThat(service.search(PositionSearchCriteria(profileId, tagId = tagA.id)).total).isEqualTo(0)
+
+        // Mode B with a symbol filter only touches the matching subset
+        val n3 = service.bulkSetTag(userId, profileId, origen.id, BulkSetTagRequest(tagId = tagA.id, filters = BulkTagFilters(symbol = "ETH")))
+        assertThat(n3).isEqualTo(1)
+        assertThat(service.get(profileId, eth).position.tags.single().tagId).isEqualTo(tagA.id)
+        assertThat(service.get(profileId, btc).position.tags.single().tagId).isEqualTo(tagB.id)
+
+        // Clear via null tagId
+        val n4 = service.bulkSetTag(userId, profileId, origen.id, BulkSetTagRequest(tagId = null, positionIds = listOf(eth, btc)))
+        assertThat(n4).isEqualTo(2)
+        assertThat(service.get(profileId, eth).position.tags).isEmpty()
+        assertThat(service.get(profileId, btc).position.tags).isEmpty()
+    }
+
+    @Test
+    fun `bulkSetTag ignores ids from another profile`() {
+        setup()
+        upsert.upsert(dsId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(rec("e", "ETH", PositionSide.LONG)))
+        val mine = service.search(PositionSearchCriteria(profileId)).items.first().id
+
+        val otherProfile = profiles.save(Profile(userId = userId, kind = ProfileKind.PERSONAL, name = "Q${System.nanoTime()}")).id
+        val otherDs = dataSources.save(DataSource(profileId = otherProfile, kind = SourceKind.BITUNIX, label = "l${System.nanoTime()}")).id
+        upsert.upsert(otherDs, otherProfile, SourceKind.BITUNIX, "Bitunix", listOf(rec("e2", "BTC", PositionSide.LONG)))
+        val foreign = service.search(PositionSearchCriteria(otherProfile)).items.first().id
+        val origen = taxonomy.listGroups(userId).first { it.code == "origen" }
+
+        val n = service.bulkSetTag(userId, profileId, origen.id, BulkSetTagRequest(tagId = origen.tags[0].id, positionIds = listOf(mine, foreign)))
+        assertThat(n).isEqualTo(1)
+        assertThat(service.get(otherProfile, foreign).position.tags).isEmpty()
+    }
+
+    @Test
     fun `cannot tag with another user's tag`() {
         setup()
         upsert.upsert(dsId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(rec("e", "ETH", PositionSide.LONG)))

@@ -97,6 +97,36 @@ class PositionService(
         positionTags.deleteByIdPositionIdAndIdGroupId(positionId, groupId)
     }
 
+    /** Set (tagId != null) or clear (tagId == null) one tag group on many positions; returns how many were touched. */
+    @Transactional
+    fun bulkSetTag(userId: UUID, profileId: UUID, groupId: UUID, req: BulkSetTagRequest): Int {
+        if (req.tagId != null) {
+            val owningGroup = taxonomy.groupIdOfOwnedTag(userId, req.tagId)
+                ?: throw AppException.notFound("TAG_NOT_FOUND")
+            if (owningGroup != groupId) throw AppException.badRequest("TAG_GROUP_MISMATCH")
+        }
+        val ids = resolveBulkTargetIds(profileId, req)
+        if (ids.isEmpty()) return 0
+        positionTags.deleteByIdGroupIdAndIdPositionIdIn(groupId, ids)
+        if (req.tagId != null) {
+            positionTags.saveAll(ids.map { PositionTag(PositionTagId(it, groupId), req.tagId) })
+        }
+        return ids.size
+    }
+
+    private fun resolveBulkTargetIds(profileId: UUID, req: BulkSetTagRequest): List<UUID> {
+        val explicit = req.positionIds
+        val spec = if (!explicit.isNullOrEmpty()) {
+            PositionSpecs.byIds(profileId, explicit)
+        } else {
+            val f = req.filters ?: BulkTagFilters()
+            PositionSpecs.fromCriteria(
+                PositionSearchCriteria(profileId, f.symbol, f.side, f.source, f.exchange, f.from, f.to, f.tagId)
+            )
+        }
+        return positions.findAll(spec).map { it.id }
+    }
+
     private fun loadOwn(profileId: UUID, positionId: UUID): Position =
         positions.findByIdAndProfileId(positionId, profileId) ?: throw AppException.notFound("POSITION_NOT_FOUND")
 
