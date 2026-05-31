@@ -27,6 +27,7 @@ class AuthIntegrationTest @Autowired constructor(
         val reloaded = users.findById(user.id).orElseThrow()
         assertThat(reloaded.email).isEqualTo(e.lowercase())
         assertThat(reloaded.locale).isEqualTo("es")
+        assertThat(reloaded.timeZone).isEqualTo("UTC")
         assertThat(reloaded.passwordHash).isNotEqualTo("password123")
         assertThat(encoder.matches("password123", reloaded.passwordHash)).isTrue
     }
@@ -41,18 +42,34 @@ class AuthIntegrationTest @Autowired constructor(
     }
 
     @Test
-    fun `updateLocale and changePassword and recordLogin persist`() {
+    fun `updateProfile and changePassword and recordLogin persist`() {
         val saved = users.save(User(email = email(), passwordHash = encoder.encode("oldpass1234")!!))
         assertThat(saved.lastLoginAt).isNull()
 
-        authService.updateLocale(saved.id, "es")
+        authService.updateProfile(saved.id, "es", "Europe/Madrid")
         authService.changePassword(saved.id, "oldpass1234", "newpass5678")
         authService.recordLogin(saved.id)
 
         val reloaded = users.findById(saved.id).orElseThrow()
         assertThat(reloaded.locale).isEqualTo("es")
+        assertThat(reloaded.timeZone).isEqualTo("Europe/Madrid")
         assertThat(encoder.matches("newpass5678", reloaded.passwordHash)).isTrue
         assertThat(reloaded.lastLoginAt).isNotNull
+    }
+
+    @Test
+    fun `updateProfile applies only provided fields and rejects an unknown time zone`() {
+        val saved = users.save(User(email = email(), passwordHash = "x", locale = "en"))
+
+        // Partial update: timeZone only, locale left untouched.
+        authService.updateProfile(saved.id, null, "America/New_York")
+        val afterTz = users.findById(saved.id).orElseThrow()
+        assertThat(afterTz.locale).isEqualTo("en")
+        assertThat(afterTz.timeZone).isEqualTo("America/New_York")
+
+        assertThatThrownBy { authService.updateProfile(saved.id, null, "Mars/Olympus") }
+            .isInstanceOf(AppException::class.java)
+            .hasMessageContaining("INVALID_PARAMETER")
     }
 
     @Test

@@ -34,11 +34,13 @@ data class PasswordChangeRequest(
 
 data class MeUpdateRequest(
     @field:Pattern(regexp = "en|es", message = "validation.invalid")
-    val locale: String,
+    val locale: String? = null,
+    val timeZone: String? = null,
 )
 
 data class MeResponse(
     val id: UUID,
     val email: String,
     val locale: String,
+    val timeZone: String,
 )

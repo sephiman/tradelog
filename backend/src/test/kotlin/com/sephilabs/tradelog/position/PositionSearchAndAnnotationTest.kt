@@ -49,6 +49,13 @@ class PositionSearchAndAnnotationTest @Autowired constructor(
         realizedPnl = BigDecimal("10"), fees = BigDecimal.ZERO, funding = BigDecimal.ZERO,
     )
 
+    private fun recAt(ext: String, base: String, closedAt: String, pnl: String, fees: String, funding: String) = PositionRecord(
+        externalId = ext, symbol = Symbol(base, "USDT"), side = PositionSide.LONG,
+        openedAt = Instant.parse("2026-02-01T00:00:00Z"), closedAt = Instant.parse(closedAt),
+        qty = BigDecimal("1"), entryPrice = BigDecimal("100"), exitPrice = BigDecimal("110"),
+        realizedPnl = BigDecimal(pnl), fees = BigDecimal(fees), funding = BigDecimal(funding),
+    )
+
     @Test
     fun `search filters by symbol and side`() {
         setup()
@@ -88,6 +95,33 @@ class PositionSearchAndAnnotationTest @Autowired constructor(
         // clear
         service.clearTag(profileId, positionId, origen.id)
         assertThat(service.get(profileId, positionId).position.tags).isEmpty()
+    }
+
+    @Test
+    fun `closedSummary returns profile rows oldest-close-first with net components`() {
+        setup()
+        val early = recAt("a", "BTC", "2026-02-01T01:00:00Z", pnl = "20", fees = "2", funding = "1")
+        val late = recAt("b", "ETH", "2026-02-03T01:00:00Z", pnl = "-5", fees = "1", funding = "0")
+        upsert.upsert(dsId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(late, early))
+
+        val rows = service.closedSummary(profileId)
+        assertThat(rows.map { it.symbolBase }).containsExactly("BTC", "ETH") // ordered by closedAt asc
+        val btc = rows.first()
+        assertThat(btc.exchange).isEqualTo("Bitunix")
+        assertThat(btc.source).isEqualTo(SourceKind.BITUNIX)
+        assertThat(btc.realizedPnl).isEqualByComparingTo("20")
+        assertThat(btc.fees).isEqualByComparingTo("2")
+        assertThat(btc.funding).isEqualByComparingTo("1")
+    }
+
+    @Test
+    fun `closedSummary is scoped to its profile`() {
+        setup()
+        upsert.upsert(dsId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(rec("e", "ETH", PositionSide.LONG)))
+        val otherProfile = profiles.save(Profile(userId = userId, kind = ProfileKind.PERSONAL, name = "Q${System.nanoTime()}")).id
+
+        assertThat(service.closedSummary(profileId)).hasSize(1)
+        assertThat(service.closedSummary(otherProfile)).isEmpty()
     }
 
     @Test

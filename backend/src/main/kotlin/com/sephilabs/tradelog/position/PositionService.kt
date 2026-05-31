@@ -27,8 +27,8 @@ class PositionService(
         val sort = when (criteria.sort) {
             "closed_asc" -> Sort.by(Sort.Order.asc("closedAt"))
             "opened_desc" -> Sort.by(Sort.Order.desc("openedAt"))
-            "pnl_desc" -> Sort.by(Sort.Order.desc("realizedPnl"), Sort.Order.desc("closedAt"))
-            "pnl_asc" -> Sort.by(Sort.Order.asc("realizedPnl"), Sort.Order.desc("closedAt"))
+            "pnl_desc" -> Sort.by(Sort.Order.desc("netPnl"), Sort.Order.desc("closedAt"))
+            "pnl_asc" -> Sort.by(Sort.Order.asc("netPnl"), Sort.Order.desc("closedAt"))
             else -> Sort.by(Sort.Order.desc("closedAt"))
         }
         val pageable = PageRequest.of(criteria.page, criteria.size.coerceIn(1, 200), sort)
@@ -42,6 +42,26 @@ class PositionService(
 
     @Transactional(readOnly = true)
     fun exchanges(profileId: UUID): List<String> = positions.findDistinctExchanges(profileId)
+
+    /** All closed positions for the profile as lightweight rows for the analytics dashboard. */
+    @Transactional(readOnly = true)
+    fun closedSummary(profileId: UUID): List<ClosedPositionSummaryDto> =
+        positions.findAllByProfileIdOrderByClosedAtAsc(profileId).map {
+            ClosedPositionSummaryDto(
+                id = it.id,
+                source = it.source,
+                exchange = it.exchange,
+                symbolBase = it.symbolBase,
+                symbolQuote = it.symbolQuote,
+                side = it.side,
+                openedAt = it.openedAt,
+                closedAt = it.closedAt,
+                realizedPnl = it.realizedPnl,
+                netPnl = it.netPnl,
+                fees = it.fees,
+                funding = it.funding,
+            )
+        }
 
     @Transactional(readOnly = true)
     fun get(profileId: UUID, positionId: UUID): PositionDetailDto {
@@ -112,6 +132,7 @@ private fun Position.toDto(tags: List<PositionTagView>, fillCount: Int) = Positi
     entryPrice = entryPrice,
     exitPrice = exitPrice,
     realizedPnl = realizedPnl,
+    netPnl = netPnl,
     fees = fees,
     funding = funding,
     pnlCurrency = pnlCurrency,

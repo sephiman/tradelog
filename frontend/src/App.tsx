@@ -5,7 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { LoginPage } from "@/auth/LoginPage";
 import { RegisterPage } from "@/auth/RegisterPage";
-import { DashboardPage } from "@/features/dashboard/DashboardPage";
+import { AnalyticsPage } from "@/features/analytics/AnalyticsPage";
 import { PositionsPage } from "@/features/positions/PositionsPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 
@@ -23,7 +23,7 @@ export default function App() {
                 <AppShell>
                   <Routes>
                     <Route index element={<Navigate to="/dashboard" replace />} />
-                    <Route path="dashboard" element={<DashboardPage />} />
+                    <Route path="dashboard" element={<AnalyticsPage />} />
                     <Route path="positions" element={<PositionsPage />} />
                     <Route path="settings" element={<SettingsPage />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />

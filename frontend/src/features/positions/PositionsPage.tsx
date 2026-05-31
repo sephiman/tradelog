@@ -107,7 +107,7 @@ export function PositionsPage() {
                 <th className="text-right">{t("positions.qty")}</th>
                 <th className="text-right">{t("positions.entry")}</th>
                 <th className="text-right">{t("positions.exit")}</th>
-                <th className="text-right">{t("positions.pnl")}</th>
+                <th className="text-right">{t("positions.netPnl")}</th>
                 <th>{t("positions.origen")}</th>
                 <th></th>
               </tr>
@@ -188,8 +188,8 @@ function PositionRow({ profileId, position, origen }: { profileId: string; posit
         <td className="text-right tabular-nums">{fmtNum(position.qty)}</td>
         <td className="text-right tabular-nums">{fmtNum(position.entryPrice)}</td>
         <td className="text-right tabular-nums">{fmtNum(position.exitPrice)}</td>
-        <td className={cn("text-right font-medium tabular-nums", pnlTone(position.realizedPnl))}>
-          {fmtUsd(position.realizedPnl, { sign: true })}
+        <td className={cn("text-right font-medium tabular-nums", pnlTone(position.netPnl))}>
+          {fmtUsd(position.netPnl, { sign: true })}
         </td>
         <td>
           {origen && (
@@ -257,8 +257,10 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
           </table>
         )}
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <span>{t("positions.grossPnl")}: {fmtUsd(position.realizedPnl, { sign: true })}</span>
           <span>{t("positions.fees")}: {fmtUsd(position.fees)}</span>
           <span>{t("positions.funding")}: {fmtUsd(position.funding)}</span>
+          <span>{t("positions.netPnl")}: {fmtUsd(position.netPnl, { sign: true })}</span>
         </div>
       </div>
 

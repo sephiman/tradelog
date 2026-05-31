@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
+import { AccountCard } from "./AccountCard";
 import { ProfilesCard } from "./ProfilesCard";
 import { DataSourcesCard } from "./DataSourcesCard";
 import { TaxonomyCard } from "./TaxonomyCard";
@@ -11,6 +12,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("nav.settings")}</h1>
+      <AccountCard />
       <ProfilesCard />
       {activeProfile && <DataSourcesCard profileId={activeProfile.id} profileName={activeProfile.name} />}
       <TaxonomyCard />

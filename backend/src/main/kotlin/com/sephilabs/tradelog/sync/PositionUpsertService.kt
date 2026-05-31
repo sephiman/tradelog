@@ -10,6 +10,7 @@ import com.sephilabs.tradelog.position.PositionFillRepository
 import com.sephilabs.tradelog.position.PositionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import java.util.UUID
 
 data class UpsertCounts(val inserted: Int, val updated: Int)
@@ -55,6 +56,7 @@ class PositionUpsertService(
                     entryPrice = r.entryPrice,
                     exitPrice = r.exitPrice,
                     realizedPnl = Usdt.normalize(r.realizedPnl),
+                    netPnl = netPnl(r),
                     fees = Usdt.normalize(r.fees),
                     funding = Usdt.normalize(r.funding),
                     pnlCurrency = r.pnlCurrency,
@@ -88,12 +90,21 @@ class PositionUpsertService(
         p.entryPrice = r.entryPrice
         p.exitPrice = r.exitPrice
         p.realizedPnl = Usdt.normalize(r.realizedPnl)
+        p.netPnl = netPnl(r)
         p.fees = Usdt.normalize(r.fees)
         p.funding = Usdt.normalize(r.funding)
         p.pnlCurrency = r.pnlCurrency
         p.raw = r.raw
         // note + tags are intentionally left untouched.
     }
+
+    /**
+     * Net profit, the single source of truth for "what was kept": gross realized PnL − fees − funding.
+     * Connectors always supply [PositionRecord.realizedPnl] as GROSS (Bitunix backs it out from its
+     * native net), so this reproduces each source's true net exactly.
+     */
+    private fun netPnl(r: PositionRecord): BigDecimal =
+        Usdt.normalize(r.realizedPnl.subtract(r.fees).subtract(r.funding))
 
     private fun replaceFills(positionId: UUID, r: PositionRecord) {
         fills.deleteByPositionId(positionId)

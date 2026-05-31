@@ -68,7 +68,7 @@ export function useJournalCsvExecute(profileId: string, dataSourceId: string) {
       qc.invalidateQueries({ queryKey: ["dataSources", profileId] });
       qc.invalidateQueries({ queryKey: ["positions", profileId] });
       qc.invalidateQueries({ queryKey: ["positionExchanges", profileId] });
-      qc.invalidateQueries({ queryKey: ["pnlCumulative"] });
+      qc.invalidateQueries({ queryKey: ["analyticsClosed", profileId] });
     },
   });
 }

@@ -39,6 +39,10 @@ class PositionController(
     @GetMapping("/exchanges")
     fun exchanges(@PathVariable profileId: UUID): List<String> = service.exchanges(profileId)
 
+    @GetMapping("/closed-summary")
+    fun closedSummary(@PathVariable profileId: UUID): List<ClosedPositionSummaryDto> =
+        service.closedSummary(profileId)
+
     @GetMapping("/{positionId}")
     fun get(@PathVariable profileId: UUID, @PathVariable positionId: UUID): PositionDetailDto =
         service.get(profileId, positionId)

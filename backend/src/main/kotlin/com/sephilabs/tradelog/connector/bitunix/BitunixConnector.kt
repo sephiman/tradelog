@@ -130,6 +130,16 @@ class BitunixConnector(
         val symbolRaw = n.text(FIELD_SYMBOL) ?: return PositionResult.Skip("no symbol")
         val openMs = n.long(FIELD_OPEN_TIME) ?: return PositionResult.Skip("no open time")
         val closeMs = n.long(FIELD_CLOSE_TIME) ?: openMs
+
+        // Bitunix's realizedPNL is already NET (fees + funding deducted). The canonical model wants
+        // realizedPnl to be GROSS so net = realizedPnl − fees − funding holds uniformly across sources
+        // (BingX/Quantfury/CSV all store gross). So store fees as a non-negative cost and back the
+        // gross out: gross = net + fees + funding. (If the funding sign ever looks inverted vs the
+        // Bitunix app, negate it here — the derived net is exact either way.)
+        val netPnl = n.dec(FIELD_PNL) ?: BigDecimal.ZERO
+        val fees = (n.dec(FIELD_FEE) ?: BigDecimal.ZERO).abs()
+        val funding = n.dec(FIELD_FUNDING) ?: BigDecimal.ZERO
+        val grossPnl = netPnl.add(fees).add(funding)
         return PositionResult.Ok(
             PositionRecord(
                 externalId = externalId,
@@ -140,9 +150,9 @@ class BitunixConnector(
                 qty = n.dec(FIELD_QTY) ?: BigDecimal.ZERO,
                 entryPrice = n.dec(FIELD_ENTRY) ?: BigDecimal.ZERO,
                 exitPrice = n.dec(FIELD_EXIT) ?: BigDecimal.ZERO,
-                realizedPnl = n.dec(FIELD_PNL) ?: BigDecimal.ZERO,
-                fees = n.dec(FIELD_FEE) ?: BigDecimal.ZERO,
-                funding = n.dec(FIELD_FUNDING) ?: BigDecimal.ZERO,
+                realizedPnl = grossPnl,
+                fees = fees,
+                funding = funding,
                 fills = emptyList(), // Bitunix history endpoint returns aggregate positions, not legs.
                 raw = n.toString(),
             )
