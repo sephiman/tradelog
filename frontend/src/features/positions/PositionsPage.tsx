@@ -19,6 +19,9 @@ import { cn } from "@/lib/cn";
 import { dateInputToIso, fmtDateTime, fmtNum, fmtUsd, isoToDateInput, pnlTone } from "@/lib/format";
 import { showToast } from "@/lib/toastBus";
 
+/** Sentinel option value for the origen filter that selects positions with no origen tag. */
+const ORIGEN_UNSET = "__unset__";
+
 export function PositionsPage() {
   const { t } = useTranslation();
   const { activeProfileId } = useActiveProfile();
@@ -83,6 +86,7 @@ export function PositionsPage() {
     if (filters.from) f.from = filters.from;
     if (filters.to) f.to = filters.to;
     if (filters.tagId) f.tagId = filters.tagId;
+    if (filters.untaggedGroupId) f.untaggedGroupId = filters.untaggedGroupId;
     return f;
   };
 
@@ -158,8 +162,17 @@ export function PositionsPage() {
             </FilterField>
             {origen && origen.tags.length > 0 && (
               <FilterField label={t("positions.origen")}>
-                <Select className="w-full" value={filters.tagId ?? ""} onChange={(e) => set({ tagId: e.target.value })}>
+                <Select
+                  className="w-full"
+                  value={filters.untaggedGroupId ? ORIGEN_UNSET : filters.tagId ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === ORIGEN_UNSET) set({ tagId: undefined, untaggedGroupId: origen.id });
+                    else set({ tagId: v || undefined, untaggedGroupId: undefined });
+                  }}
+                >
                   <option value="">{t("common.all")}</option>
+                  <option value={ORIGEN_UNSET}>{t("positions.origenUnset")}</option>
                   {origen.tags.map((tag) => (
                     <option key={tag.id} value={tag.id}>{tag.name}</option>
                   ))}

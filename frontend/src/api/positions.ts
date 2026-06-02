@@ -66,6 +66,8 @@ export interface PositionFilters {
   from?: string;
   to?: string;
   tagId?: string;
+  /** Keep only positions with no tag in this group (e.g. "origen unset"). */
+  untaggedGroupId?: string;
   page?: number;
   size?: number;
   sort?: string;
@@ -84,6 +86,7 @@ export function usePositions(profileId: string | null, filters: PositionFilters)
       if (filters.from) params.from = filters.from;
       if (filters.to) params.to = filters.to;
       if (filters.tagId) params.tagId = filters.tagId;
+      if (filters.untaggedGroupId) params.untaggedGroupId = filters.untaggedGroupId;
       params.page = String(filters.page ?? 0);
       params.size = String(filters.size ?? 50);
       params.sort = filters.sort ?? "closed_desc";

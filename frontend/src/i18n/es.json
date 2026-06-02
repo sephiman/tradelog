@@ -71,6 +71,7 @@
     "funding": "Financiación",
     "note": "Nota",
     "origen": "Origen",
+    "origenUnset": "(Sin asignar)",
     "tag": "Etiqueta",
     "operations": "Operaciones",
     "noPositions": "No hay posiciones que coincidan con los filtros.",

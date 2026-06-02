@@ -87,6 +87,9 @@ class PositionSearchAndAnnotationTest @Autowired constructor(
         // filter by tag
         assertThat(service.search(PositionSearchCriteria(profileId, tagId = tagA.id)).total).isEqualTo(1)
 
+        // the tagged position is excluded by the "origen unset" filter
+        assertThat(service.search(PositionSearchCriteria(profileId, untaggedGroupId = origen.id)).total).isEqualTo(0)
+
         // single-select: assigning another tag in the same group replaces it
         service.setTag(userId, profileId, positionId, origen.id, tagB.id)
         assertThat(service.get(profileId, positionId).position.tags.single().tagId).isEqualTo(tagB.id)
@@ -95,6 +98,8 @@ class PositionSearchAndAnnotationTest @Autowired constructor(
         // clear
         service.clearTag(profileId, positionId, origen.id)
         assertThat(service.get(profileId, positionId).position.tags).isEmpty()
+        // now untagged, the position matches the "origen unset" filter
+        assertThat(service.search(PositionSearchCriteria(profileId, untaggedGroupId = origen.id)).total).isEqualTo(1)
     }
 
     @Test

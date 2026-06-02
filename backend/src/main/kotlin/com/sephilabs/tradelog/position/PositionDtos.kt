@@ -106,6 +106,7 @@ data class BulkTagFilters(
     val from: Instant? = null,
     val to: Instant? = null,
     val tagId: UUID? = null,
+    val untaggedGroupId: UUID? = null,
 )
 
 data class BulkTagResult(

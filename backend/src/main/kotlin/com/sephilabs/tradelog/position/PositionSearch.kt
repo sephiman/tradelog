@@ -15,6 +15,8 @@ data class PositionSearchCriteria(
     val from: Instant? = null,
     val to: Instant? = null,
     val tagId: UUID? = null,
+    /** When set, keep only positions that have NO tag in this group (e.g. "origen unset"). */
+    val untaggedGroupId: UUID? = null,
     val page: Int = 0,
     val size: Int = 50,
     val sort: String = "closed_desc",
@@ -42,6 +44,17 @@ object PositionSpecs {
                         cb.equal(pt.get<UUID>("tagId"), tagId),
                     )
                 predicates += cb.exists(sub)
+            }
+            c.untaggedGroupId?.let { groupId ->
+                // NOT EXISTS (SELECT 1 FROM position_tags pt WHERE pt.position_id = root.id AND pt.group_id = :groupId)
+                val sub = query!!.subquery(UUID::class.java)
+                val pt = sub.from(PositionTag::class.java)
+                sub.select(pt.get<PositionTagId>("id").get("positionId"))
+                    .where(
+                        cb.equal(pt.get<PositionTagId>("id").get<UUID>("positionId"), root.get<UUID>("id")),
+                        cb.equal(pt.get<PositionTagId>("id").get<UUID>("groupId"), groupId),
+                    )
+                predicates += cb.not(cb.exists(sub))
             }
             cb.and(*predicates.toTypedArray())
         }

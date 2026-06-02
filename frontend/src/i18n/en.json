@@ -71,6 +71,7 @@
     "funding": "Funding",
     "note": "Note",
     "origen": "Origen",
+    "origenUnset": "(Unset)",
     "tag": "Tag",
     "operations": "Operations",
     "noPositions": "No positions match the current filters.",

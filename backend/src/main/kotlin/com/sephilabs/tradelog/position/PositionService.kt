@@ -121,7 +121,9 @@ class PositionService(
         } else {
             val f = req.filters ?: BulkTagFilters()
             PositionSpecs.fromCriteria(
-                PositionSearchCriteria(profileId, f.symbol, f.side, f.source, f.exchange, f.from, f.to, f.tagId)
+                PositionSearchCriteria(
+                    profileId, f.symbol, f.side, f.source, f.exchange, f.from, f.to, f.tagId, f.untaggedGroupId
+                )
             )
         }
         return positions.findAll(spec).map { it.id }

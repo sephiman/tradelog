@@ -28,12 +28,15 @@ class PositionController(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) from: Instant?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) to: Instant?,
         @RequestParam(required = false) tagId: UUID?,
+        @RequestParam(required = false) untaggedGroupId: UUID?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "50") size: Int,
         @RequestParam(defaultValue = "closed_desc") sort: String,
     ): PageResponse<PositionDto> =
         service.search(
-            PositionSearchCriteria(profileId, symbol, side, source, exchange, from, to, tagId, page, size, sort)
+            PositionSearchCriteria(
+                profileId, symbol, side, source, exchange, from, to, tagId, untaggedGroupId, page, size, sort
+            )
         )
 
     @GetMapping("/exchanges")
