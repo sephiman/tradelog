@@ -34,6 +34,7 @@ function pos(over: Partial<ClosedPosition>): ClosedPosition {
     netPnl: "0",
     fees: "0",
     funding: "0",
+    tags: [],
     ...over,
   };
 }

@@ -226,6 +226,8 @@
     "periodLabel": "Periodo",
     "exchangeLabel": "Exchange",
     "allExchanges": "Todos los exchanges",
+    "origenLabel": "Origen",
+    "allOrigens": "Todos los orígenes",
     "from": "Desde",
     "to": "Hasta",
     "prev": "Anterior",

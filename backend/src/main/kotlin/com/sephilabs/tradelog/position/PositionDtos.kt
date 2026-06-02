@@ -75,6 +75,7 @@ data class ClosedPositionSummaryDto(
     @JsonFormat(shape = JsonFormat.Shape.STRING) val netPnl: BigDecimal,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val fees: BigDecimal,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val funding: BigDecimal,
+    val tags: List<PositionTagView>,
 )
 
 data class NoteRequest(

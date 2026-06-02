@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "./client";
-import type { PositionSide, SourceKind } from "./positions";
+import type { PositionSide, PositionTagView, SourceKind } from "./positions";
 
 /**
  * One closed position as served by the analytics endpoint. Money fields are decimal strings.
@@ -20,6 +20,7 @@ export interface ClosedPosition {
   netPnl: string;
   fees: string;
   funding: string;
+  tags: PositionTagView[];
 }
 
 /** All closed positions for a profile, oldest close first — the raw input to every dashboard metric. */

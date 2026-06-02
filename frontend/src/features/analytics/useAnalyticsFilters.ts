@@ -58,6 +58,8 @@ export interface AnalyticsFilters {
   setTo: (v: string) => void;
   exchange: string; // "ALL" or a venue label
   setExchange: (v: string) => void;
+  origenTagId: string; // "ALL" or an origen tag id
+  setOrigenTagId: (v: string) => void;
   range: DateRange;
 }
 
@@ -66,6 +68,10 @@ export function useAnalyticsFilters(): AnalyticsFilters {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [exchange, setExchange] = useState("ALL");
+  const [origenTagId, setOrigenTagId] = useState("ALL");
   const range = useMemo(() => computeRange(period, from, to), [period, from, to]);
-  return { period, setPeriod, from, setFrom, to, setTo, exchange, setExchange, range };
+  return {
+    period, setPeriod, from, setFrom, to, setTo,
+    exchange, setExchange, origenTagId, setOrigenTagId, range,
+  };
 }

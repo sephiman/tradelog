@@ -1,8 +1,17 @@
 import { useTranslation } from "react-i18next";
+import type { Tag } from "@/api/taxonomy";
 import { Chip, Input, Label, Select } from "@/components/ui/primitives";
 import { PERIOD_PRESETS, type AnalyticsFilters } from "./useAnalyticsFilters";
 
-export function FilterBar({ filters, exchanges }: { filters: AnalyticsFilters; exchanges: string[] }) {
+export function FilterBar({
+  filters,
+  exchanges,
+  origenTags,
+}: {
+  filters: AnalyticsFilters;
+  exchanges: string[];
+  origenTags: Tag[];
+}) {
   const { t } = useTranslation();
 
   return (
@@ -43,21 +52,42 @@ export function FilterBar({ filters, exchanges }: { filters: AnalyticsFilters; e
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t("analytics.exchangeLabel")}</span>
-        <Select
-          className="w-48"
-          value={filters.exchange}
-          onChange={(e) => filters.setExchange(e.target.value)}
-          aria-label={t("analytics.exchangeLabel")}
-        >
-          <option value="ALL">{t("analytics.allExchanges")}</option>
-          {exchanges.map((x) => (
-            <option key={x} value={x}>
-              {x}
-            </option>
-          ))}
-        </Select>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t("analytics.exchangeLabel")}</span>
+          <Select
+            className="w-48"
+            value={filters.exchange}
+            onChange={(e) => filters.setExchange(e.target.value)}
+            aria-label={t("analytics.exchangeLabel")}
+          >
+            <option value="ALL">{t("analytics.allExchanges")}</option>
+            {exchanges.map((x) => (
+              <option key={x} value={x}>
+                {x}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        {origenTags.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t("analytics.origenLabel")}</span>
+            <Select
+              className="w-48"
+              value={filters.origenTagId}
+              onChange={(e) => filters.setOrigenTagId(e.target.value)}
+              aria-label={t("analytics.origenLabel")}
+            >
+              <option value="ALL">{t("analytics.allOrigens")}</option>
+              {origenTags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
       </div>
     </div>
   );

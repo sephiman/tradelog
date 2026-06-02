@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useClosedPositions } from "@/api/analytics";
 import { usePositionExchanges } from "@/api/positions";
+import { useTaxonomy } from "@/api/taxonomy";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { useAuth } from "@/auth/AuthContext";
 import { Card, CardBody } from "@/components/ui/primitives";
@@ -24,10 +25,18 @@ export function AnalyticsPage() {
 
   const { data: rows = [], isLoading } = useClosedPositions(activeProfileId);
   const { data: exchanges = [] } = usePositionExchanges(activeProfileId);
+  const { data: taxonomy = [] } = useTaxonomy();
+  const origenTags = useMemo(
+    () => (taxonomy.find((g) => g.code === "origen") ?? taxonomy[0])?.tags ?? [],
+    [taxonomy],
+  );
   const filters = useAnalyticsFilters();
   const [view, setView] = useState<ViewKey>("all");
 
-  const filtered = useMemo(() => filterRows(rows, filters.range, filters.exchange), [rows, filters.range, filters.exchange]);
+  const filtered = useMemo(
+    () => filterRows(rows, filters.range, filters.exchange, filters.origenTagId),
+    [rows, filters.range, filters.exchange, filters.origenTagId],
+  );
 
   const show = (k: ViewKey) => view === "all" || view === k;
   const props = { rows: filtered, timeZone };
@@ -35,7 +44,7 @@ export function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("analytics.title")}</h1>
-      <FilterBar filters={filters} exchanges={exchanges} />
+      <FilterBar filters={filters} exchanges={exchanges} origenTags={origenTags} />
       <ViewTabs value={view} onChange={setView} />
 
       {isLoading ? (

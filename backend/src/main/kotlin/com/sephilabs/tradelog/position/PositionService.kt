@@ -45,8 +45,10 @@ class PositionService(
 
     /** All closed positions for the profile as lightweight rows for the analytics dashboard. */
     @Transactional(readOnly = true)
-    fun closedSummary(profileId: UUID): List<ClosedPositionSummaryDto> =
-        positions.findAllByProfileIdOrderByClosedAtAsc(profileId).map {
+    fun closedSummary(profileId: UUID): List<ClosedPositionSummaryDto> {
+        val rows = positions.findAllByProfileIdOrderByClosedAtAsc(profileId)
+        val tagViews = tagViewsByPosition(rows.map { it.id })
+        return rows.map {
             ClosedPositionSummaryDto(
                 id = it.id,
                 source = it.source,
@@ -60,8 +62,10 @@ class PositionService(
                 netPnl = it.netPnl,
                 fees = it.fees,
                 funding = it.funding,
+                tags = tagViews[it.id] ?: emptyList(),
             )
         }
+    }
 
     @Transactional(readOnly = true)
     fun get(profileId: UUID, positionId: UUID): PositionDetailDto {
