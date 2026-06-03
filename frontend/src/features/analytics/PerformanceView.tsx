@@ -4,7 +4,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   ComposedChart,
   Legend,
   Line,
@@ -18,7 +17,8 @@ import type { ClosedPosition } from "@/api/analytics";
 import { activityByDayOfMonth, pnlByDayOfMonth, pnlByMonth } from "./compute";
 import { MetricCard } from "./MetricCard";
 import { MonthNav, YearNav } from "./PeriodNav";
-import { barColor, LONG_COLOR, SHORT_COLOR, useChartTheme, WINRATE_LINE } from "./chartTheme";
+import { LONG_COLOR, SHORT_COLOR, useChartTheme, WINRATE_LINE } from "./chartTheme";
+import { SignedBar } from "./chartShapes";
 
 export function PerformanceView({ rows, timeZone }: { rows: ClosedPosition[]; timeZone: string }) {
   const { t, i18n } = useTranslation();
@@ -62,11 +62,7 @@ export function PerformanceView({ rows, timeZone }: { rows: ClosedPosition[]; ti
               <XAxis dataKey="day" stroke={theme.axisColor} fontSize={12} />
               <YAxis stroke={theme.axisColor} fontSize={12} width={64} />
               <Tooltip contentStyle={theme.tooltipStyle} formatter={(v) => [fmtUsd(Number(v), { sign: true }), t("analytics.pnlPerDay")]} />
-              <Bar dataKey="pnl" name={t("analytics.pnlPerDay")}>
-                {dayPnl.map((d) => (
-                  <Cell key={d.day} fill={barColor(d.pnl)} />
-                ))}
-              </Bar>
+              <Bar dataKey="pnl" name={t("analytics.pnlPerDay")} shape={<SignedBar />} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -82,11 +78,7 @@ export function PerformanceView({ rows, timeZone }: { rows: ClosedPosition[]; ti
               <YAxis {...pctAxis} />
               <Tooltip contentStyle={theme.tooltipStyle} labelFormatter={(m) => monthName(Number(m))} />
               <Legend />
-              <Bar yAxisId="pnl" dataKey="pnl" name={t("analytics.pnl")}>
-                {monthly.map((d) => (
-                  <Cell key={d.month} fill={barColor(d.pnl)} />
-                ))}
-              </Bar>
+              <Bar yAxisId="pnl" dataKey="pnl" name={t("analytics.pnl")} shape={<SignedBar />} />
               <Line yAxisId="rate" type="monotone" dataKey="winRate" name={t("analytics.winRate")} stroke={WINRATE_LINE} dot={false} connectNulls />
             </ComposedChart>
           </ResponsiveContainer>

@@ -4,7 +4,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   ComposedChart,
   Legend,
   Line,
@@ -18,7 +17,8 @@ import { cn } from "@/lib/cn";
 import type { ClosedPosition } from "@/api/analytics";
 import { directionBreakdown, traderStyle, winRateByHour, winRateByWeekday, type DirStat } from "./compute";
 import { MetricCard } from "./MetricCard";
-import { barColor, useChartTheme, WINRATE_LINE } from "./chartTheme";
+import { useChartTheme, WINRATE_LINE } from "./chartTheme";
+import { SignedBar } from "./chartShapes";
 import { DASH, fmtDuration, fmtPctFraction } from "./display";
 
 export function BehaviorView({ rows, timeZone }: { rows: ClosedPosition[]; timeZone: string }) {
@@ -50,7 +50,7 @@ export function BehaviorView({ rows, timeZone }: { rows: ClosedPosition[]; timeZ
       </MetricCard>
 
       <MetricCard title={t("analytics.direction")} info={t("analytics.directionInfo")}>
-        <table className="w-full text-sm">
+        <table className="hidden w-full text-sm md:table">
           <thead>
             <tr className="text-left text-gray-500 dark:text-gray-400">
               <th className="py-1 font-medium">{t("analytics.direction")}</th>
@@ -65,6 +65,10 @@ export function BehaviorView({ rows, timeZone }: { rows: ClosedPosition[]; timeZ
             <DirRow label={t("analytics.shorts")} stat={dir.short} />
           </tbody>
         </table>
+        <div className="space-y-3 md:hidden">
+          <DirCard label={t("analytics.longs")} stat={dir.long} t={t} />
+          <DirCard label={t("analytics.shorts")} stat={dir.short} t={t} />
+        </div>
       </MetricCard>
 
       <MetricCard title={t("analytics.traderStyle")} info={t("analytics.traderStyleInfo")}>
@@ -75,11 +79,7 @@ export function BehaviorView({ rows, timeZone }: { rows: ClosedPosition[]; timeZ
               <XAxis dataKey="label" stroke={theme.axisColor} fontSize={12} />
               <YAxis allowDecimals={false} stroke={theme.axisColor} fontSize={12} width={36} />
               <Tooltip contentStyle={theme.tooltipStyle} />
-              <Bar dataKey="count" name={t("analytics.trades")}>
-                {styleData.map((d) => (
-                  <Cell key={d.key} fill={barColor(d.pnl)} />
-                ))}
-              </Bar>
+              <Bar dataKey="count" name={t("analytics.trades")} shape={<SignedBar />} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -99,6 +99,33 @@ function Foot({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border border-border p-2 dark:border-gray-700">
       <dt className="text-xs text-gray-500 dark:text-gray-400">{label}</dt>
       <dd className="mt-0.5 font-medium">{value}</dd>
+    </div>
+  );
+}
+
+function DirCard({ label, stat, t }: { label: string; stat: DirStat; t: (k: string) => string }) {
+  return (
+    <div className="rounded-md border border-border p-3 dark:border-gray-700">
+      <div className="font-medium">{label}</div>
+      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+        <DirCell label={t("analytics.trades")} value={String(stat.count)} />
+        <DirCell label={t("analytics.winRate")} value={fmtPctFraction(stat.winRate)} />
+        <DirCell label={t("analytics.totalPnl")} value={fmtUsd(stat.totalPnl.toString(), { sign: true })} tone={pnlTone(stat.totalPnl.toString())} />
+        <DirCell
+          label={t("analytics.stats.expectancy")}
+          value={stat.expectancy ? fmtUsd(stat.expectancy.toString(), { sign: true }) : DASH}
+          tone={stat.expectancy ? pnlTone(stat.expectancy.toString()) : ""}
+        />
+      </dl>
+    </div>
+  );
+}
+
+function DirCell({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
+      <dd className={cn("font-medium tabular-nums", tone)}>{value}</dd>
     </div>
   );
 }

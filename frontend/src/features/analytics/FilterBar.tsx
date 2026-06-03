@@ -26,13 +26,13 @@ export function FilterBar({
       </div>
 
       {filters.period === "custom" && (
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
           <div>
             <Label htmlFor="af-from">{t("analytics.from")}</Label>
             <Input
               id="af-from"
               type="date"
-              className="w-44"
+              className="w-full sm:w-44"
               value={filters.from}
               max={filters.to || undefined}
               onChange={(e) => filters.setFrom(e.target.value)}
@@ -43,7 +43,7 @@ export function FilterBar({
             <Input
               id="af-to"
               type="date"
-              className="w-44"
+              className="w-full sm:w-44"
               value={filters.to}
               min={filters.from || undefined}
               onChange={(e) => filters.setTo(e.target.value)}
@@ -52,11 +52,11 @@ export function FilterBar({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t("analytics.exchangeLabel")}</span>
+          <span className="shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400">{t("analytics.exchangeLabel")}</span>
           <Select
-            className="w-48"
+            className="w-full sm:w-48"
             value={filters.exchange}
             onChange={(e) => filters.setExchange(e.target.value)}
             aria-label={t("analytics.exchangeLabel")}
@@ -72,9 +72,9 @@ export function FilterBar({
 
         {origenTags.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t("analytics.origenLabel")}</span>
+            <span className="shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400">{t("analytics.origenLabel")}</span>
             <Select
-              className="w-48"
+              className="w-full sm:w-48"
               value={filters.origenTagId}
               onChange={(e) => filters.setOrigenTagId(e.target.value)}
               aria-label={t("analytics.origenLabel")}
