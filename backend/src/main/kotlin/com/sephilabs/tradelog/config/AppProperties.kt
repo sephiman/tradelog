@@ -48,6 +48,16 @@ data class AppProperties(
         val executor: SyncExecutor = SyncExecutor(),
         // 0 = backfill as far back as each exchange API allows.
         val maxBackfillDays: Long = 0,
+        val schedule: SyncSchedule = SyncSchedule(),
+    )
+
+    data class SyncSchedule(
+        // Daily background sweep that keeps every ACTIVE API source current without a login.
+        val enabled: Boolean = true,
+        // Quartz-style cron (seconds field first); evaluated in the JVM's time zone.
+        val cron: String = "0 0 4 * * *",
+        // Delay between successive sources so the sweep trickles well under the per-exchange quota.
+        val spacingMs: Long = 3000,
     )
 
     data class SyncRate(

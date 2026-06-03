@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import java.time.Instant
 import java.util.UUID
 
-enum class SyncTrigger { LOGIN, MANUAL, UPLOAD }
+enum class SyncTrigger { LOGIN, MANUAL, UPLOAD, SCHEDULED }
 enum class RunStatus { RUNNING, SUCCESS, ERROR }
 
 /** Audit row per sync attempt; drives UI status and observability. */

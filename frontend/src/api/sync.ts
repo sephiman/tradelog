@@ -6,7 +6,7 @@ export type RunStatus = "RUNNING" | "SUCCESS" | "ERROR";
 export interface SyncRun {
   id: string;
   dataSourceId: string;
-  trigger: "LOGIN" | "MANUAL" | "UPLOAD";
+  trigger: "LOGIN" | "MANUAL" | "UPLOAD" | "SCHEDULED";
   status: RunStatus;
   startedAt: string;
   finishedAt: string | null;

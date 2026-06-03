@@ -66,6 +66,33 @@ class SyncService(
         }
     }
 
+    /**
+     * Syncs a batch of API sources in sequence, isolating failures so one bad source (or a
+     * rate-limit) never stops the rest. [spacingMs] paces successive sources to keep the sweep
+     * well under the per-exchange quota — used by the daily sweep; on-login passes 0 (the user is
+     * waiting). Returns when all sources are processed or the thread is interrupted.
+     */
+    fun syncEach(sources: List<DataSource>, trigger: SyncTrigger, spacingMs: Long = 0) {
+        sources.forEachIndexed { index, ds ->
+            if (index > 0 && spacingMs > 0) {
+                try {
+                    Thread.sleep(spacingMs)
+                } catch (e: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return
+                }
+            }
+            try {
+                syncApiSource(ds, trigger)
+            } catch (e: AppException) {
+                // Rate-limited or transient — skip; the next sweep (or a login/manual sync) retries it.
+                log.info("Sweep skipped source {} ({}): {}", ds.id, ds.kind, e.code)
+            } catch (e: Exception) {
+                log.warn("Sweep error for source {} ({})", ds.id, ds.kind, e)
+            }
+        }
+    }
+
     /** Persist a batch parsed from a file source (Quantfury PDF). */
     fun importFile(ds: DataSource, records: List<PositionRecord>, trigger: SyncTrigger): SyncRunDto {
         val run = store.startRun(ds.id, trigger)

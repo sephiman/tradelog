@@ -58,7 +58,6 @@ class DataSource(
 interface DataSourceRepository : JpaRepository<DataSource, UUID> {
     fun findAllByProfileIdOrderByCreatedAtAsc(profileId: UUID): List<DataSource>
     fun findByIdAndProfileId(id: UUID, profileId: UUID): DataSource?
-    fun existsByProfileId(profileId: UUID): Boolean
-    fun countByProfileId(profileId: UUID): Long
     fun findAllByProfileIdInAndStatus(profileIds: Collection<UUID>, status: DataSourceStatus): List<DataSource>
+    fun findAllByStatusAndKindIn(status: DataSourceStatus, kinds: Collection<SourceKind>): List<DataSource>
 }
