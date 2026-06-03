@@ -12,6 +12,7 @@ export interface DataSource {
   statusDetail: string | null;
   hasCredentials: boolean;
   lastSyncedAt: string | null;
+  syncFrom: string | null;
   positionCount: number;
   createdAt: string;
 }
@@ -22,6 +23,7 @@ export interface CreateDataSourceRequest {
   apiKey?: string;
   apiSecret?: string;
   passphrase?: string;
+  syncFrom?: string;
 }
 
 export interface UpdateDataSourceRequest {

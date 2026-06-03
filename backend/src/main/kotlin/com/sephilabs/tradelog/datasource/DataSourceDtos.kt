@@ -21,6 +21,7 @@ data class DataSourceDto(
     val statusDetail: String?,
     val hasCredentials: Boolean,
     val lastSyncedAt: Instant?,
+    val syncFrom: Instant?,
     val positionCount: Long,
     val createdAt: Instant,
 )
@@ -36,6 +37,10 @@ data class CreateDataSourceRequest(
     val apiKey: String? = null,
     val apiSecret: String? = null,
     val passphrase: String? = null,
+
+    // Optional earliest closed-position date to backfill from (API kinds). Locked once set; null =
+    // pull as far back as the exchange API serves. Deliberately absent from UpdateDataSourceRequest.
+    val syncFrom: Instant? = null,
 )
 
 data class UpdateDataSourceRequest(

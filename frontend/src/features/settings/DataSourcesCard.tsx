@@ -11,7 +11,7 @@ import type { SourceKind } from "@/api/positions";
 import { useSyncAll, useSyncOne } from "@/api/sync";
 import { Badge, Button, Card, CardBody, CardHeader, Input, Select } from "@/components/ui/primitives";
 import { showToast } from "@/lib/toastBus";
-import { fmtDateTime } from "@/lib/format";
+import { dateInputToIso, fmtDate, fmtDateTime } from "@/lib/format";
 import { QuantfuryUploadCard } from "./QuantfuryUploadCard";
 import { JournalCsvUploadCard } from "./JournalCsvUploadCard";
 
@@ -26,6 +26,7 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
   const [label, setLabel] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
+  const [syncFrom, setSyncFrom] = useState("");
 
   const isApi = kind === "BITUNIX" || kind === "BINGX";
 
@@ -33,8 +34,14 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
     e.preventDefault();
     if (!label.trim()) return;
     createMut.mutate(
-      { kind, label: label.trim(), apiKey: isApi ? apiKey : undefined, apiSecret: isApi ? apiSecret : undefined },
-      { onSuccess: () => { setLabel(""); setApiKey(""); setApiSecret(""); } },
+      {
+        kind,
+        label: label.trim(),
+        apiKey: isApi ? apiKey : undefined,
+        apiSecret: isApi ? apiSecret : undefined,
+        syncFrom: isApi ? dateInputToIso(syncFrom) : undefined,
+      },
+      { onSuccess: () => { setLabel(""); setApiKey(""); setApiSecret(""); setSyncFrom(""); } },
     );
   };
 
@@ -96,6 +103,11 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
                 <Input className="flex-1" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t("dataSources.apiKey")} autoComplete="off" />
                 <Input className="flex-1" type="password" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} placeholder={t("dataSources.apiSecret")} autoComplete="off" />
               </div>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t("dataSources.syncFrom")}</span>
+                <Input className="w-44" type="date" value={syncFrom} onChange={(e) => setSyncFrom(e.target.value)} />
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t("dataSources.syncFromHint")}</p>
             </div>
           )}
         </form>
@@ -107,8 +119,16 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
 function SourceRow({ profileId, source, onDelete }: { profileId: string; source: DataSource; onDelete: () => void }) {
   const { t } = useTranslation();
   const syncOne = useSyncOne(profileId);
+  const updateMut = useUpdateDataSource(profileId);
   const [editingKeys, setEditingKeys] = useState(false);
   const isApi = source.kind === "BITUNIX" || source.kind === "BINGX";
+  const isDisabled = source.status === "DISABLED";
+
+  const onToggleEnabled = () =>
+    updateMut.mutate(
+      { id: source.id, body: { status: isDisabled ? "ACTIVE" : "DISABLED" } },
+      { onSuccess: () => showToast(t(isDisabled ? "dataSources.enabled" : "dataSources.disabledToast"), "success") },
+    );
 
   const statusTone = source.status === "ACTIVE" ? "green" : source.status === "ERROR" ? "red" : "gray";
   const statusLabel =
@@ -144,6 +164,11 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
         <span className="text-xs text-gray-500 dark:text-gray-400">
           {t("dataSources.lastSynced")}: {source.lastSyncedAt ? fmtDateTime(source.lastSyncedAt) : t("dataSources.never")}
         </span>
+        {isApi && source.syncFrom && (
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {t("dataSources.syncFromLabel")}: {fmtDate(source.syncFrom)}
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-2">
           {isApi && (
             <Button variant="ghost" onClick={() => setEditingKeys((v) => !v)}>
@@ -151,6 +176,11 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
             </Button>
           )}
           {isApi && (
+            <Button variant="ghost" disabled={updateMut.isPending} onClick={onToggleEnabled}>
+              {isDisabled ? t("dataSources.enable") : t("dataSources.disable")}
+            </Button>
+          )}
+          {isApi && !isDisabled && (
             <Button variant="secondary" disabled={syncOne.isPending} onClick={onSync}>{t("dataSources.sync")}</Button>
           )}
           <Button variant="ghost" onClick={onDelete}>{t("common.delete")}</Button>

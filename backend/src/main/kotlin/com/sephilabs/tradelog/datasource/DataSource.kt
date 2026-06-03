@@ -53,6 +53,10 @@ class DataSource(
 
     @Column(name = "last_synced_at")
     var lastSyncedAt: Instant? = null,
+
+    /** Earliest closed-position date to fetch. Set once at creation, never updated; null = full backfill. */
+    @Column(name = "sync_from", updatable = false)
+    var syncFrom: Instant? = null,
 ) : TimestampedEntity()
 
 interface DataSourceRepository : JpaRepository<DataSource, UUID> {

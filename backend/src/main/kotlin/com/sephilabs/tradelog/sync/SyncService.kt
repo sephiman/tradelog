@@ -50,7 +50,7 @@ class SyncService(
         return try {
             val creds = dataSourceService.credentialsOf(ds)
             val cursor = dataSourceService.cursorOf(ds)
-            val batch = connector.fetchClosedPositions(creds, cursor, backfillFloor())
+            val batch = connector.fetchClosedPositions(creds, cursor, ds.syncFrom ?: backfillFloor())
             val finished = store.completeApiSuccess(ds.id, run.id, batch.records, batch.nextCursor)
             metrics.syncRun(ds.kind.name, trigger.name, "success")
             metrics.positionsUpserted(ds.kind.name, finished.inserted + finished.updated)

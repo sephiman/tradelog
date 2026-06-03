@@ -78,6 +78,8 @@ data class BackupDataSource(
     /** JSON-encoded sync watermark; preserved so re-keyed API sources resume incremental sync. */
     val cursor: String?,
     val lastSyncedAt: Instant?,
+    /** Immutable backfill floor chosen at creation; preserved so a restore doesn't re-pull older history. */
+    val syncFrom: Instant? = null,
     val positions: List<BackupPosition>,
 )
 

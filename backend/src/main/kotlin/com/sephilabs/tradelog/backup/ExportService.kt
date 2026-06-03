@@ -68,6 +68,7 @@ class ExportService(
                         status = ds.status,
                         cursor = ds.cursor,
                         lastSyncedAt = ds.lastSyncedAt,
+                        syncFrom = ds.syncFrom,
                         positions = rows.map { p ->
                             toBackupPosition(p, fillsByPosition[p.id].orEmpty(), tagsByPosition[p.id].orEmpty(), tagRefById)
                         },

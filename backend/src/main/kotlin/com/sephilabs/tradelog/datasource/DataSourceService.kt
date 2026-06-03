@@ -36,6 +36,7 @@ class DataSourceService(
         )
         if (request.kind.isApi) {
             ds.credentialsEnc = encryptCredentials(request.apiKey, request.apiSecret, request.passphrase)
+            ds.syncFrom = request.syncFrom
         }
         dataSources.save(ds)
         return ds.toDto()
@@ -99,6 +100,7 @@ class DataSourceService(
         statusDetail = statusDetail,
         hasCredentials = credentialsEnc != null,
         lastSyncedAt = lastSyncedAt,
+        syncFrom = syncFrom,
         positionCount = positions.countByDataSourceId(id),
         createdAt = createdAt,
     )
