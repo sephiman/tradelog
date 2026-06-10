@@ -580,13 +580,14 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      <div>
+      <div className="min-w-0">
         <h3 className="mb-2 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">{t("positions.operations")}</h3>
         {isLoading ? (
           <p className="text-sm text-gray-500">{t("common.loading")}</p>
         ) : (detail?.fills.length ?? 0) === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">—</p>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="text-left text-gray-500 dark:text-gray-400">
               <tr>
@@ -609,6 +610,7 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
               ))}
             </tbody>
           </table>
+          </div>
         )}
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500 dark:text-gray-400">
           <span>{t("positions.grossPnl")}: {fmtUsd(position.realizedPnl, { sign: true })}</span>
@@ -618,9 +620,9 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
         </div>
       </div>
 
-      <div>
+      <div className="min-w-0">
         <h3 className="mb-2 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">{t("positions.note")}</h3>
-        <Textarea rows={4} value={note} onChange={(e) => setNote_(e.target.value)} placeholder={t("positions.addNote")} />
+        <Textarea className="w-full" rows={4} value={note} onChange={(e) => setNote_(e.target.value)} placeholder={t("positions.addNote")} />
         <Button
           className="mt-2"
           variant="secondary"
