@@ -20,10 +20,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border bg-white dark:border-gray-700 dark:bg-gray-800">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-2">
-          <Logo className="h-7 w-auto" />
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
+          <Logo className="h-7 w-auto shrink-0" />
 
-          <nav className="flex items-center gap-1">
+          <nav className="order-2 flex items-center gap-1">
             {nav.map((n) => (
               <NavLink
                 key={n.to}
@@ -42,7 +42,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
-          <div className="ml-auto flex items-center gap-3">
+          {/* Avatar stays on the nav row (top-right) on mobile; the bulkier
+              profile picker + quick-sync wrap onto their own line below. On
+              sm+ everything sits on one row in the original order. */}
+          <div className="order-3 ml-auto sm:order-5 sm:ml-0">
+            <UserMenu />
+          </div>
+
+          <div className="order-4 flex flex-wrap items-center gap-3 sm:order-4 sm:ml-auto">
             {profiles.length > 0 && (
               <Select
                 className="w-44"
@@ -58,7 +65,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Select>
             )}
             <QuickSync />
-            <UserMenu />
           </div>
         </div>
       </header>

@@ -5,16 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.config.AppProperties
-import com.sephilabs.tradelog.connector.ApiConnector
-import com.sephilabs.tradelog.connector.ExchangeCredentials
-import com.sephilabs.tradelog.connector.ExchangeSign
-import com.sephilabs.tradelog.connector.PositionReconstructor
-import com.sephilabs.tradelog.connector.PositionRecord
-import com.sephilabs.tradelog.connector.RawFill
-import com.sephilabs.tradelog.connector.SyncBatch
-import com.sephilabs.tradelog.connector.SyncCursor
-import com.sephilabs.tradelog.connector.Symbol
-import com.sephilabs.tradelog.connector.Symbols
+import com.sephilabs.tradelog.connector.*
 import com.sephilabs.tradelog.datasource.SourceKind
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -61,71 +52,72 @@ class BingxConnector(
         backfillFrom: Instant?,
     ): SyncBatch {
         val now = Instant.now()
+
+        // Reconstruction needs a FLAT starting point: flat-to-flat pairing only works if the fill
+        // stream begins where net exposure was zero. Starting from the cursor (or from `sync_from`)
+        // would begin mid-position — e.g. buys that were *covering a short* opened earlier look like
+        // opening a long, so the position never closes and every later trade on that symbol is
+        // swallowed. So we always re-fetch the full retained fill history (BingX serves ~30d) and
+        // reconstruct the whole stream. `sync_from` and the cursor do NOT truncate the fetch; they
+        // only decide which *reconstructed positions* to keep (below). Re-fetching every sync is
+        // cheap (idempotent upsert keyed by externalId), and it also repairs positions that an
+        // earlier, truncated sync mis-paired.
+        //
+        // Walk *backward* from now in 7-day windows until BingX stops returning fills
+        // (EMPTY_WINDOW_STREAK consecutive empty windows = history exhausted / past API retention),
+        // or the MAX_WINDOWS / DEFAULT_BACKFILL_DAYS safety backstop is reached.
+        val hardFloor = now.minus(DEFAULT_BACKFILL_DAYS, ChronoUnit.DAYS)
         val raw = mutableListOf<RawFill>()
         var windows = 0
-        val oldest: Instant
-
-        if (cursor.lastClosedAt != null) {
-            // Incremental: window forward from the cursor to now. Clamp the start up to a recent
-            // floor so a bogus cursor (e.g. the old epoch-0 bug) can't strand the sync on ancient
-            // empty ranges; self-heals on the next run.
-            val floor = backfillFrom ?: now.minus(DEFAULT_BACKFILL_DAYS, ChronoUnit.DAYS)
-            var windowStart = maxOf(cursor.lastClosedAt, floor)
-            oldest = windowStart
-            while (windowStart.isBefore(now) && windows < MAX_WINDOWS) {
-                val windowEnd = minOf(windowStart.plus(WINDOW_DAYS, ChronoUnit.DAYS), now)
+        var windowEnd = now
+        var emptyStreak = 0
+        var oldestWithData: Instant? = null
+        while (windowEnd.isAfter(hardFloor) && windows < MAX_WINDOWS) {
+            val windowStart = maxOf(windowEnd.minus(WINDOW_DAYS, ChronoUnit.DAYS), hardFloor)
+            val before = raw.size
+            try {
                 raw += fetchWindow(credentials, windowStart, windowEnd)
-                windowStart = windowEnd
-                windows++
-                pace(windowStart.isBefore(now) && windows < MAX_WINDOWS)
+            } catch (e: AppException) {
+                // First window failing is a genuine error (auth/permission); later failures are
+                // treated as reaching BingX's history retention limit — stop gracefully.
+                if (windows == 0) throw e
+                log.warn("BingX fetch stopped at {}: {}", windowStart, e.message)
+                break
             }
-        } else {
-            // First sync / full backfill: walk *backward* from now in 7-day windows until BingX
-            // stops returning fills (EMPTY_WINDOW_STREAK consecutive empty windows = history
-            // exhausted / past the API's retention), or an explicit backfill floor / the
-            // MAX_WINDOWS safety cap is reached. This pulls history as far back as the API serves.
-            val hardFloor = backfillFrom ?: Instant.EPOCH
-            var windowEnd = now
-            var emptyStreak = 0
-            var oldestWithData: Instant? = null
-            while (windowEnd.isAfter(hardFloor) && windows < MAX_WINDOWS) {
-                val windowStart = maxOf(windowEnd.minus(WINDOW_DAYS, ChronoUnit.DAYS), hardFloor)
-                val before = raw.size
-                try {
-                    raw += fetchWindow(credentials, windowStart, windowEnd)
-                } catch (e: AppException) {
-                    // First window failing is a genuine error (auth/permission); later failures are
-                    // treated as reaching BingX's history retention limit — stop gracefully.
-                    if (windows == 0) throw e
-                    log.warn("BingX backfill stopped at {}: {}", windowStart, e.message)
-                    break
-                }
-                windows++
-                if (raw.size > before) {
-                    emptyStreak = 0
-                    oldestWithData = windowStart
-                } else {
-                    emptyStreak++
-                }
-                if (backfillFrom == null && emptyStreak >= EMPTY_WINDOW_STREAK) {
-                    log.info(
-                        "BingX backfill: history exhausted — {} empty window(s) older than {}; oldest fills at {}",
-                        emptyStreak, windowStart, oldestWithData,
-                    )
-                    break
-                }
-                windowEnd = windowStart
-                pace(windowEnd.isAfter(hardFloor) && windows < MAX_WINDOWS)
+            windows++
+            if (raw.size > before) {
+                emptyStreak = 0
+                oldestWithData = windowStart
+            } else {
+                emptyStreak++
             }
-            oldest = oldestWithData ?: windowEnd
+            if (emptyStreak >= EMPTY_WINDOW_STREAK) {
+                log.info(
+                    "BingX fetch: history exhausted — {} empty window(s) older than {}; oldest fills at {}",
+                    emptyStreak, windowStart, oldestWithData,
+                )
+                break
+            }
+            windowEnd = windowStart
+            pace(windowEnd.isAfter(hardFloor) && windows < MAX_WINDOWS)
         }
+        val oldest = oldestWithData ?: windowEnd
 
-        val records = PositionReconstructor.reconstruct(raw, ::normalizeSymbol)
-            .filter { cursor.lastClosedAt == null || it.closedAt.isAfter(cursor.lastClosedAt) }
+        val reconstructed = PositionReconstructor.reconstruct(raw, ::normalizeSymbol)
+        val records = reconstructed
+            // `sync_from`: keep only trades that CLOSED on/after it (a trade opened before sync_from
+            // but closed after still belongs in the journal). null = keep all retained history.
+            .filter { backfillFrom == null || !it.closedAt.isBefore(backfillFrom) }
             // BingX fills carry no PnL, so derive it from leg prices (fees/funding stay as reconstructed).
             .map { it.copy(realizedPnl = PositionReconstructor.realizedFromPrices(it)) }
+        // Cursor tracks the newest close we've emitted (for display/progress); it no longer gates the
+        // fetch or the kept set — idempotent upsert handles re-emitted positions.
         val maxClosed = records.maxOfOrNull { it.closedAt } ?: cursor.lastClosedAt
-        log.info("BingX fetch: {} fills over {} window(s) -> {} positions (oldest requested={})", raw.size, windows, records.size, oldest)
+        log.info(
+            "BingX fetch: {} fills over {} window(s) -> {} reconstructed, {} kept after sync_from filter (sync_from={}, oldest requested={})",
+            raw.size, windows, reconstructed.size, records.size, backfillFrom, oldest,
+        )
+        logOpenResidual(raw)
         return SyncBatch(records, SyncCursor(lastClosedAt = maxClosed, lastExternalId = records.lastOrNull()?.externalId))
     }
 
@@ -137,8 +129,15 @@ class BingxConnector(
         ))
         val fills = fillsArray(node)
         if (log.isDebugEnabled) {
-            val sample = if (fills.isEmpty()) "" else ", sample=${fills.first().toString().take(800)}"
-            log.debug("BingX window {}..{}: {} fills{}", start, end, fills.size, sample)
+            // TEMP DIAGNOSTIC: dump every fill (key fields) so a missing/extra leg is visible.
+            log.debug("BingX window {}..{}: {} fills", start, end, fills.size)
+            fills.forEach { n ->
+                log.debug(
+                    "  fill: symbol={} side={} posSide={} filledTm={} price={} amount={} volume={}",
+                    n.path("symbol").asText(""), n.path("side").asText(""), n.path("positionSide").asText(""),
+                    n.path("filledTm").asText(""), n.path("price").asText(""), n.path("amount").asText(""), n.path("volume").asText(""),
+                )
+            }
         }
         val mapped = ArrayList<RawFill>(fills.size)
         val skips = LinkedHashMap<String, Int>() // reason -> count
@@ -166,6 +165,34 @@ class BingxConnector(
     private sealed interface FillResult {
         data class Ok(val fill: RawFill) : FillResult
         data class Skip(val reason: String) : FillResult
+    }
+
+    /**
+     * TEMP DIAGNOSTIC: log any (symbol, positionSide) group whose fills don't net flat. These are
+     * positions the reconstructor leaves OPEN and therefore does not emit — i.e. an orphan close
+     * (its opening fills weren't in the fetched window) or a genuinely still-open position. The
+     * threshold is 0.1% of the larger side, far above amount/price rounding noise but far below a
+     * real open leg, so a closed trade with tiny rounding residue won't be flagged.
+     */
+    private fun logOpenResidual(raw: List<RawFill>) {
+        if (!log.isDebugEnabled) return
+        raw.groupBy { it.symbol }.forEach { (group, fills) ->
+            var net = BigDecimal.ZERO
+            var grossBuy = BigDecimal.ZERO
+            var grossSell = BigDecimal.ZERO
+            for (f in fills) {
+                if (f.buy) { net = net.add(f.qty); grossBuy = grossBuy.add(f.qty) }
+                else { net = net.subtract(f.qty); grossSell = grossSell.add(f.qty) }
+            }
+            val eps = grossBuy.max(grossSell).multiply(BigDecimal("0.001"))
+            if (net.abs() > eps) {
+                log.debug(
+                    "BingX open residual (still-open position, not emitted): group={} net={} (buy={} sell={}) fills={} firstTs={} lastTs={}",
+                    group, net, grossBuy, grossSell, fills.size,
+                    fills.minByOrNull { it.ts }?.ts, fills.maxByOrNull { it.ts }?.ts,
+                )
+            }
+        }
     }
 
     /** Pace successive windows to stay under BingX's rate limit; [more] guards the final window. */

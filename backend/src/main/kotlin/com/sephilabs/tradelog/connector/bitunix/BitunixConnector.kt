@@ -21,6 +21,7 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientResponseException
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /**
@@ -52,9 +53,20 @@ class BitunixConnector(
         cursor: SyncCursor,
         backfillFrom: Instant?,
     ): SyncBatch {
-        val since = cursor.lastClosedAt ?: backfillFrom
+        // Watermark = the highest close time we've already ingested. Bitunix's get_history_positions
+        // startTime filters by the position's *open* time, so query from an overlap before the
+        // watermark: a position opened before the last sync but closed after it would otherwise be
+        // excluded by the exchange. The client-side filter below keeps the threshold at the true
+        // watermark so the re-scanned older positions aren't re-emitted (upsert dedups them anyway).
+        val watermark = cursor.lastClosedAt
+        val since = if (watermark != null) {
+            val overlapped = watermark.minus(props.sync.overlapDays, ChronoUnit.DAYS)
+            backfillFrom?.let { maxOf(overlapped, it) } ?: overlapped
+        } else {
+            backfillFrom
+        }
         val records = mutableListOf<PositionRecord>()
-        var maxClosed: Instant? = cursor.lastClosedAt
+        var maxClosed: Instant? = watermark
         val skips = LinkedHashMap<String, Int>() // reason -> count, aggregated across pages
         var firstSkipSample: String? = null
         var skip = 0
@@ -73,7 +85,7 @@ class BitunixConnector(
                     }
                     is PositionResult.Ok -> {
                         val rec = r.record
-                        if (since == null || rec.closedAt.isAfter(since)) {
+                        if (watermark == null || rec.closedAt.isAfter(watermark)) {
                             records += rec
                             if (maxClosed == null || rec.closedAt.isAfter(maxClosed)) maxClosed = rec.closedAt
                         }

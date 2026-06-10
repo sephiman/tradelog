@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { NoActiveProfile } from "@/features/profiles/NoActiveProfile";
 import {
+  useBulkDeletePositions,
   useBulkSetTag,
   useClearTag,
+  useDeletePosition,
   usePositionDetail,
   usePositionExchanges,
   usePositions,
@@ -34,7 +36,9 @@ export function PositionsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [allMatching, setAllMatching] = useState(false);
   const [bulkTagId, setBulkTagId] = useState("");
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
   const bulkSetTag = useBulkSetTag(activeProfileId ?? "");
+  const bulkDelete = useBulkDeletePositions(activeProfileId ?? "");
 
   if (!activeProfileId) return <NoActiveProfile />;
 
@@ -42,6 +46,7 @@ export function PositionsPage() {
     setSelected(new Set());
     setAllMatching(false);
     setBulkTagId("");
+    setConfirmingBulkDelete(false);
   };
 
   // Selection is scoped to a filter set; changing filters invalidates it.
@@ -107,6 +112,17 @@ export function PositionsPage() {
         },
       },
     );
+  };
+
+  const applyBulkDelete = () => {
+    if (selectionCount === 0) return;
+    const body = allMatching ? { filters: cleanFilters() } : { positionIds: [...selected] };
+    bulkDelete.mutate(body, {
+      onSuccess: (r) => {
+        showToast(t("positions.bulkDeleted", { count: r.deleted }), "success");
+        clearSelection();
+      },
+    });
   };
 
   return (
@@ -203,25 +219,44 @@ export function PositionsPage() {
       </Card>
 
       <Card>
-        {selectionCount > 0 && origen && (
+        {selectionCount > 0 && (
           <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3 text-sm dark:border-gray-700">
             <span className="font-medium">
               {allMatching
                 ? t("positions.allMatchingSelected", { total })
                 : t("positions.selected", { count: selected.size })}
             </span>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500 dark:text-gray-400">{t("positions.bulkSetOrigen")}</span>
-              <Select className="w-36" value={bulkTagId} onChange={(e) => setBulkTagId(e.target.value)}>
-                <option value="">{t("common.none")}</option>
-                {origen.tags.map((tag) => (
-                  <option key={tag.id} value={tag.id}>{tag.name}</option>
-                ))}
-              </Select>
-              <Button variant="primary" disabled={bulkSetTag.isPending} onClick={applyBulk}>
-                {t("positions.apply")}
+            {origen && (
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 dark:text-gray-400">{t("positions.bulkSetOrigen")}</span>
+                <Select className="w-36" value={bulkTagId} onChange={(e) => setBulkTagId(e.target.value)}>
+                  <option value="">{t("common.none")}</option>
+                  {origen.tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>{tag.name}</option>
+                  ))}
+                </Select>
+                <Button variant="primary" disabled={bulkSetTag.isPending} onClick={applyBulk}>
+                  {t("positions.apply")}
+                </Button>
+              </div>
+            )}
+            {confirmingBulkDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-gray-600 dark:text-gray-300">
+                  {t("positions.confirmBulkDelete", { count: selectionCount })}
+                </span>
+                <Button variant="danger" disabled={bulkDelete.isPending} onClick={applyBulkDelete}>
+                  {t("common.delete")}
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirmingBulkDelete(false)}>
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            ) : (
+              <Button variant="danger" onClick={() => setConfirmingBulkDelete(true)}>
+                {t("positions.bulkDelete")}
               </Button>
-            </div>
+            )}
             <Button variant="ghost" onClick={clearSelection}>{t("positions.clearSelection")}</Button>
           </div>
         )}
@@ -539,7 +574,9 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
   const { t } = useTranslation();
   const { data: detail, isLoading } = usePositionDetail(profileId, position.id);
   const setNote = useSetNote(profileId);
+  const deletePosition = useDeletePosition(profileId);
   const [note, setNote_] = useState(position.note ?? "");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -592,6 +629,34 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
         >
           {t("common.save")}
         </Button>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-border pt-3 md:col-span-2 md:flex-row md:items-center md:justify-end dark:border-gray-700">
+        {confirmingDelete ? (
+          <>
+            <span className="text-sm text-gray-600 dark:text-gray-300">{t("positions.confirmDelete")}</span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="danger"
+                disabled={deletePosition.isPending}
+                onClick={() =>
+                  deletePosition.mutate(position.id, {
+                    onSuccess: () => showToast(t("positions.deleted"), "success"),
+                  })
+                }
+              >
+                {t("common.delete")}
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                {t("common.cancel")}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
+            {t("positions.delete")}
+          </Button>
+        )}
       </div>
     </div>
   );

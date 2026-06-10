@@ -128,7 +128,7 @@ class FileImportService(
      * overlaps a live exchange's synced history.
      */
     private fun existingDayKeysFromOtherSources(profileId: UUID, dataSourceId: UUID): Set<String> =
-        positions.findAllByProfileIdAndDataSourceIdNot(profileId, dataSourceId)
+        positions.findAllByProfileIdAndDataSourceIdNotAndDeletedAtIsNull(profileId, dataSourceId)
             .mapTo(HashSet()) { dayKey(it.symbolBase, it.symbolQuote, it.side.name, it.openedAt, it.closedAt) }
 
     private fun dayKey(base: String, quote: String, side: String, opened: Instant, closed: Instant): String {

@@ -25,7 +25,10 @@ data class PositionSearchCriteria(
 object PositionSpecs {
     fun fromCriteria(c: PositionSearchCriteria): Specification<Position> =
         Specification<Position> { root, query, cb ->
-            val predicates = mutableListOf(cb.equal(root.get<UUID>("profileId"), c.profileId))
+            val predicates = mutableListOf(
+                cb.equal(root.get<UUID>("profileId"), c.profileId),
+                cb.isNull(root.get<Instant>("deletedAt")),
+            )
             c.symbolBase?.takeIf { it.isNotBlank() }?.let {
                 predicates += cb.equal(cb.upper(root.get("symbolBase")), it.uppercase())
             }
@@ -64,6 +67,7 @@ object PositionSpecs {
         Specification<Position> { root, _, cb ->
             cb.and(
                 cb.equal(root.get<UUID>("profileId"), profileId),
+                cb.isNull(root.get<Instant>("deletedAt")),
                 root.get<UUID>("id").`in`(ids),
             )
         }

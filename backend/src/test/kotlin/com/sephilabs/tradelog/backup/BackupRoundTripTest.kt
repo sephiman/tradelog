@@ -123,6 +123,43 @@ class BackupRoundTripTest @Autowired constructor(
     }
 
     @Test
+    fun `a soft-deleted position survives backup and restore as deleted`() {
+        val user = users.save(User(email = "del${System.nanoTime()}@example.com", passwordHash = "x"))
+        val profile = profiles.save(Profile(userId = user.id, kind = ProfileKind.PERSONAL, name = "Main"))
+        val dsDto = dataSourceService.create(profile.id, CreateDataSourceRequest(SourceKind.JOURNAL_CSV, "journal"))
+        val deletedAt = Instant.parse("2026-04-01T00:00:00Z")
+
+        fun pos(ext: String, del: Instant?) = positions.save(
+            Position(
+                profileId = profile.id, dataSourceId = dsDto.id, source = SourceKind.JOURNAL_CSV,
+                externalId = ext, symbolBase = "BTC", symbolQuote = "USDT", side = PositionSide.LONG,
+                openedAt = Instant.parse("2026-02-01T00:00:00Z"), closedAt = Instant.parse("2026-02-02T00:00:00Z"),
+                qty = BigDecimal("1"), entryPrice = BigDecimal("100"), exitPrice = BigDecimal("110"),
+                realizedPnl = BigDecimal("10"), netPnl = BigDecimal("10"), fees = BigDecimal.ZERO, funding = BigDecimal.ZERO,
+                pnlCurrency = "USDT", deletedAt = del,
+            ),
+        )
+        pos("live-1", null)
+        pos("dead-1", deletedAt)
+
+        // Export carries both rows, with the deletion marker on the removed one.
+        val envelope = exportService.export(user)
+        val backupDs = envelope.profiles[0].dataSources.first { it.kind == SourceKind.JOURNAL_CSV }
+        assertThat(backupDs.positions).hasSize(2)
+        assertThat(backupDs.positions.first { it.externalId == "dead-1" }.deletedAt).isEqualTo(deletedAt)
+
+        importService.replaceAll(user, envelope)
+
+        // After restore the deletion is preserved: hidden from read paths, present in the table.
+        val restoredProfile = profiles.findAllByUserIdOrderByCreatedAtAsc(user.id).single()
+        val restoredDs = dataSources.findAllByProfileIdOrderByCreatedAtAsc(restoredProfile.id).single()
+        assertThat(positions.findAllByDataSourceIdOrderByClosedAtAsc(restoredDs.id)).hasSize(2)
+        assertThat(positions.countByDataSourceIdAndDeletedAtIsNull(restoredDs.id)).isEqualTo(1)
+        assertThat(positions.findAllByProfileIdAndDeletedAtIsNullOrderByClosedAtAsc(restoredProfile.id)).hasSize(1)
+        assertThat(positions.findByDataSourceIdAndExternalId(restoredDs.id, "dead-1")!!.deletedAt).isEqualTo(deletedAt)
+    }
+
+    @Test
     fun `import refuses a backup from a newer export version`() {
         val user = users.save(User(email = "ver${System.nanoTime()}@example.com", passwordHash = "x"))
         val future = BackupEnvelope(

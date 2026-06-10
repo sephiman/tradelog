@@ -16,7 +16,7 @@ import java.time.Instant
  * mis-read. [schemaVersion] is informational (the latest applied Flyway migration at export time).
  */
 const val BACKUP_EXPORT_VERSION = 1
-const val BACKUP_SCHEMA_VERSION = "V009"
+const val BACKUP_SCHEMA_VERSION = "V012"
 
 /**
  * A portable, self-contained snapshot of everything one user owns: their taxonomy, profiles, data
@@ -102,6 +102,8 @@ data class BackupPosition(
     val pnlCurrency: String,
     val note: String?,
     val raw: String?,
+    /** Soft-delete marker; carried so a deletion survives a backup → restore round-trip. Null = live. */
+    val deletedAt: Instant? = null,
     val fills: List<BackupFill>,
     val tags: List<BackupTagRef>,
 )

@@ -98,7 +98,13 @@
     "bulkSetOrigen": "Set origen:",
     "apply": "Apply",
     "clearSelection": "Clear selection",
-    "bulkUpdated": "Updated {{count}} positions"
+    "bulkUpdated": "Updated {{count}} positions",
+    "delete": "Delete position",
+    "bulkDelete": "Delete",
+    "confirmDelete": "Delete this position? It will disappear everywhere and won't return on sync.",
+    "confirmBulkDelete": "Delete {{count}} positions?",
+    "deleted": "Position deleted",
+    "bulkDeleted": "Deleted {{count}} positions"
   },
   "dataSources": {
     "title": "Data sources",

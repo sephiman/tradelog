@@ -70,7 +70,7 @@ class JournalCsvImportIntegrationTest @Autowired constructor(
         // Re-importing the same file must not duplicate.
         val run2 = importService.execute(profileId, dsId, bytes.inputStream())
         assertThat(run2.inserted).isEqualTo(0)
-        assertThat(positions.countByDataSourceId(dsId)).isEqualTo(2)
+        assertThat(positions.countByDataSourceIdAndDeletedAtIsNull(dsId)).isEqualTo(2)
 
         assertThat(positions.findDistinctExchanges(profileId)).containsExactly("Dead Exchanges", "FTX")
     }

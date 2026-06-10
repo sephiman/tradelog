@@ -60,6 +60,19 @@ class PositionController(
         return ResponseEntity.noContent().build()
     }
 
+    @DeleteMapping("/{positionId}")
+    fun delete(@PathVariable profileId: UUID, @PathVariable positionId: UUID): ResponseEntity<Void> {
+        service.softDelete(profileId, positionId)
+        return ResponseEntity.noContent().build()
+    }
+
+    @PostMapping("/bulk-delete")
+    fun bulkDelete(
+        @PathVariable profileId: UUID,
+        @Valid @RequestBody body: BulkDeleteRequest,
+    ): BulkDeleteResult =
+        BulkDeleteResult(service.bulkDelete(profileId, body))
+
     @PutMapping("/{positionId}/tags/{groupId}")
     fun setTag(
         @PathVariable profileId: UUID,

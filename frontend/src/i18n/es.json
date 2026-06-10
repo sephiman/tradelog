@@ -98,7 +98,13 @@
     "bulkSetOrigen": "Asignar origen:",
     "apply": "Aplicar",
     "clearSelection": "Quitar selección",
-    "bulkUpdated": "{{count}} posiciones actualizadas"
+    "bulkUpdated": "{{count}} posiciones actualizadas",
+    "delete": "Eliminar posición",
+    "bulkDelete": "Eliminar",
+    "confirmDelete": "¿Eliminar esta posición? Desaparecerá de todas partes y no volverá al sincronizar.",
+    "confirmBulkDelete": "¿Eliminar {{count}} posiciones?",
+    "deleted": "Posición eliminada",
+    "bulkDeleted": "{{count}} posiciones eliminadas"
   },
   "dataSources": {
     "title": "Fuentes de datos",

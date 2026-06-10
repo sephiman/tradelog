@@ -111,6 +111,10 @@ app:
       queue-capacity: 100
     # On first connect, do not backfill earlier than this many days (0 = as far as the API allows).
     max-backfill-days: 0
+    # Incremental syncs re-scan this many days before the last close-time watermark so positions
+    # opened before the previous sync but closed after it are not missed. Idempotent upserts make
+    # the overlap free; raise it if you hold positions open longer than this.
+    overlap-days: ${SYNC_OVERLAP_DAYS:30}
     # Daily background sweep of every ACTIVE API source. Paces itself (spacing-ms between sources)
     # to stay well under the per-exchange quota; on a 429 a source is simply skipped until next run.
     schedule:

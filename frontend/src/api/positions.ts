@@ -156,6 +156,38 @@ export function useBulkSetTag(profileId: string) {
   });
 }
 
+export function useDeletePosition(profileId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (positionId: string) => {
+      await apiClient.delete(`/profiles/${profileId}/positions/${positionId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["positions", profileId] });
+      qc.invalidateQueries({ queryKey: ["analyticsClosed", profileId] });
+    },
+  });
+}
+
+export interface BulkDeleteBody {
+  positionIds?: string[];
+  filters?: PositionFilters;
+}
+
+export function useBulkDeletePositions(profileId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: BulkDeleteBody) => {
+      const res = await apiClient.post<{ deleted: number }>(`/profiles/${profileId}/positions/bulk-delete`, body);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["positions", profileId] });
+      qc.invalidateQueries({ queryKey: ["analyticsClosed", profileId] });
+    },
+  });
+}
+
 export function useClearTag(profileId: string) {
   const qc = useQueryClient();
   return useMutation({

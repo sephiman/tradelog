@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import type { Tag } from "@/api/taxonomy";
 import { Chip, Input, Label, Select } from "@/components/ui/primitives";
+import { cn } from "@/lib/cn";
+import { useHideOnScroll } from "@/lib/useHideOnScroll";
 import { PERIOD_PRESETS, type AnalyticsFilters } from "./useAnalyticsFilters";
 
 export function FilterBar({
@@ -13,9 +15,16 @@ export function FilterBar({
   origenTags: Tag[];
 }) {
   const { t } = useTranslation();
+  const { ref, hidden } = useHideOnScroll();
 
   return (
-    <div className="sticky top-0 z-10 space-y-3 rounded-lg border border-border bg-white/95 p-3 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-800/95">
+    <div
+      ref={ref}
+      className={cn(
+        "sticky top-0 z-10 space-y-3 rounded-lg border border-border bg-white/95 p-3 shadow-sm backdrop-blur transition-transform duration-300 dark:border-gray-700 dark:bg-gray-800/95",
+        hidden && "-translate-y-full",
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t("analytics.periodLabel")}</span>
         {PERIOD_PRESETS.map((p) => (

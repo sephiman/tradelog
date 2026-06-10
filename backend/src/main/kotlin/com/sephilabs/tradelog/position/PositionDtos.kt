@@ -113,3 +113,17 @@ data class BulkTagFilters(
 data class BulkTagResult(
     val updated: Int,
 )
+
+/**
+ * Soft-delete many positions at once. Same two selection modes as [BulkSetTagRequest]:
+ *  - [positionIds] non-empty → delete exactly those positions.
+ *  - otherwise → delete every position matching [filters].
+ */
+data class BulkDeleteRequest(
+    val positionIds: List<UUID>? = null,
+    val filters: BulkTagFilters? = null,
+)
+
+data class BulkDeleteResult(
+    val deleted: Int,
+)

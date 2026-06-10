@@ -42,22 +42,28 @@ interface ClosedPositionSummary {
 
 interface PositionRepository : JpaRepository<Position, UUID>, JpaSpecificationExecutor<Position> {
 
-    fun findByIdAndProfileId(id: UUID, profileId: UUID): Position?
+    /** Loads a LIVE (non-deleted) position the caller owns; soft-deleted rows read as not found. */
+    fun findByIdAndProfileIdAndDeletedAtIsNull(id: UUID, profileId: UUID): Position?
 
+    /**
+     * The sync dedup lookup. Deliberately NOT filtered by deletedAt: it must still find soft-deleted
+     * rows so the upsert can skip them, leaving them deleted instead of re-inserting a duplicate.
+     */
     fun findByDataSourceIdAndExternalId(dataSourceId: UUID, externalId: String): Position?
 
-    /** Full position entities of one data source, oldest close first — used by the backup export. */
+    /** Full position entities of one data source, oldest close first — used by the backup export
+     *  (includes soft-deleted rows so deletions survive a backup → restore round-trip). */
     fun findAllByDataSourceIdOrderByClosedAtAsc(dataSourceId: UUID): List<Position>
 
-    /** All closed positions in the profile, oldest close first, for the analytics dashboard. */
-    fun findAllByProfileIdOrderByClosedAtAsc(profileId: UUID): List<ClosedPositionSummary>
+    /** All LIVE closed positions in the profile, oldest close first, for the analytics dashboard. */
+    fun findAllByProfileIdAndDeletedAtIsNullOrderByClosedAtAsc(profileId: UUID): List<ClosedPositionSummary>
 
-    /** All positions in the profile that did NOT come from [dataSourceId] — for cross-source overlap detection. */
-    fun findAllByProfileIdAndDataSourceIdNot(profileId: UUID, dataSourceId: UUID): List<PositionKeyView>
+    /** Live positions in the profile that did NOT come from [dataSourceId] — for cross-source overlap detection. */
+    fun findAllByProfileIdAndDataSourceIdNotAndDeletedAtIsNull(profileId: UUID, dataSourceId: UUID): List<PositionKeyView>
 
-    fun countByDataSourceId(dataSourceId: UUID): Long
+    fun countByDataSourceIdAndDeletedAtIsNull(dataSourceId: UUID): Long
 
-    @Query("SELECT DISTINCT p.exchange FROM Position p WHERE p.profileId = :profileId AND p.exchange IS NOT NULL ORDER BY p.exchange")
+    @Query("SELECT DISTINCT p.exchange FROM Position p WHERE p.profileId = :profileId AND p.exchange IS NOT NULL AND p.deletedAt IS NULL ORDER BY p.exchange")
     fun findDistinctExchanges(@Param("profileId") profileId: UUID): List<String>
 }
 

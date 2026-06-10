@@ -93,4 +93,11 @@ class Position(
     /** Raw source payload (JSON string) kept for audit/reprocessing. */
     @Column(name = "raw")
     var raw: String? = null,
+
+    /**
+     * Soft-delete marker. When set, the position is hidden from every read path but kept in the table
+     * so the sync dedup lookup still finds it and re-sync skips it instead of re-inserting a duplicate.
+     */
+    @Column(name = "deleted_at")
+    var deletedAt: Instant? = null,
 ) : TimestampedEntity()

@@ -101,7 +101,7 @@ class DataSourceService(
         hasCredentials = credentialsEnc != null,
         lastSyncedAt = lastSyncedAt,
         syncFrom = syncFrom,
-        positionCount = positions.countByDataSourceId(id),
+        positionCount = positions.countByDataSourceIdAndDeletedAtIsNull(id),
         createdAt = createdAt,
     )
 }

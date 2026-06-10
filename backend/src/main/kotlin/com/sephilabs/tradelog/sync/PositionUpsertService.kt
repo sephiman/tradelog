@@ -39,6 +39,8 @@ class PositionUpsertService(
         for (r in records) {
             val exchange = resolveExchange(r, source, sourceLabel)
             val existing = positions.findByDataSourceIdAndExternalId(dataSourceId, r.externalId)
+            // A soft-deleted position stays deleted: skip it so re-sync never resurrects what the user removed.
+            if (existing != null && existing.deletedAt != null) continue
             val position = if (existing != null) {
                 applySourceFields(existing, r, exchange); updated++; existing
             } else {

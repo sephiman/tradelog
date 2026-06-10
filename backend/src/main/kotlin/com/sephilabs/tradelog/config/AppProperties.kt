@@ -48,6 +48,12 @@ data class AppProperties(
         val executor: SyncExecutor = SyncExecutor(),
         // 0 = backfill as far back as each exchange API allows.
         val maxBackfillDays: Long = 0,
+        // Incremental fetches start this many days *before* the close-time watermark so a position
+        // opened before the last sync but closed after it is still re-fetched (its opening fills are
+        // needed for BingX reconstruction; Bitunix filters by open time). Upserts are idempotent, so
+        // the overlap only re-scans already-synced positions. Bounds the gap to positions held open
+        // longer than this; raise it if you hold positions open for longer.
+        val overlapDays: Long = 30,
         val schedule: SyncSchedule = SyncSchedule(),
     )
 

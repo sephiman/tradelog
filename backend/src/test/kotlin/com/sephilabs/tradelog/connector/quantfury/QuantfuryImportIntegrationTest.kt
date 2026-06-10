@@ -67,12 +67,12 @@ class QuantfuryImportIntegrationTest @Autowired constructor(
 
         val run1 = importService.execute(profileId, dsId, bytes.inputStream())
         assertThat(run1.inserted).isEqualTo(2)
-        assertThat(positions.countByDataSourceId(dsId)).isEqualTo(2)
+        assertThat(positions.countByDataSourceIdAndDeletedAtIsNull(dsId)).isEqualTo(2)
 
         // Re-uploading the same export must not duplicate.
         val run2 = importService.execute(profileId, dsId, bytes.inputStream())
         assertThat(run2.inserted).isEqualTo(0)
-        assertThat(positions.countByDataSourceId(dsId)).isEqualTo(2)
+        assertThat(positions.countByDataSourceIdAndDeletedAtIsNull(dsId)).isEqualTo(2)
 
         // PnL computed from leg prices, fees/funding zero for Quantfury.
         val eth = positions.findAll().first { it.symbolBase == "ETH" && it.dataSourceId == dsId }

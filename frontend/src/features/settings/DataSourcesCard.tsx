@@ -58,10 +58,10 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
 
   return (
     <Card>
-      <CardHeader className="flex items-center justify-between">
-        <h2 className="font-semibold">{t("dataSources.title")} — {profileName}</h2>
+      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="min-w-0 font-semibold">{t("dataSources.title")} — {profileName}</h2>
         {hasApi && (
-          <Button variant="secondary" disabled={syncAll.isPending} onClick={onSyncAll}>
+          <Button variant="secondary" className="shrink-0" disabled={syncAll.isPending} onClick={onSyncAll}>
             {t("dataSources.syncAll")}
           </Button>
         )}
@@ -169,7 +169,7 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
             {t("dataSources.syncFromLabel")}: {fmtDate(source.syncFrom)}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {isApi && (
             <Button variant="ghost" onClick={() => setEditingKeys((v) => !v)}>
               {source.hasCredentials ? t("dataSources.rotate") : t("dataSources.addKeys")}

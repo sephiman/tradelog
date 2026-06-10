@@ -78,7 +78,7 @@ class PositionUpsertIntegrationTest @Autowired constructor(
         assertThat(c2.inserted).isEqualTo(0)
         assertThat(c2.updated).isEqualTo(1)
 
-        assertThat(positions.countByDataSourceId(dataSourceId)).isEqualTo(1)
+        assertThat(positions.countByDataSourceIdAndDeletedAtIsNull(dataSourceId)).isEqualTo(1)
         val p = positions.findByDataSourceIdAndExternalId(dataSourceId, "ext-1")!!
         assertThat(p.realizedPnl).isEqualByComparingTo("-5")
         assertThat(p.exitPrice).isEqualByComparingTo("95")
@@ -107,5 +107,27 @@ class PositionUpsertIntegrationTest @Autowired constructor(
         assertThat(reloaded.note).isEqualTo("my analysis")
         assertThat(reloaded.realizedPnl).isEqualByComparingTo("12") // source field updated
         assertThat(positionTags.findByIdPositionIdAndIdGroupId(p.id, group.id)?.tagId).isEqualTo(tag.id)
+    }
+
+    @Test
+    fun `a soft-deleted position stays deleted and is not resurrected on re-sync`() {
+        setup()
+        upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(record("ext-del", "10", "110", 2)))
+        val p = positions.findByDataSourceIdAndExternalId(dataSourceId, "ext-del")!!
+
+        // user soft-deletes it
+        p.deletedAt = Instant.parse("2026-01-02T00:00:00Z")
+        positions.save(p)
+
+        // re-sync re-fetches the same external id from the exchange's history
+        val c = upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(record("ext-del", "12", "112", 2)))
+
+        assertThat(c.inserted).isEqualTo(0) // no duplicate row created
+        assertThat(c.updated).isEqualTo(0)  // the deleted row is left untouched
+        assertThat(positions.countByDataSourceIdAndDeletedAtIsNull(dataSourceId)).isEqualTo(0)
+        val reloaded = positions.findByDataSourceIdAndExternalId(dataSourceId, "ext-del")!!
+        assertThat(reloaded.id).isEqualTo(p.id)
+        assertThat(reloaded.deletedAt).isNotNull()
+        assertThat(reloaded.realizedPnl).isEqualByComparingTo("10") // source fields NOT re-applied
     }
 }

@@ -8,8 +8,10 @@ import com.sephilabs.tradelog.taxonomy.TagRepository
 import com.sephilabs.tradelog.taxonomy.TaxonomyService
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 @Service
@@ -46,7 +48,7 @@ class PositionService(
     /** All closed positions for the profile as lightweight rows for the analytics dashboard. */
     @Transactional(readOnly = true)
     fun closedSummary(profileId: UUID): List<ClosedPositionSummaryDto> {
-        val rows = positions.findAllByProfileIdOrderByClosedAtAsc(profileId)
+        val rows = positions.findAllByProfileIdAndDeletedAtIsNullOrderByClosedAtAsc(profileId)
         val tagViews = tagViewsByPosition(rows.map { it.id })
         return rows.map {
             ClosedPositionSummaryDto(
@@ -79,6 +81,24 @@ class PositionService(
     fun updateNote(profileId: UUID, positionId: UUID, note: String?) {
         val position = loadOwn(profileId, positionId)
         position.note = note?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Soft-deletes one position: it vanishes from every read path but stays in the table so re-sync
+     * skips it instead of re-inserting it. A no-op (NOT_FOUND) if it is already deleted.
+     */
+    @Transactional
+    fun softDelete(profileId: UUID, positionId: UUID) {
+        loadOwn(profileId, positionId).deletedAt = Instant.now()
+    }
+
+    /** Soft-deletes many positions (explicit ids or the current filter set); returns how many were removed. */
+    @Transactional
+    fun bulkDelete(profileId: UUID, req: BulkDeleteRequest): Int {
+        val targets = positions.findAll(bulkTargetSpec(profileId, req.positionIds, req.filters))
+        val now = Instant.now()
+        targets.forEach { it.deletedAt = now }
+        return targets.size
     }
 
     @Transactional
@@ -118,23 +138,24 @@ class PositionService(
         return ids.size
     }
 
-    private fun resolveBulkTargetIds(profileId: UUID, req: BulkSetTagRequest): List<UUID> {
-        val explicit = req.positionIds
-        val spec = if (!explicit.isNullOrEmpty()) {
-            PositionSpecs.byIds(profileId, explicit)
+    private fun resolveBulkTargetIds(profileId: UUID, req: BulkSetTagRequest): List<UUID> =
+        positions.findAll(bulkTargetSpec(profileId, req.positionIds, req.filters)).map { it.id }
+
+    /** Resolves a bulk operation's targets: an explicit id list, else every live position matching [filters]. */
+    private fun bulkTargetSpec(profileId: UUID, positionIds: List<UUID>?, filters: BulkTagFilters?): Specification<Position> =
+        if (!positionIds.isNullOrEmpty()) {
+            PositionSpecs.byIds(profileId, positionIds)
         } else {
-            val f = req.filters ?: BulkTagFilters()
+            val f = filters ?: BulkTagFilters()
             PositionSpecs.fromCriteria(
                 PositionSearchCriteria(
                     profileId, f.symbol, f.side, f.source, f.exchange, f.from, f.to, f.tagId, f.untaggedGroupId
                 )
             )
         }
-        return positions.findAll(spec).map { it.id }
-    }
 
     private fun loadOwn(profileId: UUID, positionId: UUID): Position =
-        positions.findByIdAndProfileId(positionId, profileId) ?: throw AppException.notFound("POSITION_NOT_FOUND")
+        positions.findByIdAndProfileIdAndDeletedAtIsNull(positionId, profileId) ?: throw AppException.notFound("POSITION_NOT_FOUND")
 
     private fun fillCountsByPosition(positionIds: List<UUID>): Map<UUID, Int> {
         if (positionIds.isEmpty()) return emptyMap()
