@@ -274,6 +274,8 @@
       "info": "Cifras clave sobre el conjunto filtrado de operaciones cerradas. El PnL es neto de comisiones y financiación.",
       "totalPnl": "PnL total",
       "totalPnlInfo": "Suma del resultado neto de todas las operaciones del conjunto.",
+      "volume": "Volumen",
+      "volumeInfo": "Nocional total negociado en el conjunto, contando ambas patas: cantidad × (precio de entrada + precio de salida), sumado sobre todas las operaciones.",
       "winRate": "Tasa de acierto",
       "winRateInfo": "Porcentaje de operaciones con resultado positivo. Las operaciones en cero se excluyen.",
       "avgWin": "Ganancia media",

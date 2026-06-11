@@ -25,6 +25,15 @@ export function netOf(p: ClosedPosition): Decimal {
   return toDecimal(p.netPnl);
 }
 
+/**
+ * Notional volume of a round-trip trade, exchange-standard: both legs count, so
+ * volume = qty × (entryPrice + exitPrice). This matches how venues tally traded volume for fee
+ * tiers — opening and closing each contribute their notional.
+ */
+export function volumeOf(p: ClosedPosition): Decimal {
+  return toDecimal(p.qty).times(toDecimal(p.entryPrice).plus(toDecimal(p.exitPrice)));
+}
+
 export function pairOf(p: ClosedPosition): string {
   return `${p.symbolBase}/${p.symbolQuote}`;
 }
@@ -82,6 +91,7 @@ export interface Stats {
   wins: number;
   losses: number;
   totalPnl: Decimal;
+  volume: Decimal; // total notional traded, both legs (qty × (entry + exit))
   winRate: number | null; // fraction 0–1 over decided trades
   lossRate: number | null;
   avgWin: Decimal | null;
@@ -116,6 +126,7 @@ export function computeStats(rows: ClosedPosition[]): Stats {
     wins: wins.length,
     losses: losses.length,
     totalPnl: sum(nets),
+    volume: sum(rows.map(volumeOf)),
     winRate,
     lossRate,
     avgWin,

@@ -37,6 +37,7 @@ export function SummaryView({ rows }: { rows: ClosedPosition[]; timeZone: string
       <MetricCard title={t("analytics.stats.title")} info={t("analytics.stats.info")}>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat label={t("analytics.stats.totalPnl")} info={t("analytics.stats.totalPnlInfo")} value={money(decStr(stats.totalPnl), true)} tone={pnlTone(stats.totalPnl.toString())} />
+          <Stat label={t("analytics.stats.volume")} info={t("analytics.stats.volumeInfo")} value={money(decStr(stats.volume))} />
           <Stat label={t("analytics.stats.winRate")} info={t("analytics.stats.winRateInfo")} value={fmtPctFraction(stats.winRate)} />
           <Stat label={t("analytics.stats.avgWin")} info={t("analytics.stats.avgWinInfo")} value={money(decStr(stats.avgWin))} tone={stats.avgWin ? pnlTone(stats.avgWin.toString()) : undefined} />
           <Stat label={t("analytics.stats.avgLoss")} info={t("analytics.stats.avgLossInfo")} value={money(decStr(stats.avgLoss))} tone={stats.avgLoss ? pnlTone(stats.avgLoss.toString()) : undefined} />

@@ -16,6 +16,9 @@ export interface ClosedPosition {
   side: PositionSide;
   openedAt: string;
   closedAt: string;
+  qty: string;
+  entryPrice: string;
+  exitPrice: string;
   realizedPnl: string;
   netPnl: string;
   fees: string;

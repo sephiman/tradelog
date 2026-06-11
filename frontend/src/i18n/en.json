@@ -274,6 +274,8 @@
       "info": "Key figures over the filtered set of closed trades. PnL is net of fees and funding.",
       "totalPnl": "Total PnL",
       "totalPnlInfo": "Sum of the net result of every trade in the set.",
+      "volume": "Volume",
+      "volumeInfo": "Total notional traded across the set, counting both legs: quantity × (entry price + exit price), summed over every trade.",
       "winRate": "Win rate",
       "winRateInfo": "Share of trades with a positive result. Break-even trades (0) are excluded.",
       "avgWin": "Average win",

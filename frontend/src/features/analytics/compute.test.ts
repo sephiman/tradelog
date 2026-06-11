@@ -30,6 +30,9 @@ function pos(over: Partial<ClosedPosition>): ClosedPosition {
     side: "LONG",
     openedAt: "2026-02-01T00:00:00Z",
     closedAt: "2026-02-01T01:00:00Z",
+    qty: "0",
+    entryPrice: "0",
+    exitPrice: "0",
     realizedPnl: "0",
     netPnl: "0",
     fees: "0",
@@ -79,6 +82,14 @@ describe("computeStats", () => {
     expect(s.expectancy!.toNumber()).toBe(10);
     expect(s.avgRR).toBeNull();
     expect(s.largestLoss).toBeNull();
+  });
+
+  it("volume sums both legs across trades: qty × (entry + exit)", () => {
+    const s = computeStats([
+      net(0, { qty: "0.5", entryPrice: "60000", exitPrice: "58000" }), // 0.5*(118000) = 59000
+      net(0, { qty: "2", entryPrice: "1000", exitPrice: "1100" }), //    2*(2100)    =  4200
+    ]);
+    expect(s.volume.toNumber()).toBe(63200);
   });
 });
 

@@ -34,6 +34,9 @@ interface ClosedPositionSummary {
     val side: PositionSide
     val openedAt: Instant
     val closedAt: Instant
+    val qty: BigDecimal
+    val entryPrice: BigDecimal
+    val exitPrice: BigDecimal
     val realizedPnl: BigDecimal
     val netPnl: BigDecimal
     val fees: BigDecimal
