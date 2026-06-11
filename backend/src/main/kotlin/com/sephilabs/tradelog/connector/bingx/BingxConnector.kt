@@ -104,18 +104,26 @@ class BingxConnector(
         val oldest = oldestWithData ?: windowEnd
 
         val reconstructed = PositionReconstructor.reconstruct(raw, ::normalizeSymbol)
+        // EMIT NARROW: only positions that closed after the cursor watermark (or, on first sync,
+        // on/after sync_from). We FETCH the whole retained window for a correct flat start, but we
+        // must NOT re-emit already-synced trades: as the window slides, an old trade's opening fills
+        // age out of retention, so re-reconstructing it would start mid-position and produce a
+        // corrupted variant (shifted boundary → different externalId). Freezing everything at/before
+        // the watermark means those wrong re-derivations are computed but discarded here, never
+        // overwriting the good stored row. To deliberately repair a source after a logic fix, reset
+        // its cursor to null once — that re-emits the full window from sync_from.
+        val keepAfter = cursor.lastClosedAt
         val records = reconstructed
-            // `sync_from`: keep only trades that CLOSED on/after it (a trade opened before sync_from
-            // but closed after still belongs in the journal). null = keep all retained history.
-            .filter { backfillFrom == null || !it.closedAt.isBefore(backfillFrom) }
+            .filter {
+                if (keepAfter != null) it.closedAt.isAfter(keepAfter)
+                else backfillFrom == null || !it.closedAt.isBefore(backfillFrom)
+            }
             // BingX fills carry no PnL, so derive it from leg prices (fees/funding stay as reconstructed).
             .map { it.copy(realizedPnl = PositionReconstructor.realizedFromPrices(it)) }
-        // Cursor tracks the newest close we've emitted (for display/progress); it no longer gates the
-        // fetch or the kept set — idempotent upsert handles re-emitted positions.
         val maxClosed = records.maxOfOrNull { it.closedAt } ?: cursor.lastClosedAt
         log.info(
-            "BingX fetch: {} fills over {} window(s) -> {} reconstructed, {} kept after sync_from filter (sync_from={}, oldest requested={})",
-            raw.size, windows, reconstructed.size, records.size, backfillFrom, oldest,
+            "BingX fetch: {} fills over {} window(s) -> {} reconstructed, {} new (cursor={}, sync_from={}, oldest requested={})",
+            raw.size, windows, reconstructed.size, records.size, cursor.lastClosedAt, backfillFrom, oldest,
         )
         logOpenResidual(raw)
         return SyncBatch(records, SyncCursor(lastClosedAt = maxClosed, lastExternalId = records.lastOrNull()?.externalId))
