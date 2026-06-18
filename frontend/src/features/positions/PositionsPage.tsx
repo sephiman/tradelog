@@ -40,6 +40,16 @@ export function PositionsPage() {
   const bulkSetTag = useBulkSetTag(activeProfileId ?? "");
   const bulkDelete = useBulkDeletePositions(activeProfileId ?? "");
 
+  // If the current page no longer exists (e.g. switching to a profile with fewer
+  // positions), snap back to the last available page instead of showing an empty one.
+  useEffect(() => {
+    if (!data) return;
+    const maxPage = Math.max(0, Math.ceil((data.total ?? 0) / (data.size || 50)) - 1);
+    if ((filters.page ?? 0) > maxPage) {
+      setFilters((f) => ({ ...f, page: maxPage }));
+    }
+  }, [data, filters.page]);
+
   if (!activeProfileId) return <NoActiveProfile />;
 
   const clearSelection = () => {
