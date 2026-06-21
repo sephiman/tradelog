@@ -35,7 +35,7 @@ object PositionReconstructor {
     private val MC = MathContext(34, RoundingMode.HALF_EVEN)
 
     // Flat-detection tolerance: net exposure within max(size * REL_EPS, ABS_EPS) counts as closed.
-    private val REL_EPS = BigDecimal("0.00001")
+    private val REL_EPS = BigDecimal("0.001")
     private val ABS_EPS = BigDecimal("0.00000001")
 
     fun reconstruct(fills: List<RawFill>, normalize: (String) -> Symbol): List<PositionRecord> =
@@ -80,9 +80,10 @@ object PositionReconstructor {
                         cur.applyExit(f, reduce)
                         net = if (net.signum() > 0) net.subtract(reduce) else net.add(reduce)
                         remaining = remaining.subtract(reduce)
-                        // Snap a tiny residual to flat: Quantfury open/close quantities can differ
-                        // by ~1e-8, so net rarely hits *exactly* zero. Without this, the next
-                        // position's fills would merge into this never-closed lifecycle.
+                        // Snap a tiny residual to flat: derived quantities rarely hit *exactly*
+                        // zero (Quantfury open/close differ by ~1e-8; BingX qty=notional/price
+                        // rounding by ~0.01-0.05%). Without a tolerance wide enough for the source,
+                        // the next position's fills would merge into this never-closed lifecycle.
                         val flatEps = cur.entrySize().multiply(REL_EPS).max(ABS_EPS)
                         if (net.abs() <= flatEps) {
                             out += cur.build(symbol, normalize)

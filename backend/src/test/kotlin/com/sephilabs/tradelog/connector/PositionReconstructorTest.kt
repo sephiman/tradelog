@@ -87,6 +87,25 @@ class PositionReconstructorTest {
     }
 
     @Test
+    fun `rounding residual snaps to flat and does not contaminate the next trade`() {
+        // BingX derives base qty as notional/price, so a clean close lands slightly off zero
+        // (~0.01-0.05% of size). Two back-to-back round-trips, each closing 0.02% short of flat:
+        // both must emit, and the first's residue must not bleed into the second (which historically
+        // left a phantom sliver that kept the second lifecycle OPEN, dropping it entirely).
+        val fills = listOf(
+            RawFill("NEARUSDT", t(0), buy = true, price = bd("2.138"), qty = bd("93")),
+            RawFill("NEARUSDT", t(5), buy = false, price = bd("2.160"), qty = bd("92.98")), // 0.02 residual
+            RawFill("NEARUSDT", t(10), buy = true, price = bd("2.200"), qty = bd("50")),
+            RawFill("NEARUSDT", t(15), buy = false, price = bd("2.210"), qty = bd("49.99")), // 0.01 residual
+        )
+        val result = PositionReconstructor.reconstruct(fills, normalize)
+        assertEquals(2, result.size)
+        assertTrue(result.all { it.side == PositionSide.LONG })
+        assertEquals(0, result[0].qty.compareTo(bd("93")))
+        assertEquals(0, result[1].qty.compareTo(bd("50")))
+    }
+
+    @Test
     fun `fee and pnl allocated proportionally on split`() {
         // Close 2 against open 1 splits the closing fill; the closing portion is 1/2 of its fee/pnl.
         val fills = listOf(
