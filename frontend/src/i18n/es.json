@@ -141,6 +141,7 @@
     "coverage": {
       "BITUNIX": "Historial completo desde que abriste la cuenta.",
       "BINGX": "Solo ~los últimos 30 días — la API de BingX no ofrece operaciones más antiguas, así que sincroniza con frecuencia; lo anterior no se puede recuperar.",
+      "BITMART": "Solo historial reciente — la API de BitMart ofrece una ventana limitada de operaciones, así que sincroniza con frecuencia; lo anterior no se puede recuperar. Solo se necesita la API key (solo lectura).",
       "QUANTFURY": "Todo tu historial — lo que contenga el PDF subido (sin API, no se sincroniza nada automáticamente).",
       "JOURNAL_CSV": "Lo que importes — un CSV manual de posiciones cerradas, p. ej. de exchanges que ya no existen. No se sincroniza nada automáticamente."
     }

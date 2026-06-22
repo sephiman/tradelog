@@ -28,7 +28,7 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
   const [apiSecret, setApiSecret] = useState("");
   const [syncFrom, setSyncFrom] = useState("");
 
-  const isApi = kind === "BITUNIX" || kind === "BINGX";
+  const isApi = kind === "BITUNIX" || kind === "BINGX" || kind === "BITMART";
 
   const onCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +54,7 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
       },
     });
 
-  const hasApi = sources.some((s) => s.kind === "BITUNIX" || s.kind === "BINGX");
+  const hasApi = sources.some((s) => s.kind === "BITUNIX" || s.kind === "BINGX" || s.kind === "BITMART");
 
   return (
     <Card>
@@ -83,6 +83,7 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
               <Select className="w-36" value={kind} onChange={(e) => setKind(e.target.value as SourceKind)}>
                 <option value="BITUNIX">Bitunix</option>
                 <option value="BINGX">BingX</option>
+                <option value="BITMART">BitMart</option>
                 <option value="QUANTFURY">Quantfury</option>
                 <option value="JOURNAL_CSV">Journal CSV</option>
               </Select>
@@ -121,7 +122,7 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
   const syncOne = useSyncOne(profileId);
   const updateMut = useUpdateDataSource(profileId);
   const [editingKeys, setEditingKeys] = useState(false);
-  const isApi = source.kind === "BITUNIX" || source.kind === "BINGX";
+  const isApi = source.kind === "BITUNIX" || source.kind === "BINGX" || source.kind === "BITMART";
   const isDisabled = source.status === "DISABLED";
 
   const onToggleEnabled = () =>

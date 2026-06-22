@@ -141,6 +141,7 @@
     "coverage": {
       "BITUNIX": "Full history since you opened the account.",
       "BINGX": "Only ~the last 30 days — BingX's API serves no older fills, so sync regularly; older trades can't be recovered.",
+      "BITMART": "Recent history only — BitMart's API serves a limited window of fills, so sync regularly; older trades can't be recovered. Only the API key is needed (read-only).",
       "QUANTFURY": "Your entire history — whatever is in the uploaded PDF (no API, so nothing syncs automatically).",
       "JOURNAL_CSV": "Whatever you import — a manual CSV of closed positions, e.g. from exchanges that no longer exist. Nothing syncs automatically."
     }

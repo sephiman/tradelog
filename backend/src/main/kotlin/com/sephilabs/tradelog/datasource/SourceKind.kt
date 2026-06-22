@@ -8,13 +8,14 @@ package com.sephilabs.tradelog.datasource
 enum class SourceKind {
     BITUNIX,
     BINGX,
+    BITMART,
     QUANTFURY,
 
     /** Manual closed-position CSV in tradelog's canonical format (dead exchanges, hand-kept journals). */
     JOURNAL_CSV;
 
-    /** True for signed-REST API sources that hold encrypted credentials and a sync cursor. */
-    val isApi: Boolean get() = this == BITUNIX || this == BINGX
+    /** True for REST API sources that hold encrypted credentials and a sync cursor. */
+    val isApi: Boolean get() = this == BITUNIX || this == BINGX || this == BITMART
 
     /**
      * The trading venue this source represents, when it is the venue itself. Null for [JOURNAL_CSV],
@@ -24,6 +25,7 @@ enum class SourceKind {
         get() = when (this) {
             BITUNIX -> "Bitunix"
             BINGX -> "BingX"
+            BITMART -> "BitMart"
             QUANTFURY -> "Quantfury"
             JOURNAL_CSV -> null
         }

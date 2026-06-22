@@ -104,6 +104,7 @@ app:
     rate:
       bitunix-per-minute: 30
       bingx-per-minute: 30
+      bitmart-per-minute: 30
     # Bound the on-login async kickoff so a slow exchange can never exhaust threads.
     executor:
       core-pool-size: 2
@@ -128,3 +129,6 @@ app:
     bingx:
       base-url: ${BINGX_BASE_URL:https://open-api.bingx.com}
       timeout-ms: ${BINGX_TIMEOUT_MS:10000}
+    bitmart:
+      base-url: ${BITMART_BASE_URL:https://api-cloud-v2.bitmart.com}
+      timeout-ms: ${BITMART_TIMEOUT_MS:10000}

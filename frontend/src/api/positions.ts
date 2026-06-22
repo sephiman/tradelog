@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
 
 export type PositionSide = "LONG" | "SHORT";
-export type SourceKind = "BITUNIX" | "BINGX" | "QUANTFURY" | "JOURNAL_CSV";
+export type SourceKind = "BITUNIX" | "BINGX" | "BITMART" | "QUANTFURY" | "JOURNAL_CSV";
 export type FillAction = "OPEN" | "ADD" | "REDUCE" | "CLOSE";
 
 export interface PositionTagView {

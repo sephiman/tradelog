@@ -69,6 +69,8 @@ data class AppProperties(
     data class SyncRate(
         val bitunixPerMinute: Long = 30,
         val bingxPerMinute: Long = 30,
+        // BitMart limits private contract reads to ~6 req / 2s per key; 30/min stays well under.
+        val bitmartPerMinute: Long = 30,
     )
 
     data class SyncExecutor(
@@ -80,6 +82,7 @@ data class AppProperties(
     data class Connectors(
         val bitunix: ExchangeEndpoint = ExchangeEndpoint("https://fapi.bitunix.com"),
         val bingx: ExchangeEndpoint = ExchangeEndpoint("https://open-api.bingx.com"),
+        val bitmart: ExchangeEndpoint = ExchangeEndpoint("https://api-cloud-v2.bitmart.com"),
     )
 
     data class ExchangeEndpoint(
