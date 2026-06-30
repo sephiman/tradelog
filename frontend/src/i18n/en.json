@@ -218,7 +218,16 @@
     "account": "Account",
     "email": "Email",
     "timeZone": "Time zone",
-    "timeZoneHint": "Used to group analytics by hour of day and weekday in your local time."
+    "timeZoneHint": "Used to group analytics by hour of day and weekday in your local time.",
+    "capital": {
+      "title": "Trading capital & risk",
+      "exchangesLabel": "Trading capital per exchange (USDT)",
+      "exchangesHint": "Your current balance on each exchange. Entered manually for now; there's no history — saving overwrites the previous value.",
+      "noExchanges": "No exchanges yet. Add a data source or import a trade history first.",
+      "riskLabel": "Risk per trade",
+      "riskHint": "The two percentages of capital you're willing to risk on a single trade. Used to show the maximum to lose per trade on the dashboard.",
+      "riskPct": "Risk {{n}} (%)"
+    }
   },
   "backup": {
     "title": "Backup & restore",
@@ -259,7 +268,18 @@
       "behavior": "Behavior",
       "streaks": "Streaks",
       "pairs": "Pairs",
-      "fees": "Fees"
+      "fees": "Fees",
+      "capital": "Capital"
+    },
+    "capital": {
+      "title": "Trading capital & risk",
+      "info": "Your current balance and the maximum to lose per trade. This is a current balance — it uses the Exchange filter only and does not change with the Period or Origen filters.",
+      "empty": "No trading capital set. Add it in Settings → Trading capital & risk.",
+      "totalCapital": "Total capital",
+      "capital": "Capital",
+      "capitalInfo": "Sum of your current capital across the selected exchange(s).",
+      "maxLossAt": "Max loss per trade @ {{pct}}%",
+      "maxLossInfo": "Capital × risk %. The maximum to lose on a single trade — not the position size."
     },
     "period": {
       "all": "All",

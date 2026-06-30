@@ -45,11 +45,16 @@ anyone running a modified version as a network service must publish the source.
   **Quantfury PDF upload**.
 - **Annotations**: a customizable per-user **tag taxonomy** (seeded with an *Origen* group you edit)
   plus a free-text note per position, with the operations (legs) of each position viewable.
+- **Trading capital & risk**: record your **current capital per exchange** (USDT, entered manually)
+  and two configurable **risk percentages**; the dashboard shows total and per-exchange capital plus
+  the **maximum to lose per trade** at each risk %. It's a current balance — it follows the Exchange
+  filter but ignores Period/Origen. Structured so balances can later be fetched from the exchange API.
 - **Read-only, encrypted credentials**: API keys are AES-GCM encrypted at rest and decrypted only in
   the sync worker — never returned to the browser. Use **read-only keys** (no trading, no withdrawal);
   the app warns on permission errors but cannot enforce this on the exchange.
 - **UI**: Spanish/English (persisted per user), light/dark/system theme, responsive on desktop and
-  mobile. One dashboard chart: cumulative realized PnL per profile.
+  mobile. An analytics dashboard with a shared **Period / Exchange / Origen** filter bar, plus the
+  trading-capital & risk block above.
 
 ## How it works
 

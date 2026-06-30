@@ -16,6 +16,7 @@ import { BehaviorView } from "./BehaviorView";
 import { StreaksView } from "./StreaksView";
 import { PairsView } from "./PairsView";
 import { FeesView } from "./FeesView";
+import { CapitalRiskView } from "./CapitalRiskView";
 
 export function AnalyticsPage() {
   const { t } = useTranslation();
@@ -47,28 +48,35 @@ export function AnalyticsPage() {
       <FilterBar filters={filters} exchanges={exchanges} origenTags={origenTags} />
       <ViewTabs value={view} onChange={setView} />
 
-      {isLoading ? (
-        <Card>
-          <CardBody>
-            <p className="text-sm text-gray-500">{t("common.loading")}</p>
-          </CardBody>
-        </Card>
-      ) : rows.length === 0 ? (
-        <Card>
-          <CardBody>
-            <p className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">{t("analytics.noData")}</p>
-          </CardBody>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {show("summary") && <SummaryView {...props} />}
-          {show("performance") && <PerformanceView {...props} />}
-          {show("behavior") && <BehaviorView {...props} />}
-          {show("streaks") && <StreaksView {...props} />}
-          {show("pairs") && <PairsView {...props} />}
-          {show("fees") && <FeesView {...props} />}
-        </div>
-      )}
+      {/* Capital & risk is a current balance: independent of trade history and the Period/Origen
+          filters (it uses the Exchange filter only), so it renders outside the closed-positions guard. */}
+      {show("capital") && <CapitalRiskView profileId={activeProfileId} exchange={filters.exchange} />}
+
+      {/* The trade-history views (and their loading/empty card) are hidden when only the
+          capital tab is active, since capital is shown above and needs no closed positions. */}
+      {view !== "capital" &&
+        (isLoading ? (
+          <Card>
+            <CardBody>
+              <p className="text-sm text-gray-500">{t("common.loading")}</p>
+            </CardBody>
+          </Card>
+        ) : rows.length === 0 ? (
+          <Card>
+            <CardBody>
+              <p className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">{t("analytics.noData")}</p>
+            </CardBody>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {show("summary") && <SummaryView {...props} />}
+            {show("performance") && <PerformanceView {...props} />}
+            {show("behavior") && <BehaviorView {...props} />}
+            {show("streaks") && <StreaksView {...props} />}
+            {show("pairs") && <PairsView {...props} />}
+            {show("fees") && <FeesView {...props} />}
+          </div>
+        ))}
     </div>
   );
 }

@@ -2,12 +2,16 @@
 package com.sephilabs.tradelog.profile
 
 import com.sephilabs.tradelog.common.errors.AppException
+import com.sephilabs.tradelog.datasource.DataSourceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 @Service
-class ProfileService(private val profiles: ProfileRepository) {
+class ProfileService(
+    private val profiles: ProfileRepository,
+    private val dataSources: DataSourceRepository,
+) {
 
     @Transactional(readOnly = true)
     fun list(userId: UUID): List<ProfileDto> =
@@ -49,6 +53,8 @@ class ProfileService(private val profiles: ProfileRepository) {
     fun delete(userId: UUID, id: UUID) {
         val profile = loadOwn(userId, id)
         // Data sources reference this profile with ON DELETE RESTRICT; remove them first.
+        // Their positions are removed by the DB's ON DELETE CASCADE on data_source_id.
+        dataSources.deleteByProfileId(profile.id)
         profiles.delete(profile)
     }
 

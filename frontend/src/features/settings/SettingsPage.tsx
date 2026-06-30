@@ -3,6 +3,7 @@ import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { AccountCard } from "./AccountCard";
 import { ProfilesCard } from "./ProfilesCard";
 import { DataSourcesCard } from "./DataSourcesCard";
+import { CapitalRiskCard } from "./CapitalRiskCard";
 import { TaxonomyCard } from "./TaxonomyCard";
 import { BackupRestoreCard } from "./BackupRestoreCard";
 
@@ -16,6 +17,7 @@ export function SettingsPage() {
       <AccountCard />
       <ProfilesCard />
       {activeProfile && <DataSourcesCard profileId={activeProfile.id} profileName={activeProfile.name} />}
+      {activeProfile && <CapitalRiskCard profileId={activeProfile.id} />}
       <TaxonomyCard />
       <BackupRestoreCard />
     </div>

@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Chip } from "@/components/ui/primitives";
 
-export type ViewKey = "all" | "summary" | "performance" | "behavior" | "streaks" | "pairs" | "fees";
+export type ViewKey = "all" | "summary" | "performance" | "behavior" | "streaks" | "pairs" | "fees" | "capital";
 
-export const VIEW_KEYS: ViewKey[] = ["all", "summary", "performance", "behavior", "streaks", "pairs", "fees"];
+export const VIEW_KEYS: ViewKey[] = ["all", "summary", "performance", "behavior", "streaks", "pairs", "fees", "capital"];
 
 export function ViewTabs({ value, onChange }: { value: ViewKey; onChange: (v: ViewKey) => void }) {
   const { t } = useTranslation();

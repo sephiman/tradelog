@@ -218,7 +218,16 @@
     "account": "Cuenta",
     "email": "Correo",
     "timeZone": "Zona horaria",
-    "timeZoneHint": "Se usa para agrupar la analítica por hora del día y día de la semana en tu hora local."
+    "timeZoneHint": "Se usa para agrupar la analítica por hora del día y día de la semana en tu hora local.",
+    "capital": {
+      "title": "Capital y riesgo",
+      "exchangesLabel": "Capital de trading por exchange (USDT)",
+      "exchangesHint": "Tu saldo actual en cada exchange. Por ahora se introduce manualmente; no hay historial — al guardar se reemplaza el valor anterior.",
+      "noExchanges": "Aún no hay exchanges. Añade primero una fuente de datos o importa un historial de operaciones.",
+      "riskLabel": "Riesgo por operación",
+      "riskHint": "Los dos porcentajes del capital que estás dispuesto a arriesgar en una sola operación. Se usan para mostrar el máximo a perder por operación en el panel.",
+      "riskPct": "Riesgo {{n}} (%)"
+    }
   },
   "backup": {
     "title": "Copia y restauración",
@@ -259,7 +268,18 @@
       "behavior": "Comportamiento",
       "streaks": "Rachas",
       "pairs": "Pares",
-      "fees": "Comisiones"
+      "fees": "Comisiones",
+      "capital": "Capital"
+    },
+    "capital": {
+      "title": "Capital y riesgo",
+      "info": "Tu saldo actual y el máximo a perder por operación. Es un saldo actual — usa solo el filtro de Exchange y no cambia con los filtros de Periodo u Origen.",
+      "empty": "No hay capital de trading definido. Añádelo en Ajustes → Capital y riesgo.",
+      "totalCapital": "Capital total",
+      "capital": "Capital",
+      "capitalInfo": "Suma de tu capital actual en el/los exchange(s) seleccionado(s).",
+      "maxLossAt": "Máx. a perder por operación @ {{pct}}%",
+      "maxLossInfo": "Capital × % de riesgo. El máximo a perder en una sola operación — no el tamaño de la posición."
     },
     "period": {
       "all": "Todo",
