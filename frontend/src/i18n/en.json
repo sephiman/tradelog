@@ -363,7 +363,7 @@
     "cumulativeFees": "Cumulative fees",
     "cumulativeFeesInfo": "Running sum of fees over time.",
     "feeRatio": "Fee ratio",
-    "feeRatioInfo": "Fees relative to the day's magnitude: fees ÷ (|net result| + fees)."
+    "feeRatioInfo": "Per-day return on fees: net PnL ÷ fees. Month value is month PnL ÷ month fees, from monthly totals. Days with no trades or zero fees are skipped."
   },
   "sync": {
     "running": "Syncing…",

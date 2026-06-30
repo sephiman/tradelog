@@ -8,6 +8,9 @@ export const fmtPctFraction = (r: number | null, digits = 1): string => (r === n
 /** Format an already-percentage value (0–100). */
 export const fmtPctValue = (r: number | null, digits = 1): string => (r === null ? DASH : `${r.toFixed(digits)}%`);
 
+/** Format a signed plain number (e.g. a ratio), with a leading + for positives. */
+export const fmtRatio = (r: number | null, digits = 2): string => (r === null ? DASH : `${r > 0 ? "+" : ""}${r.toFixed(digits)}`);
+
 /** A Decimal as a plain string for the formatters in lib/format, or null. */
 export const decStr = (d: Decimal | null): string | null => (d === null ? null : d.toString());
 

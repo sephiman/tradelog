@@ -363,7 +363,7 @@
     "cumulativeFees": "Comisiones acumuladas",
     "cumulativeFeesInfo": "Suma acumulada de comisiones a lo largo del tiempo.",
     "feeRatio": "Ratio de comisiones",
-    "feeRatioInfo": "Comisiones respecto a la magnitud del día: comisiones ÷ (|resultado neto| + comisiones)."
+    "feeRatioInfo": "Retorno por comisión diario: PnL neto ÷ comisiones. El valor del mes es PnL del mes ÷ comisiones del mes, a partir de los totales mensuales. Se omiten los días sin operaciones o sin comisiones."
   },
   "sync": {
     "running": "Sincronizando…",

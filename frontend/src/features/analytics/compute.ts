@@ -491,37 +491,35 @@ export function cumulativeFees(rows: ClosedPosition[]): CumFeePoint[] {
 export interface DayFeeRatio {
   day: number;
   fees: number;
-  net: number;
-  ratio: number | null; // fees / (|net| + fees), bounded 0–1; null if no fees and no result
+  pnl: number; // day net PnL — drives bar sign/color
+  ratio: number | null; // pnl / fees, signed; null when fees is zero (no bar)
 }
 
 export interface FeeRatioMonth {
   days: DayFeeRatio[];
-  monthRatio: number | null;
+  monthRatio: number | null; // month PnL ÷ month fees, from monthly totals
 }
 
-/** Per-day fee burden: fees relative to the day's gross magnitude, plus the month aggregate. */
+/** Per-day return on fees (net PnL ÷ fees), plus the month aggregate from monthly totals. */
 export function feeRatioByDay(rows: ClosedPosition[], year: number, month: number, tz: string): FeeRatioMonth {
   const days = getDaysInMonth(new Date(year, month - 1, 1));
-  const acc = Array.from({ length: days }, () => ({ fees: ZERO, net: ZERO }));
+  const acc = Array.from({ length: days }, () => ({ fees: ZERO, pnl: ZERO }));
   let monthFees = ZERO;
-  let monthNet = ZERO;
+  let monthPnl = ZERO;
   for (const p of rows) {
     const z = zonedParts(p.closedAt, tz);
     if (z.year !== year || z.month !== month) continue;
     const fee = toDecimal(p.fees);
-    const net = netOf(p);
+    const pnl = netOf(p);
     acc[z.day - 1].fees = acc[z.day - 1].fees.plus(fee);
-    acc[z.day - 1].net = acc[z.day - 1].net.plus(net);
+    acc[z.day - 1].pnl = acc[z.day - 1].pnl.plus(pnl);
     monthFees = monthFees.plus(fee);
-    monthNet = monthNet.plus(net);
+    monthPnl = monthPnl.plus(pnl);
   }
-  const ratio = (fees: Decimal, net: Decimal): number | null => {
-    const denom = net.abs().plus(fees);
-    return denom.isZero() ? null : fees.div(denom).toNumber();
-  };
+  // Skip days with no fees (also covers days with no trades): never divide by zero.
+  const ratio = (pnl: Decimal, fees: Decimal): number | null => (fees.isZero() ? null : pnl.div(fees).toNumber());
   return {
-    days: acc.map((b, i) => ({ day: i + 1, fees: b.fees.toNumber(), net: b.net.toNumber(), ratio: ratio(b.fees, b.net) })),
-    monthRatio: ratio(monthFees, monthNet),
+    days: acc.map((b, i) => ({ day: i + 1, fees: b.fees.toNumber(), pnl: b.pnl.toNumber(), ratio: ratio(b.pnl, b.fees) })),
+    monthRatio: ratio(monthPnl, monthFees),
   };
 }

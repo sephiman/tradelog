@@ -231,11 +231,23 @@ describe("fees", () => {
     expect(cumulativeFees(rows).map((p) => p.cumulative)).toEqual([1, 3]);
   });
 
-  it("computes a bounded fee ratio", () => {
-    const rows = [pos({ netPnl: "8", fees: "2", closedAt: "2026-02-05T00:00:00Z" })];
+  it("computes a signed fee ratio (PnL ÷ fees)", () => {
+    const rows = [
+      pos({ netPnl: "8", fees: "2", closedAt: "2026-02-05T00:00:00Z" }),
+      pos({ netPnl: "-3", fees: "1", closedAt: "2026-02-06T00:00:00Z" }),
+    ];
     const fr = feeRatioByDay(rows, 2026, 2, "UTC");
-    // ratio = fees / (|net| + fees) = 2 / (8 + 2) = 0.2
-    expect(fr.days[4].ratio).toBeCloseTo(0.2);
-    expect(fr.monthRatio).toBeCloseTo(0.2);
+    expect(fr.days[4].ratio).toBeCloseTo(4); // 8 / 2
+    expect(fr.days[5].ratio).toBeCloseTo(-3); // -3 / 1
+    // month value from monthly totals: (8 - 3) / (2 + 1) = 5 / 3
+    expect(fr.monthRatio).toBeCloseTo(5 / 3);
+  });
+
+  it("skips days with no trades or zero fees", () => {
+    const rows = [pos({ netPnl: "5", fees: "0", closedAt: "2026-02-05T00:00:00Z" })];
+    const fr = feeRatioByDay(rows, 2026, 2, "UTC");
+    expect(fr.days[4].ratio).toBeNull(); // zero fees → no bar
+    expect(fr.days[0].ratio).toBeNull(); // no trades → no bar
+    expect(fr.monthRatio).toBeNull();
   });
 });

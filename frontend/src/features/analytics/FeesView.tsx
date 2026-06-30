@@ -6,8 +6,9 @@ import type { ClosedPosition } from "@/api/analytics";
 import { cumulativeFees, feeRatioByDay, feesByDayOfMonth } from "./compute";
 import { MetricCard } from "./MetricCard";
 import { MonthNav } from "./PeriodNav";
-import { FEE_COLOR, useChartTheme, WINRATE_LINE } from "./chartTheme";
-import { DASH, fmtPctFraction } from "./display";
+import { FEE_COLOR, useChartTheme } from "./chartTheme";
+import { SignedBar } from "./chartShapes";
+import { fmtRatio } from "./display";
 
 export function FeesView({ rows, timeZone }: { rows: ClosedPosition[]; timeZone: string }) {
   const { t } = useTranslation();
@@ -65,20 +66,20 @@ export function FeesView({ rows, timeZone }: { rows: ClosedPosition[]; timeZone:
         info={t("analytics.feeRatioInfo")}
         action={
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500 dark:text-gray-400">{t("analytics.monthValue")}: {ratio.monthRatio === null ? DASH : fmtPctFraction(ratio.monthRatio)}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{t("analytics.monthValue")}: {fmtRatio(ratio.monthRatio)}</span>
             {monthNav}
           </div>
         }
       >
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={ratio.days} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+            <BarChart data={ratio.days} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
               <XAxis dataKey="day" stroke={theme.axisColor} fontSize={12} />
-              <YAxis stroke={theme.axisColor} fontSize={12} width={56} tickFormatter={(v: number) => `${Math.round(v * 100)}%`} domain={[0, 1]} />
-              <Tooltip contentStyle={theme.tooltipStyle} formatter={(v) => [fmtPctFraction(Number(v)), t("analytics.feeRatio")]} />
-              <Line type="monotone" dataKey="ratio" name={t("analytics.feeRatio")} stroke={WINRATE_LINE} dot={false} connectNulls />
-            </LineChart>
+              <YAxis stroke={theme.axisColor} fontSize={12} width={56} tickFormatter={(v: number) => fmtRatio(v, 1)} />
+              <Tooltip contentStyle={theme.tooltipStyle} formatter={(v) => [fmtRatio(Number(v)), t("analytics.feeRatio")]} />
+              <Bar dataKey="ratio" name={t("analytics.feeRatio")} shape={<SignedBar />} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </MetricCard>
