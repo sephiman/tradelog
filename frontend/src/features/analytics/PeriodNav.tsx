@@ -1,4 +1,19 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+
+/** A shared month-navigation value: the selected year/month plus a setter. */
+export interface MonthNavState {
+  year: number;
+  month: number; // 1–12
+  set: (year: number, month: number) => void;
+}
+
+/** Month-nav state initialized to the current month. Lift it to share one nav across paired cards. */
+export function useMonthNavState(): MonthNavState {
+  const now = new Date();
+  const [{ year, month }, setYm] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
+  return { year, month, set: (y, m) => setYm({ year: y, month: m }) };
+}
 
 function NavButtons({ label, onPrev, onNext }: { label: string; onPrev: () => void; onNext: () => void }) {
   const { t } = useTranslation();

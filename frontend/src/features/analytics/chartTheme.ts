@@ -1,12 +1,30 @@
 import type { CSSProperties } from "react";
 import { useTheme } from "@/lib/theme";
 
+/**
+ * Color rule for the dashboard: red and green are reserved EXCLUSIVELY for the sign of a PnL value
+ * (loss / profit). Categories — direction, trader style, trade counts — never use red/green; they use
+ * the violet accent borrowed from the reference design. Time series share one consistent blue.
+ */
+
+// PnL sign only.
 export const GREEN = "#22c55e";
 export const RED = "#ef4444";
 export const NEUTRAL = "#9ca3af";
-export const WINRATE_LINE = "#0ea5e9";
-export const LONG_COLOR = GREEN;
-export const SHORT_COLOR = RED;
+
+// Violet accent for non-PnL chart elements (donuts, category bars, etc.).
+export const ACCENT = "#8b5cf6";
+/** Two distinct violet shades for the Long / Short categories (never red/green). */
+export const LONG_COLOR = "#7c3aed";
+export const SHORT_COLOR = "#a78bfa";
+/** Neutral violet scale for the trader-style donut (scalper → day → swing). */
+export const VIOLET_SCALE = ["#7c3aed", "#a78bfa", "#c4b5fd"];
+
+// Single blue accent shared by every time series and win-rate line.
+export const LINE_ACCENT = "#0ea5e9";
+export const WINRATE_LINE = LINE_ACCENT;
+
+// Amber for fee amounts (a cost — not a category, not a PnL sign).
 export const FEE_COLOR = "#f59e0b";
 
 /** Hex fill for a signed value — the chart analog of `pnlTone`. */

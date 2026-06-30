@@ -1,146 +1,229 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ComposedChart,
-  Legend,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fmtUsd, pnlTone } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { ClosedPosition } from "@/api/analytics";
-import { directionBreakdown, traderStyle, winRateByHour, winRateByWeekday, type DirStat } from "./compute";
+import { directionBreakdown, traderStyle, winRateByHour, winRateByWeekday } from "./compute";
 import { MetricCard } from "./MetricCard";
-import { useChartTheme, WINRATE_LINE } from "./chartTheme";
-import { SignedBar } from "./chartShapes";
-import { DASH, fmtDuration, fmtPctFraction } from "./display";
+import { ACCENT, LONG_COLOR, SHORT_COLOR, useChartTheme, VIOLET_SCALE, WINRATE_LINE } from "./chartTheme";
+import { Donut } from "./chartShapes";
+import { DASH, fmtDuration, fmtPctFraction, fmtPctValue } from "./display";
 
-export function BehaviorView({ rows, timeZone }: { rows: ClosedPosition[]; timeZone: string }) {
+export function WinRateByHourCard({ rows, timeZone }: { rows: ClosedPosition[]; timeZone: string }) {
+  const { t } = useTranslation();
+  const theme = useChartTheme();
+  const byHour = useMemo(() => winRateByHour(rows, timeZone), [rows, timeZone]);
+  return (
+    <MetricCard title={t("analytics.winRateByHour")} info={t("analytics.winRateByHourInfo")}>
+      <RateChart data={byHour} xKey="key" theme={theme} countLabel={t("analytics.trades")} rateLabel={t("analytics.winRate")} />
+    </MetricCard>
+  );
+}
+
+export function WinRateByWeekdayCard({ rows, timeZone }: { rows: ClosedPosition[]; timeZone: string }) {
   const { t, i18n } = useTranslation();
   const theme = useChartTheme();
-
-  const byHour = useMemo(() => winRateByHour(rows, timeZone), [rows, timeZone]);
   const byWeekday = useMemo(() => winRateByWeekday(rows, timeZone), [rows, timeZone]);
-  const dir = useMemo(() => directionBreakdown(rows), [rows]);
-  const style = useMemo(() => traderStyle(rows), [rows]);
-
   const weekdayName = (i: number) => new Intl.DateTimeFormat(i18n.language, { weekday: "short" }).format(new Date(2024, 0, 1 + i));
-  const pctAxis = { yAxisId: "rate", orientation: "right" as const, domain: [0, 100], unit: "%", stroke: theme.axisColor, fontSize: 12, width: 44 };
+  return (
+    <MetricCard title={t("analytics.winRateByWeekday")} info={t("analytics.winRateByWeekdayInfo")}>
+      <RateChart data={byWeekday} xKey="key" tickFormatter={weekdayName} theme={theme} countLabel={t("analytics.trades")} rateLabel={t("analytics.winRate")} />
+    </MetricCard>
+  );
+}
 
-  const styleData = [
-    { key: "scalper", label: t("analytics.style.scalper"), ...style.scalper },
-    { key: "day", label: t("analytics.style.day"), ...style.day },
-    { key: "swing", label: t("analytics.style.swing"), ...style.swing },
+export function TradeDirectionCard({ rows }: { rows: ClosedPosition[] }) {
+  const { t } = useTranslation();
+  const theme = useChartTheme();
+  const dir = useMemo(() => directionBreakdown(rows), [rows]);
+
+  const donut = [
+    { name: t("analytics.longs"), value: dir.long.count, fill: LONG_COLOR },
+    { name: t("analytics.shorts"), value: dir.short.count, fill: SHORT_COLOR },
   ];
 
   return (
-    <div className="space-y-6">
-      <MetricCard title={t("analytics.winRateByHour")} info={t("analytics.winRateByHourInfo")}>
-        <RateChart data={byHour} xKey="key" theme={theme} pctAxis={pctAxis} countLabel={t("analytics.trades")} rateLabel={t("analytics.winRate")} />
-      </MetricCard>
-
-      <MetricCard title={t("analytics.winRateByWeekday")} info={t("analytics.winRateByWeekdayInfo")}>
-        <RateChart data={byWeekday} xKey="key" tickFormatter={weekdayName} theme={theme} pctAxis={pctAxis} countLabel={t("analytics.trades")} rateLabel={t("analytics.winRate")} />
-      </MetricCard>
-
-      <MetricCard title={t("analytics.direction")} info={t("analytics.directionInfo")}>
-        <table className="hidden w-full text-sm md:table">
-          <thead>
-            <tr className="text-left text-gray-500 dark:text-gray-400">
-              <th className="py-1 font-medium">{t("analytics.direction")}</th>
-              <th className="py-1 text-right font-medium">{t("analytics.trades")}</th>
-              <th className="py-1 text-right font-medium">{t("analytics.winRate")}</th>
-              <th className="py-1 text-right font-medium">{t("analytics.totalPnl")}</th>
-              <th className="py-1 text-right font-medium">{t("analytics.stats.expectancy")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <DirRow label={t("analytics.longs")} stat={dir.long} />
-            <DirRow label={t("analytics.shorts")} stat={dir.short} />
-          </tbody>
-        </table>
-        <div className="space-y-3 md:hidden">
-          <DirCard label={t("analytics.longs")} stat={dir.long} t={t} />
-          <DirCard label={t("analytics.shorts")} stat={dir.short} t={t} />
+    <MetricCard title={t("analytics.direction")} info={t("analytics.directionInfo")}>
+      <div className="@container">
+        <div className="grid items-center gap-6 @sm:grid-cols-3">
+          <StatBlock
+            label={t("analytics.longs")}
+            color={LONG_COLOR}
+            stats={[
+              { label: t("analytics.trades"), value: dir.long.count },
+              { label: t("analytics.winRate"), value: fmtPctFraction(dir.long.winRate) },
+            ]}
+          />
+          <div>
+            <div className="mx-auto h-40 w-full">
+              <Donut data={donut} tooltipStyle={theme.tooltipStyle} format={(v) => `${v} ${t("analytics.trades").toLowerCase()}`} />
+            </div>
+            <DonutLegend items={[{ label: t("analytics.longs"), color: LONG_COLOR }, { label: t("analytics.shorts"), color: SHORT_COLOR }]} />
+          </div>
+          <StatBlock
+            label={t("analytics.shorts")}
+            color={SHORT_COLOR}
+            stats={[
+              { label: t("analytics.trades"), value: dir.short.count },
+              { label: t("analytics.winRate"), value: fmtPctFraction(dir.short.winRate) },
+            ]}
+          />
         </div>
-      </MetricCard>
 
-      <MetricCard title={t("analytics.traderStyle")} info={t("analytics.traderStyleInfo")}>
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={styleData} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
-              <XAxis dataKey="label" stroke={theme.axisColor} fontSize={12} />
-              <YAxis allowDecimals={false} stroke={theme.axisColor} fontSize={12} width={36} />
-              <Tooltip contentStyle={theme.tooltipStyle} />
-              <Bar dataKey="count" name={t("analytics.trades")} shape={<SignedBar />} />
-            </BarChart>
-          </ResponsiveContainer>
+        <hr className="my-4 border-border dark:border-gray-700" />
+
+        <div className="grid grid-cols-2 gap-6">
+          <FooterCol
+            heading={t("analytics.longs")}
+            headingColor={LONG_COLOR}
+            items={[
+              { label: t("analytics.totalPnl"), value: fmtUsd(dir.long.totalPnl.toString(), { sign: true }), tone: pnlTone(dir.long.totalPnl.toString()) },
+              {
+                label: t("analytics.stats.expectancy"),
+                value: dir.long.expectancy ? fmtUsd(dir.long.expectancy.toString(), { sign: true }) : DASH,
+                tone: dir.long.expectancy ? pnlTone(dir.long.expectancy.toString()) : undefined,
+              },
+            ]}
+          />
+          <FooterCol
+            heading={t("analytics.shorts")}
+            headingColor={SHORT_COLOR}
+            items={[
+              { label: t("analytics.totalPnl"), value: fmtUsd(dir.short.totalPnl.toString(), { sign: true }), tone: pnlTone(dir.short.totalPnl.toString()) },
+              {
+                label: t("analytics.stats.expectancy"),
+                value: dir.short.expectancy ? fmtUsd(dir.short.expectancy.toString(), { sign: true }) : DASH,
+                tone: dir.short.expectancy ? pnlTone(dir.short.expectancy.toString()) : undefined,
+              },
+            ]}
+          />
         </div>
-        <dl className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
-          <Foot label={t("analytics.style.avgDuration")} value={fmtDuration(style.avgDurationMs)} />
-          <Foot label={t("analytics.style.longest")} value={fmtDuration(style.longestMs)} />
-          <Foot label={t("analytics.style.shortest")} value={fmtDuration(style.shortestMs)} />
-          <Foot label={t("analytics.style.predominant")} value={style.predominant ? t(`analytics.style.${style.predominant}`) : DASH} />
-        </dl>
-      </MetricCard>
-    </div>
+      </div>
+    </MetricCard>
   );
 }
 
-function Foot({ label, value }: { label: string; value: string }) {
+export function TraderStyleCard({ rows }: { rows: ClosedPosition[] }) {
+  const { t } = useTranslation();
+  const theme = useChartTheme();
+  const style = useMemo(() => traderStyle(rows), [rows]);
+
+  const total = style.scalper.count + style.day.count + style.swing.count;
+  const weight = (count: number) => fmtPctValue(total > 0 ? (count / total) * 100 : null);
+
+  const donut = [
+    { name: t("analytics.style.scalper"), value: style.scalper.count, fill: VIOLET_SCALE[0] },
+    { name: t("analytics.style.day"), value: style.day.count, fill: VIOLET_SCALE[1] },
+    { name: t("analytics.style.swing"), value: style.swing.count, fill: VIOLET_SCALE[2] },
+  ];
+
   return (
-    <div className="rounded-md border border-border p-2 dark:border-gray-700">
-      <dt className="text-xs text-gray-500 dark:text-gray-400">{label}</dt>
-      <dd className="mt-0.5 font-medium">{value}</dd>
-    </div>
+    <MetricCard title={t("analytics.traderStyle")} info={t("analytics.traderStyleInfo")}>
+      <div className="@container">
+        <div className="grid items-center gap-6 @sm:grid-cols-3">
+          <StatBlock
+            label={t("analytics.style.scalper")}
+            color={VIOLET_SCALE[0]}
+            stats={[
+              { label: t("analytics.trades"), value: style.scalper.count },
+              { label: t("analytics.style.weight"), value: weight(style.scalper.count) },
+            ]}
+          />
+          <div>
+            <div className="mx-auto h-40 w-full">
+              <Donut data={donut} tooltipStyle={theme.tooltipStyle} format={(v) => `${v} ${t("analytics.trades").toLowerCase()}`} />
+            </div>
+            <p className="mt-2 text-center text-sm font-semibold" style={{ color: VIOLET_SCALE[1] }}>
+              {t("analytics.style.day")}: {style.day.count} {t("analytics.trades").toLowerCase()} · {weight(style.day.count)}
+            </p>
+            <DonutLegend
+              items={[
+                { label: t("analytics.style.scalper"), color: VIOLET_SCALE[0] },
+                { label: t("analytics.style.day"), color: VIOLET_SCALE[1] },
+                { label: t("analytics.style.swing"), color: VIOLET_SCALE[2] },
+              ]}
+            />
+          </div>
+          <StatBlock
+            label={t("analytics.style.swing")}
+            color={VIOLET_SCALE[2]}
+            stats={[
+              { label: t("analytics.trades"), value: style.swing.count },
+              { label: t("analytics.style.weight"), value: weight(style.swing.count) },
+            ]}
+          />
+        </div>
+
+        <hr className="my-4 border-border dark:border-gray-700" />
+
+        <div className="grid grid-cols-2 gap-6">
+          <FooterCol
+            items={[
+              { label: t("analytics.style.avgDuration"), value: fmtDuration(style.avgDurationMs) },
+              { label: t("analytics.style.longest"), value: fmtDuration(style.longestMs) },
+            ]}
+          />
+          <FooterCol
+            items={[
+              { label: t("analytics.style.shortest"), value: fmtDuration(style.shortestMs) },
+              { label: t("analytics.style.predominant"), value: style.predominant ? t(`analytics.style.${style.predominant}`) : DASH },
+            ]}
+          />
+        </div>
+      </div>
+    </MetricCard>
   );
 }
 
-function DirCard({ label, stat, t }: { label: string; stat: DirStat; t: (k: string) => string }) {
+function StatBlock({ label, color, stats }: { label: string; color: string; stats: { label: string; value: ReactNode }[] }) {
   return (
-    <div className="rounded-md border border-border p-3 dark:border-gray-700">
-      <div className="font-medium">{label}</div>
-      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-        <DirCell label={t("analytics.trades")} value={String(stat.count)} />
-        <DirCell label={t("analytics.winRate")} value={fmtPctFraction(stat.winRate)} />
-        <DirCell label={t("analytics.totalPnl")} value={fmtUsd(stat.totalPnl.toString(), { sign: true })} tone={pnlTone(stat.totalPnl.toString())} />
-        <DirCell
-          label={t("analytics.stats.expectancy")}
-          value={stat.expectancy ? fmtUsd(stat.expectancy.toString(), { sign: true }) : DASH}
-          tone={stat.expectancy ? pnlTone(stat.expectancy.toString()) : ""}
-        />
+    <div className="text-center">
+      <div className="text-sm font-semibold" style={{ color }}>
+        {label}
+      </div>
+      <dl className="mt-2 space-y-2">
+        {stats.map((s) => (
+          <div key={s.label}>
+            <dt className="text-xs text-gray-500 dark:text-gray-400">{s.label}</dt>
+            <dd className="text-lg font-semibold tabular-nums">{s.value}</dd>
+          </div>
+        ))}
       </dl>
     </div>
   );
 }
 
-function DirCell({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function DonutLegend({ items }: { items: { label: string; color: string }[] }) {
   return (
-    <div className="flex items-center justify-between gap-2">
-      <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
-      <dd className={cn("font-medium tabular-nums", tone)}>{value}</dd>
+    <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
+      {items.map((i) => (
+        <span key={i.label} className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: i.color }} />
+          {i.label}
+        </span>
+      ))}
     </div>
   );
 }
 
-function DirRow({ label, stat }: { label: string; stat: DirStat }) {
+function FooterCol({ heading, headingColor, items }: { heading?: string; headingColor?: string; items: { label: string; value: ReactNode; tone?: string }[] }) {
   return (
-    <tr className="border-t border-border dark:border-gray-700">
-      <td className="py-1.5">{label}</td>
-      <td className="py-1.5 text-right tabular-nums">{stat.count}</td>
-      <td className="py-1.5 text-right tabular-nums">{fmtPctFraction(stat.winRate)}</td>
-      <td className={cn("py-1.5 text-right tabular-nums", pnlTone(stat.totalPnl.toString()))}>{fmtUsd(stat.totalPnl.toString(), { sign: true })}</td>
-      <td className={cn("py-1.5 text-right tabular-nums", stat.expectancy ? pnlTone(stat.expectancy.toString()) : "")}>
-        {stat.expectancy ? fmtUsd(stat.expectancy.toString(), { sign: true }) : DASH}
-      </td>
-    </tr>
+    <div>
+      {heading && (
+        <div className="text-sm font-semibold" style={headingColor ? { color: headingColor } : undefined}>
+          {heading}
+        </div>
+      )}
+      <dl className={cn("space-y-1 text-sm", heading && "mt-1")}>
+        {items.map((i) => (
+          <div key={i.label} className="flex items-center justify-between gap-3">
+            <dt className="text-gray-500 dark:text-gray-400">{i.label}</dt>
+            <dd className={cn("font-medium tabular-nums", i.tone)}>{i.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
@@ -155,7 +238,6 @@ function RateChart({
   xKey,
   tickFormatter,
   theme,
-  pctAxis,
   countLabel,
   rateLabel,
 }: {
@@ -163,7 +245,6 @@ function RateChart({
   xKey: string;
   tickFormatter?: (v: number) => string;
   theme: ReturnType<typeof useChartTheme>;
-  pctAxis: object;
   countLabel: string;
   rateLabel: string;
 }) {
@@ -174,11 +255,11 @@ function RateChart({
           <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
           <XAxis dataKey={xKey} tickFormatter={tickFormatter} stroke={theme.axisColor} fontSize={12} />
           <YAxis yAxisId="count" allowDecimals={false} stroke={theme.axisColor} fontSize={12} width={36} />
-          <YAxis {...pctAxis} />
+          <YAxis yAxisId="rate" orientation="right" domain={[0, 100]} unit="%" stroke={theme.axisColor} fontSize={12} width={44} />
           <Tooltip contentStyle={theme.tooltipStyle} labelFormatter={(v) => (tickFormatter ? tickFormatter(Number(v)) : String(v))} />
           <Legend />
-          <Bar yAxisId="count" dataKey="count" name={countLabel} fill="#64748b" />
-          <Line yAxisId="rate" type="monotone" dataKey="winRate" name={rateLabel} stroke={WINRATE_LINE} dot={false} connectNulls />
+          <Bar yAxisId="count" dataKey="count" name={countLabel} fill={ACCENT} />
+          <Line yAxisId="rate" type="linear" dataKey="winRate" name={rateLabel} stroke={WINRATE_LINE} dot={false} connectNulls />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

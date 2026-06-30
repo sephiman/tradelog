@@ -335,7 +335,8 @@
       "avgDuration": "Duración media",
       "longest": "Operación más larga",
       "shortest": "Operación más corta",
-      "predominant": "Predominante"
+      "predominant": "Predominante",
+      "weight": "Peso"
     },
     "winningStreaks": "Rachas ganadoras",
     "winningStreaksInfo": "Longitud media de racha ganadora y PnL neto de la racha ganadora más larga.",

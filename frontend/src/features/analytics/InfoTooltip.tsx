@@ -5,7 +5,7 @@ export function InfoTooltip({ text }: { text: string }) {
       <button
         type="button"
         aria-label={text}
-        className="flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary dark:hover:text-gray-200"
+        className="flex h-5 w-5 items-center justify-center rounded-full text-violet-400 hover:text-violet-600 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:text-violet-400 dark:hover:text-violet-300"
       >
         <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
           <path

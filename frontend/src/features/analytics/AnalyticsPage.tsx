@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useClosedPositions } from "@/api/analytics";
 import { usePositionExchanges } from "@/api/positions";
@@ -10,13 +10,20 @@ import { useAnalyticsFilters } from "./useAnalyticsFilters";
 import { filterRows } from "./applyFilters";
 import { FilterBar } from "./FilterBar";
 import { ViewTabs, type ViewKey } from "./ViewTabs";
-import { SummaryView } from "./SummaryView";
-import { PerformanceView } from "./PerformanceView";
-import { BehaviorView } from "./BehaviorView";
-import { StreaksView } from "./StreaksView";
-import { PairsView } from "./PairsView";
-import { FeesView } from "./FeesView";
+import { useMonthNavState } from "./PeriodNav";
+import { StatisticsCard, CumulativeProfitCard } from "./SummaryView";
+import { ActivityCard, PnlPerDayCard, MonthlySummaryCard } from "./PerformanceView";
+import { WinRateByHourCard, WinRateByWeekdayCard, TradeDirectionCard, TraderStyleCard } from "./BehaviorView";
+import { WinningStreaksCard, LosingStreaksCard, RecoveryCard, CalendarCard } from "./StreaksView";
+import { MostTradedCard, MostProfitableCard, LeastProfitableCard } from "./PairsView";
+import { FeesCard, CumulativeFeesCard, FeeRatioCard } from "./FeesView";
 import { CapitalRiskView } from "./CapitalRiskView";
+import type { ClosedPosition } from "@/api/analytics";
+
+/** A responsive pair of cards: two columns on desktop, stacked on mobile. */
+function Row({ children }: { children: ReactNode }) {
+  return <div className="grid gap-6 md:grid-cols-2">{children}</div>;
+}
 
 export function AnalyticsPage() {
   const { t } = useTranslation();
@@ -34,13 +41,17 @@ export function AnalyticsPage() {
   const filters = useAnalyticsFilters();
   const [view, setView] = useState<ViewKey>("all");
 
+  // Two month-navs are shared across paired cards so they stay in sync: Activity ↔ PnL per day, and
+  // Fees ↔ Fee ratio. Calendar and Monthly summary own their own period state.
+  const perfNav = useMonthNavState();
+  const feesNav = useMonthNavState();
+
   const filtered = useMemo(
     () => filterRows(rows, filters.range, filters.exchange, filters.origenTagId),
     [rows, filters.range, filters.exchange, filters.origenTagId],
   );
 
-  const show = (k: ViewKey) => view === "all" || view === k;
-  const props = { rows: filtered, timeZone };
+  const capital = <CapitalRiskView profileId={activeProfileId} exchange={filters.exchange} />;
 
   return (
     <div className="space-y-6">
@@ -49,34 +60,153 @@ export function AnalyticsPage() {
       <ViewTabs value={view} onChange={setView} />
 
       {/* Capital & risk is a current balance: independent of trade history and the Period/Origen
-          filters (it uses the Exchange filter only), so it renders outside the closed-positions guard. */}
-      {show("capital") && <CapitalRiskView profileId={activeProfileId} exchange={filters.exchange} />}
-
-      {/* The trade-history views (and their loading/empty card) are hidden when only the
-          capital tab is active, since capital is shown above and needs no closed positions. */}
-      {view !== "capital" &&
-        (isLoading ? (
-          <Card>
-            <CardBody>
-              <p className="text-sm text-gray-500">{t("common.loading")}</p>
-            </CardBody>
-          </Card>
-        ) : rows.length === 0 ? (
+          filters (it uses the Exchange filter only). It renders even with no closed positions. */}
+      {view === "capital" ? (
+        capital
+      ) : isLoading ? (
+        <Card>
+          <CardBody>
+            <p className="text-sm text-gray-500">{t("common.loading")}</p>
+          </CardBody>
+        </Card>
+      ) : rows.length === 0 ? (
+        <div className="space-y-6">
+          {view === "all" && capital}
           <Card>
             <CardBody>
               <p className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">{t("analytics.noData")}</p>
             </CardBody>
           </Card>
-        ) : (
-          <div className="space-y-6">
-            {show("summary") && <SummaryView {...props} />}
-            {show("performance") && <PerformanceView {...props} />}
-            {show("behavior") && <BehaviorView {...props} />}
-            {show("streaks") && <StreaksView {...props} />}
-            {show("pairs") && <PairsView {...props} />}
-            {show("fees") && <FeesView {...props} />}
-          </div>
-        ))}
+        </div>
+      ) : (
+        <Dashboard view={view} rows={filtered} timeZone={timeZone} perfNav={perfNav} feesNav={feesNav} capital={capital} />
+      )}
+    </div>
+  );
+}
+
+function Dashboard({
+  view,
+  rows,
+  timeZone,
+  perfNav,
+  feesNav,
+  capital,
+}: {
+  view: ViewKey;
+  rows: ClosedPosition[];
+  timeZone: string;
+  perfNav: ReturnType<typeof useMonthNavState>;
+  feesNav: ReturnType<typeof useMonthNavState>;
+  capital: ReactNode;
+}) {
+  if (view === "summary") {
+    return (
+      <div className="space-y-6">
+        <StatisticsCard rows={rows} />
+        <CumulativeProfitCard rows={rows} />
+      </div>
+    );
+  }
+  if (view === "performance") {
+    return (
+      <div className="space-y-6">
+        <Row>
+          <ActivityCard rows={rows} timeZone={timeZone} nav={perfNav} />
+          <PnlPerDayCard rows={rows} timeZone={timeZone} nav={perfNav} />
+        </Row>
+        <MonthlySummaryCard rows={rows} timeZone={timeZone} />
+      </div>
+    );
+  }
+  if (view === "behavior") {
+    return (
+      <div className="space-y-6">
+        <Row>
+          <WinRateByHourCard rows={rows} timeZone={timeZone} />
+          <WinRateByWeekdayCard rows={rows} timeZone={timeZone} />
+        </Row>
+        <Row>
+          <TradeDirectionCard rows={rows} />
+          <TraderStyleCard rows={rows} />
+        </Row>
+      </div>
+    );
+  }
+  if (view === "streaks") {
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-5">
+          <WinningStreaksCard rows={rows} className="md:col-span-2" />
+          <LosingStreaksCard rows={rows} className="md:col-span-2" />
+          <RecoveryCard rows={rows} className="md:col-span-1" />
+        </div>
+        <CalendarCard rows={rows} timeZone={timeZone} />
+      </div>
+    );
+  }
+  if (view === "pairs") {
+    return (
+      <div className="grid gap-6 md:grid-cols-3">
+        <MostTradedCard rows={rows} />
+        <MostProfitableCard rows={rows} />
+        <LeastProfitableCard rows={rows} />
+      </div>
+    );
+  }
+  if (view === "fees") {
+    return (
+      <div className="space-y-6">
+        <Row>
+          <FeesCard rows={rows} timeZone={timeZone} nav={feesNav} />
+          <CumulativeFeesCard rows={rows} />
+        </Row>
+        <FeeRatioCard rows={rows} timeZone={timeZone} nav={feesNav} />
+      </div>
+    );
+  }
+
+  // view === "all": the full dashboard, matching the reference layout.
+  return (
+    <div className="space-y-6">
+      <StatisticsCard rows={rows} />
+      <Row>
+        {capital}
+        <CumulativeProfitCard rows={rows} />
+      </Row>
+      <Row>
+        <ActivityCard rows={rows} timeZone={timeZone} nav={perfNav} />
+        <PnlPerDayCard rows={rows} timeZone={timeZone} nav={perfNav} />
+      </Row>
+      <Row>
+        <WinRateByHourCard rows={rows} timeZone={timeZone} />
+        <WinRateByWeekdayCard rows={rows} timeZone={timeZone} />
+      </Row>
+      <Row>
+        <TradeDirectionCard rows={rows} />
+        <TraderStyleCard rows={rows} />
+      </Row>
+      <div className="grid gap-6 md:grid-cols-5">
+        <WinningStreaksCard rows={rows} className="md:col-span-2" />
+        <LosingStreaksCard rows={rows} className="md:col-span-2" />
+        <RecoveryCard rows={rows} className="md:col-span-1" />
+      </div>
+      <Row>
+        <CalendarCard rows={rows} timeZone={timeZone} />
+        <MostTradedCard rows={rows} />
+      </Row>
+      <Row>
+        <MostProfitableCard rows={rows} />
+        <LeastProfitableCard rows={rows} />
+      </Row>
+      <Row>
+        <FeesCard rows={rows} timeZone={timeZone} nav={feesNav} />
+        <CumulativeFeesCard rows={rows} />
+      </Row>
+      <Row>
+        <FeeRatioCard rows={rows} timeZone={timeZone} nav={feesNav} />
+        <MonthlySummaryCard rows={rows} timeZone={timeZone} />
+      </Row>
     </div>
   );
 }

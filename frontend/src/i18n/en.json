@@ -335,7 +335,8 @@
       "avgDuration": "Average duration",
       "longest": "Longest trade",
       "shortest": "Shortest trade",
-      "predominant": "Predominant"
+      "predominant": "Predominant",
+      "weight": "Weight"
     },
     "winningStreaks": "Winning streaks",
     "winningStreaksInfo": "Average winning-streak length and the net PnL of the longest winning streak.",

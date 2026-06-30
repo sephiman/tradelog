@@ -9,34 +9,46 @@ import { MetricCard } from "./MetricCard";
 import { MonthNav } from "./PeriodNav";
 import { DASH, fmtPctFraction } from "./display";
 
-export function StreaksView({ rows, timeZone }: { rows: ClosedPosition[]; timeZone: string }) {
+export function WinningStreaksCard({ rows, className }: { rows: ClosedPosition[]; className?: string }) {
+  const { t } = useTranslation();
+  const s = useMemo(() => streaks(rows), [rows]);
+  return (
+    <MetricCard title={t("analytics.winningStreaks")} info={t("analytics.winningStreaksInfo")} className={className}>
+      <StreakBody stat={s.winning} t={t} />
+    </MetricCard>
+  );
+}
+
+export function LosingStreaksCard({ rows, className }: { rows: ClosedPosition[]; className?: string }) {
+  const { t } = useTranslation();
+  const s = useMemo(() => streaks(rows), [rows]);
+  return (
+    <MetricCard title={t("analytics.losingStreaks")} info={t("analytics.losingStreaksInfo")} className={className}>
+      <StreakBody stat={s.losing} t={t} />
+    </MetricCard>
+  );
+}
+
+export function RecoveryCard({ rows, className }: { rows: ClosedPosition[]; className?: string }) {
+  const { t } = useTranslation();
+  const rec = useMemo(() => recoveryRate(rows), [rows]);
+  return (
+    <MetricCard title={t("analytics.recovery")} info={t("analytics.recoveryInfo")} className={className}>
+      <div className="text-3xl font-bold tabular-nums">{fmtPctFraction(rec.rate)}</div>
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("analytics.recoverySample", { count: rec.sample })}</p>
+    </MetricCard>
+  );
+}
+
+export function CalendarCard({ rows, timeZone }: { rows: ClosedPosition[]; timeZone: string }) {
   const { t, i18n } = useTranslation();
   const now = new Date();
   const [{ year, month }, setYm] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
-
-  const s = useMemo(() => streaks(rows), [rows]);
-  const rec = useMemo(() => recoveryRate(rows), [rows]);
   const cal = useMemo(() => calendar(rows, year, month, timeZone), [rows, year, month, timeZone]);
-
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-3">
-        <MetricCard title={t("analytics.winningStreaks")} info={t("analytics.winningStreaksInfo")}>
-          <StreakBody stat={s.winning} t={t} />
-        </MetricCard>
-        <MetricCard title={t("analytics.losingStreaks")} info={t("analytics.losingStreaksInfo")}>
-          <StreakBody stat={s.losing} t={t} />
-        </MetricCard>
-        <MetricCard title={t("analytics.recovery")} info={t("analytics.recoveryInfo")}>
-          <div className="text-3xl font-bold tabular-nums">{fmtPctFraction(rec.rate)}</div>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("analytics.recoverySample", { count: rec.sample })}</p>
-        </MetricCard>
-      </div>
-
-      <MetricCard title={t("analytics.calendar")} info={t("analytics.calendarInfo")} action={<MonthNav year={year} month={month} onChange={(y, m) => setYm({ year: y, month: m })} />}>
-        <Calendar year={year} month={month} pnlByDay={cal} lang={i18n.language} />
-      </MetricCard>
-    </div>
+    <MetricCard title={t("analytics.calendar")} info={t("analytics.calendarInfo")} action={<MonthNav year={year} month={month} onChange={(y, m) => setYm({ year: y, month: m })} />}>
+      <Calendar year={year} month={month} pnlByDay={cal} lang={i18n.language} />
+    </MetricCard>
   );
 }
 
