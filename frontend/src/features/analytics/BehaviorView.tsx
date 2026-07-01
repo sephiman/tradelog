@@ -46,7 +46,7 @@ export function TradeDirectionCard({ rows }: { rows: ClosedPosition[] }) {
   return (
     <MetricCard title={t("analytics.direction")} info={t("analytics.directionInfo")}>
       <div className="@container">
-        <div className="grid items-center gap-6 @sm:grid-cols-3">
+        <div className="grid grid-cols-1 items-center gap-6 @sm:grid-cols-3">
           <StatBlock
             label={t("analytics.longs")}
             color={LONG_COLOR}
@@ -121,7 +121,7 @@ export function TraderStyleCard({ rows }: { rows: ClosedPosition[] }) {
   return (
     <MetricCard title={t("analytics.traderStyle")} info={t("analytics.traderStyleInfo")}>
       <div className="@container">
-        <div className="grid items-center gap-6 @sm:grid-cols-3">
+        <div className="grid grid-cols-1 items-center gap-6 @sm:grid-cols-3">
           <StatBlock
             label={t("analytics.style.scalper")}
             color={VIOLET_SCALE[0]}
@@ -249,7 +249,7 @@ function RateChart({
   rateLabel: string;
 }) {
   return (
-    <div className="h-72 w-full">
+    <div className="h-44 w-full md:h-72">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />

@@ -53,7 +53,7 @@ export function CumulativeProfitCard({ rows }: { rows: ClosedPosition[] }) {
 
   return (
     <MetricCard title={t("analytics.cumulativeProfit")} info={t("analytics.cumulativeProfitInfo")}>
-      <div className="h-80 w-full">
+      <div className="h-44 w-full md:h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={equity} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />

@@ -37,7 +37,7 @@ export function ActivityCard({ rows, timeZone, nav }: { rows: ClosedPosition[]; 
 
   return (
     <MetricCard title={t("analytics.activity")} info={t("analytics.activityInfo")} action={<MonthNav year={nav.year} month={nav.month} onChange={nav.set} />}>
-      <div className="h-80 w-full">
+      <div className="h-44 w-full md:h-80">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={activity} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
@@ -63,7 +63,7 @@ export function PnlPerDayCard({ rows, timeZone, nav }: { rows: ClosedPosition[];
 
   return (
     <MetricCard title={t("analytics.pnlPerDay")} info={t("analytics.pnlPerDayInfo")} action={<MonthNav year={nav.year} month={nav.month} onChange={nav.set} />}>
-      <div className="h-72 w-full">
+      <div className="h-44 w-full md:h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={dayPnl} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
@@ -87,7 +87,7 @@ export function MonthlySummaryCard({ rows, timeZone }: { rows: ClosedPosition[];
 
   return (
     <MetricCard title={t("analytics.monthlySummary")} info={t("analytics.monthlySummaryInfo")} action={<YearNav year={calYear} onChange={setCalYear} />}>
-      <div className="h-72 w-full">
+      <div className="h-44 w-full md:h-72">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={monthly} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />

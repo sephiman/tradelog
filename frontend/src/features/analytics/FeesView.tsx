@@ -28,7 +28,7 @@ export function FeesCard({ rows, timeZone, nav }: { rows: ClosedPosition[]; time
         </div>
       }
     >
-      <div className="h-72 w-full">
+      <div className="h-44 w-full md:h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={fees.days} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
@@ -50,7 +50,7 @@ export function CumulativeFeesCard({ rows }: { rows: ClosedPosition[] }) {
 
   return (
     <MetricCard title={t("analytics.cumulativeFees")} info={t("analytics.cumulativeFeesInfo")}>
-      <div className="h-72 w-full">
+      <div className="h-44 w-full md:h-72">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={cumFees} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
@@ -83,7 +83,7 @@ export function FeeRatioCard({ rows, timeZone, nav }: { rows: ClosedPosition[]; 
         </div>
       }
     >
-      <div className="h-72 w-full">
+      <div className="h-44 w-full md:h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={ratio.days} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />

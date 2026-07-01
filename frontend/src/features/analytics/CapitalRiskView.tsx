@@ -8,12 +8,12 @@ import { InfoTooltip } from "./InfoTooltip";
 
 function Tile({ label, info, value }: { label: string; info?: string; value: ReactNode }) {
   return (
-    <div className="rounded-md border border-border p-3 dark:border-gray-700">
+    <div className="flex items-center justify-between gap-2 rounded-md border border-border p-3 dark:border-gray-700 md:block">
       <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
         <span>{label}</span>
         {info && <InfoTooltip text={info} />}
       </div>
-      <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
+      <div className="text-lg font-semibold tabular-nums md:mt-1">{value}</div>
     </div>
   );
 }
@@ -60,7 +60,7 @@ export function CapitalRiskView({ profileId, exchange }: { profileId: string | n
         <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">{t("analytics.capital.empty")}</p>
       ) : (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <Tile label={totalLabel} info={t("analytics.capital.capitalInfo")} value={fmtUsd(total.toString())} />
             <Tile
               label={t("analytics.capital.maxLossAt", { pct: pct1Label })}

@@ -20,9 +20,11 @@ import { FeesCard, CumulativeFeesCard, FeeRatioCard } from "./FeesView";
 import { CapitalRiskView } from "./CapitalRiskView";
 import type { ClosedPosition } from "@/api/analytics";
 
-/** A responsive pair of cards: two columns on desktop, stacked on mobile. */
+/** A responsive pair of cards: two columns on desktop, stacked on mobile.
+ * The base `grid-cols-1` is `minmax(0,1fr)`, which lets each track shrink to the
+ * viewport so charts/tables fit instead of forcing horizontal scroll. */
 function Row({ children }: { children: ReactNode }) {
-  return <div className="grid gap-6 md:grid-cols-2">{children}</div>;
+  return <div className="grid grid-cols-1 gap-6 md:grid-cols-2">{children}</div>;
 }
 
 export function AnalyticsPage() {
@@ -136,7 +138,7 @@ function Dashboard({
   if (view === "streaks") {
     return (
       <div className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-5">
           <WinningStreaksCard rows={rows} className="md:col-span-2" />
           <LosingStreaksCard rows={rows} className="md:col-span-2" />
           <RecoveryCard rows={rows} className="md:col-span-1" />
@@ -147,7 +149,7 @@ function Dashboard({
   }
   if (view === "pairs") {
     return (
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <MostTradedCard rows={rows} />
         <MostProfitableCard rows={rows} />
         <LeastProfitableCard rows={rows} />

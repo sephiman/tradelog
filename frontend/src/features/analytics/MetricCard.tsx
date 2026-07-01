@@ -18,7 +18,7 @@ export function MetricCard({
 }) {
   return (
     <Card className={className}>
-      <CardHeader className="flex items-center justify-between gap-2">
+      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold">{title}</h3>
           {info && <InfoTooltip text={info} />}
