@@ -53,7 +53,7 @@ export function JournalCsvUploadCard({ profileId, dataSourceId }: { profileId: s
           type="file"
           accept="text/csv,.csv"
           onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); }}
-          className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm dark:file:bg-gray-700 dark:file:text-gray-200"
+          className="w-full min-w-0 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm sm:w-auto dark:file:bg-gray-700 dark:file:text-gray-200"
         />
         <Button variant="secondary" disabled={!file || previewMut.isPending} onClick={onPreview}>
           {t("journalCsv.preview")}
