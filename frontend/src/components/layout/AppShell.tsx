@@ -20,39 +20,43 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border bg-white dark:border-gray-700 dark:bg-gray-800">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
-          <Logo className="h-7 w-auto shrink-0" />
+        {/* On mobile this is a stack of two rows: the logo/nav/avatar row and
+            the profile-picker/quick-sync row. On sm+ the first row's wrapper
+            collapses (`sm:contents`) so every control joins one flex line in
+            the original order. This keeps the avatar pinned top-right and the
+            quick-sync button on its own row regardless of translation width. */}
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
+          <div className="flex items-center gap-3 sm:contents">
+            <Logo className="h-7 w-auto shrink-0" />
 
-          <nav className="order-2 flex items-center gap-1">
-            {nav.map((n) => (
-              <NavLink
-                key={n.to}
-                to={n.to}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-cyan-50 text-primary dark:bg-cyan-900/40 dark:text-cyan-300"
-                      : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700",
-                  )
-                }
-              >
-                {n.label}
-              </NavLink>
-            ))}
-          </nav>
+            <nav className="flex flex-wrap items-center gap-1 sm:order-2 sm:flex-nowrap">
+              {nav.map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  className={({ isActive }) =>
+                    cn(
+                      "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-cyan-50 text-primary dark:bg-cyan-900/40 dark:text-cyan-300"
+                        : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700",
+                    )
+                  }
+                >
+                  {n.label}
+                </NavLink>
+              ))}
+            </nav>
 
-          {/* Avatar stays on the nav row (top-right) on mobile; the bulkier
-              profile picker + quick-sync wrap onto their own line below. On
-              sm+ everything sits on one row in the original order. */}
-          <div className="order-3 ml-auto sm:order-5 sm:ml-0">
-            <UserMenu />
+            <div className="ml-auto shrink-0 sm:order-5 sm:ml-0">
+              <UserMenu />
+            </div>
           </div>
 
-          <div className="order-4 flex flex-wrap items-center gap-3 sm:order-4 sm:ml-auto">
+          <div className="flex items-center gap-3 sm:order-4 sm:ml-auto">
             {profiles.length > 0 && (
               <Select
-                className="w-44"
+                className="min-w-0 flex-1 sm:w-44 sm:flex-none"
                 value={activeProfileId ?? ""}
                 onChange={(e) => setActiveProfileId(e.target.value)}
                 aria-label={t("profiles.activeProfile")}

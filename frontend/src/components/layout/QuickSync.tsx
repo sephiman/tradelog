@@ -58,7 +58,7 @@ export function QuickSync() {
   };
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div ref={wrapRef} className="relative shrink-0">
       <div className="inline-flex">
         <Button
           variant="secondary"
@@ -81,7 +81,7 @@ export function QuickSync() {
       </div>
 
       {menuOpen && (
-        <div className="absolute right-0 z-20 mt-1 w-60 rounded-md border border-border bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div className="absolute right-0 z-20 mt-1 w-60 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
           <MenuItem onClick={onSyncExchanges} disabled={!hasApi}>
             {t("quickSync.syncExchanges")}
           </MenuItem>

@@ -373,7 +373,7 @@
     "failed": "La sincronización ha fallado"
   },
   "quickSync": {
-    "label": "Sincronización rápida",
+    "label": "Sincronizar",
     "syncing": "Sincronizando…",
     "more": "Más opciones de sincronización",
     "syncExchanges": "Sincronizar exchanges",
