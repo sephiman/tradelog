@@ -18,7 +18,7 @@ import {
 import { useTaxonomy, type TagGroup } from "@/api/taxonomy";
 import { Badge, Button, Card, CardBody, Input, Select, Textarea } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
-import { dateInputToIso, fmtDateTime, fmtNum, fmtUsd, isoToDateInput, pnlTone } from "@/lib/format";
+import { dateInputToIso, fmtDateTime, fmtNum, fmtUsd, isoToDateInput, pnlTone, toDecimal } from "@/lib/format";
 import { showToast } from "@/lib/toastBus";
 
 /** Sentinel option value for the origen filter that selects positions with no origen tag. */
@@ -623,6 +623,7 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
           </div>
         )}
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <span>{t("positions.volume")}: {fmtUsd(toDecimal(position.entryPrice).mul(toDecimal(position.qty)).toString())}</span>
           <span>{t("positions.grossPnl")}: {fmtUsd(position.realizedPnl, { sign: true })}</span>
           <span>{t("positions.fees")}: {fmtUsd(position.fees)}</span>
           <span>{t("positions.funding")}: {fmtUsd(position.funding)}</span>

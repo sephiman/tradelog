@@ -62,6 +62,7 @@
     "opened": "Apertura",
     "closed": "Cierre",
     "qty": "Cantidad",
+    "volume": "Volumen",
     "entry": "Entrada",
     "exit": "Salida",
     "pnl": "PnL realizado",
