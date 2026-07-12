@@ -636,7 +636,7 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
           </div>
         )}
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <span>{t("positions.volume")}: {fmtUsd(toDecimal(position.entryPrice).mul(toDecimal(position.qty)).toString())}</span>
+          <span>{t("positions.volume")}: {fmtUsd(toDecimal(position.qty).mul(toDecimal(position.entryPrice).plus(toDecimal(position.exitPrice))).toString())}</span>
           <span>{t("positions.grossPnl")}: {fmtUsd(position.realizedPnl, { sign: true })}</span>
           <span>{t("positions.fees")}: {fmtUsd(position.fees)}</span>
           <span>{t("positions.funding")}: {fmtUsd(position.funding)}</span>

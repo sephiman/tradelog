@@ -1,16 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  endOfDay,
-  endOfMonth,
-  endOfQuarter,
-  endOfWeek,
-  endOfYear,
-  startOfDay,
-  startOfMonth,
-  startOfQuarter,
-  startOfWeek,
-  startOfYear,
-} from "date-fns";
+import { dateInputToIso, todayInDisplayZone } from "@/lib/format";
 
 export type PeriodPreset = "all" | "today" | "week" | "month" | "quarter" | "year" | "custom";
 
@@ -21,31 +10,51 @@ export interface DateRange {
   to: Date | null;
 }
 
+const pad = (n: number) => String(n).padStart(2, "0");
+/** Calendar date of a UTC-anchored Date as "YYYY-MM-DD" (arithmetic happens on UTC fields). */
+const dayStr = (d: Date) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+
+function bounds(startDay: string, endDay: string): DateRange {
+  return {
+    from: new Date(dateInputToIso(startDay)!),
+    to: new Date(dateInputToIso(endDay, true)!),
+  };
+}
+
 /**
- * Period boundaries are computed against the browser-local clock (not the user's configured
- * analytics time zone) — a deliberate simplification so we avoid a tz date library. Hour/weekday
- * bucketing still uses the configured zone.
+ * Period boundaries are day-precise in the account's display zone, matching the calendar/day
+ * bucketing and the positions-page filters: "today"'s calendar date comes from the display zone,
+ * boundary days are derived with UTC-anchored calendar arithmetic, and each boundary day converts
+ * to an instant via [dateInputToIso].
  */
 function computeRange(period: PeriodPreset, from: string, to: string): DateRange {
-  const now = new Date();
+  if (period === "all") return { from: null, to: null };
+  if (period === "custom") {
+    return {
+      from: from ? new Date(dateInputToIso(from)!) : null,
+      to: to ? new Date(dateInputToIso(to, true)!) : null,
+    };
+  }
+  const { y, m, d } = todayInDisplayZone();
+  const today = new Date(Date.UTC(y, m - 1, d));
   switch (period) {
-    case "all":
-      return { from: null, to: null };
     case "today":
-      return { from: startOfDay(now), to: endOfDay(now) };
-    case "week":
-      return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
+      return bounds(dayStr(today), dayStr(today));
+    case "week": {
+      const monday = new Date(today);
+      monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+      const sunday = new Date(monday);
+      sunday.setUTCDate(sunday.getUTCDate() + 6);
+      return bounds(dayStr(monday), dayStr(sunday));
+    }
     case "month":
-      return { from: startOfMonth(now), to: endOfMonth(now) };
-    case "quarter":
-      return { from: startOfQuarter(now), to: endOfQuarter(now) };
+      return bounds(dayStr(new Date(Date.UTC(y, m - 1, 1))), dayStr(new Date(Date.UTC(y, m, 0))));
+    case "quarter": {
+      const qStart = Math.floor((m - 1) / 3) * 3;
+      return bounds(dayStr(new Date(Date.UTC(y, qStart, 1))), dayStr(new Date(Date.UTC(y, qStart + 3, 0))));
+    }
     case "year":
-      return { from: startOfYear(now), to: endOfYear(now) };
-    case "custom":
-      return {
-        from: from ? startOfDay(new Date(from)) : null,
-        to: to ? endOfDay(new Date(to)) : null,
-      };
+      return bounds(`${y}-01-01`, `${y}-12-31`);
   }
 }
 

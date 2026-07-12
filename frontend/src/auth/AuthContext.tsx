@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { apiClient, seedCsrf } from "@/api/client";
 import i18n from "@/i18n";
+import { setDisplayTimeZone } from "@/lib/format";
 
 export interface Me {
   id: string;
@@ -29,6 +30,12 @@ function syncI18n(locale: string) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Keep the shared date formatters on the account's timezone; runs before any page renders
+  // because RequireAuth gates children on `loading`.
+  useEffect(() => {
+    setDisplayTimeZone(user?.timeZone);
+  }, [user]);
 
   const refresh = useCallback(async () => {
     try {
