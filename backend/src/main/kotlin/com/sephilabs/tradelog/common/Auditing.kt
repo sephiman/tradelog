@@ -20,9 +20,3 @@ abstract class TimestampedEntity {
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.EPOCH
 }
-
-@MappedSuperclass
-abstract class SoftDeletableEntity : TimestampedEntity() {
-    @Column(name = "deleted_at")
-    var deletedAt: Instant? = null
-}

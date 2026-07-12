@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapital, useUpdateCapital, type CapitalSettings } from "@/api/capital";
 import { Button, Card, CardBody, CardHeader, Input, Label } from "@/components/ui/primitives";
-import { showToast } from "@/lib/toastBus";
 
 /** Strip a backend NUMERIC string ("1000.00000000") down to an editable value ("1000"). */
 function toInput(amount: string | undefined): string {
@@ -52,9 +51,7 @@ export function CapitalRiskCard({ profileId }: { profileId: string }) {
           amount: amounts[ex]?.trim() ? amounts[ex].trim() : null,
         })),
         riskPercents: { pct1: pct1.trim() || "0", pct2: pct2.trim() || "0" },
-      },
-      { onSuccess: () => showToast(t("common.saved"), "success") },
-    );
+      });
   };
 
   return (

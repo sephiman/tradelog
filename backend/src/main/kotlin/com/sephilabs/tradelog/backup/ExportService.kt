@@ -9,6 +9,7 @@ import com.sephilabs.tradelog.position.PositionRepository
 import com.sephilabs.tradelog.position.PositionTagRepository
 import com.sephilabs.tradelog.taxonomy.TagGroupRepository
 import com.sephilabs.tradelog.taxonomy.TagRepository
+import org.flywaydb.core.Flyway
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -27,6 +28,7 @@ class ExportService(
     private val positionTags: PositionTagRepository,
     private val tagGroups: TagGroupRepository,
     private val tags: TagRepository,
+    private val flyway: Flyway,
 ) {
 
     @Transactional(readOnly = true)
@@ -78,12 +80,16 @@ class ExportService(
         }
 
         return BackupEnvelope(
-            meta = BackupMeta(BACKUP_EXPORT_VERSION, BACKUP_SCHEMA_VERSION, Instant.now()),
+            meta = BackupMeta(BACKUP_EXPORT_VERSION, schemaVersion(), Instant.now()),
             user = BackupUser(email = user.email, locale = user.locale, timeZone = user.timeZone),
             taxonomy = taxonomy,
             profiles = backupProfiles,
         )
     }
+
+    /** The latest applied Flyway migration, e.g. "V014" — informational metadata on the export. */
+    private fun schemaVersion(): String =
+        flyway.info().current()?.version?.toString()?.let { "V${it.padStart(3, '0')}" } ?: "unknown"
 
     private fun toBackupPosition(
         p: Position,

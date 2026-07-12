@@ -1,9 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.sephilabs.tradelog.connector
 
+import com.sephilabs.tradelog.config.AppProperties
+import org.springframework.http.client.JdkClientHttpRequestFactory
+import org.springframework.web.client.RestClient
+import java.net.http.HttpClient
 import java.security.MessageDigest
+import java.time.Duration
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+
+/** Shared HTTP plumbing for the exchange connectors. */
+object ExchangeHttp {
+
+    /**
+     * A [RestClient] with the endpoint's configured connect/read timeout applied. Sync runs on the
+     * bounded login executor and the single scheduler thread, so a request that never times out
+     * would block those threads indefinitely.
+     */
+    fun restClient(endpoint: AppProperties.ExchangeEndpoint): RestClient {
+        val timeout = Duration.ofMillis(endpoint.timeoutMs)
+        val factory = JdkClientHttpRequestFactory(HttpClient.newBuilder().connectTimeout(timeout).build())
+        factory.setReadTimeout(timeout)
+        return RestClient.builder().baseUrl(endpoint.baseUrl).requestFactory(factory).build()
+    }
+}
 
 /** Cryptographic helpers shared by the signed-REST exchange connectors. */
 object ExchangeSign {

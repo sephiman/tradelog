@@ -1,4 +1,5 @@
 import axios, { type AxiosError } from "axios";
+import i18n from "@/i18n";
 
 function readCookie(name: string): string | null {
   return (
@@ -32,7 +33,9 @@ export interface ApiError {
 export function asApiError(err: unknown): ApiError {
   const ax = err as AxiosError<ApiError>;
   if (ax?.response?.data?.code) return ax.response.data;
-  return { code: "UNKNOWN", message: ax?.message ?? "Unknown error" };
+  // No server payload (network failure, backend down) — show a localized message rather than
+  // axios's raw English "Network Error".
+  return { code: "UNKNOWN", message: i18n.t("common.networkError") };
 }
 
 export async function seedCsrf(): Promise<void> {

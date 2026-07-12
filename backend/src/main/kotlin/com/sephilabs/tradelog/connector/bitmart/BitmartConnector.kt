@@ -43,7 +43,7 @@ class BitmartConnector(
 ) : ApiConnector {
 
     private val log = LoggerFactory.getLogger(BitmartConnector::class.java)
-    private val client: RestClient = RestClient.builder().baseUrl(props.connectors.bitmart.baseUrl).build()
+    private val client: RestClient = ExchangeHttp.restClient(props.connectors.bitmart)
 
     override val kind = SourceKind.BITMART
 
@@ -382,4 +382,3 @@ private fun JsonNode.dec(keys: List<String>): BigDecimal? =
     }
 
 private fun JsonNode.text(key: String): String? = text(listOf(key))
-private fun JsonNode.dec(key: String): BigDecimal? = dec(listOf(key))

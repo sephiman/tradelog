@@ -5,15 +5,14 @@
     "save": "Guardar",
     "cancel": "Cancelar",
     "create": "Crear",
-    "edit": "Editar",
     "delete": "Eliminar",
     "close": "Cerrar",
-    "confirm": "Confirmar",
     "none": "Ninguno",
     "all": "Todos",
-    "actions": "Acciones",
-    "search": "Buscar",
-    "noData": "Aún no hay datos"
+    "noData": "Aún no hay datos",
+    "errorTitle": "Algo ha ido mal.",
+    "reload": "Recargar",
+    "networkError": "Error de red — comprueba tu conexión"
   },
   "nav": {
     "dashboard": "Panel",
@@ -38,7 +37,6 @@
   },
   "profiles": {
     "title": "Perfiles",
-    "profile": "Perfil",
     "activeProfile": "Perfil activo",
     "name": "Nombre",
     "kind": "Tipo",
@@ -59,7 +57,6 @@
     "source": "Fuente",
     "exchange": "Exchange",
     "allExchanges": "Todos los exchanges",
-    "opened": "Apertura",
     "closed": "Cierre",
     "qty": "Cantidad",
     "volume": "Volumen",
@@ -73,16 +70,13 @@
     "note": "Nota",
     "origen": "Origen",
     "origenUnset": "(Sin asignar)",
-    "tag": "Etiqueta",
     "operations": "Operaciones",
     "noPositions": "No hay posiciones que coincidan con los filtros.",
-    "filters": "Filtros",
     "from": "Desde",
     "to": "Hasta",
     "clearFilters": "Limpiar",
     "sort": "Orden",
     "addNote": "Añadir una nota…",
-    "fillsTitle": "Operaciones",
     "action": "Acción",
     "time": "Hora",
     "price": "Precio",
@@ -105,19 +99,18 @@
     "confirmDelete": "¿Eliminar esta posición? Desaparecerá de todas partes y no volverá al sincronizar.",
     "confirmBulkDelete": "¿Eliminar {{count}} posiciones?",
     "deleted": "Posición eliminada",
-    "bulkDeleted": "{{count}} posiciones eliminadas"
+    "bulkDeleted": "{{count}} posiciones eliminadas",
+    "toggleDetails": "Ver detalles"
   },
   "dataSources": {
     "title": "Fuentes de datos",
     "label": "Etiqueta",
     "kind": "Fuente",
-    "status": "Estado",
     "active": "Activa",
     "error": "Error",
     "disabled": "Desactivada",
     "apiKey": "Clave API (solo lectura)",
     "apiSecret": "Secreto API",
-    "passphrase": "Passphrase (opcional)",
     "lastSynced": "Última sincronización",
     "positions": "Posiciones",
     "new": "Añadir fuente",
@@ -148,7 +141,6 @@
     }
   },
   "journalCsv": {
-    "title": "Importar CSV de diario de operaciones",
     "hint": "Sube un CSV de posiciones cerradas en el formato canónico de tradelog (abajo). Ideal para diarios manuales o exchanges desaparecidos. Volver a subir el mismo archivo es seguro (los duplicados se actualizan).",
     "preview": "Previsualizar",
     "import": "Importar",
@@ -196,10 +188,8 @@
   "quantfury": {
     "title": "Importar PDF de Quantfury",
     "hint": "Sube el PDF \"Trading History Report\" de Quantfury. Se importan las posiciones cerradas; volver a subirlo es seguro (los duplicados se omiten).",
-    "pickFile": "Elegir PDF",
     "preview": "Previsualizar",
     "import": "Importar",
-    "previewTitle": "Previsualización",
     "totalPositions": "Posiciones cerradas",
     "dateRange": "Rango de fechas",
     "sumPnl": "PnL realizado total",
@@ -209,11 +199,8 @@
   "taxonomy": {
     "title": "Etiquetas (Origen)",
     "hint": "Personaliza las etiquetas que puedes asignar a las posiciones. Cada grupo es de selección única por posición.",
-    "group": "Grupo",
-    "newGroup": "Nuevo grupo",
     "newTag": "Nueva etiqueta",
-    "tagName": "Nombre de etiqueta",
-    "groupName": "Nombre de grupo"
+    "tagName": "Nombre de etiqueta"
   },
   "settings": {
     "account": "Cuenta",
@@ -357,7 +344,6 @@
     "mostProfitableInfo": "Pares ordenados por PnL total positivo.",
     "leastProfitable": "Pares menos rentables",
     "leastProfitableInfo": "Pares ordenados por PnL total negativo.",
-    "pair": "Par",
     "fees": "Comisiones",
     "feesInfo": "Comisiones totales de cada día del mes.",
     "monthTotal": "Total del mes",
@@ -368,10 +354,9 @@
     "feeRatioInfo": "Retorno por comisión diario: PnL neto ÷ comisiones. El valor del mes es PnL del mes ÷ comisiones del mes, a partir de los totales mensuales. Se omiten los días sin operaciones o sin comisiones."
   },
   "sync": {
-    "running": "Sincronizando…",
-    "success": "Sincronización completa",
     "synced": "Sincronizadas {{inserted}} nuevas, {{updated}} actualizadas",
-    "failed": "La sincronización ha fallado"
+    "failed": "La sincronización ha fallado",
+    "skipped": "Ya hay una sincronización en curso — inténtalo en breve"
   },
   "quickSync": {
     "label": "Sincronizar",

@@ -1,9 +1,10 @@
 # tradelog
 
 A self-hosted, multi-user, multi-profile **crypto-futures trading journal**. It syncs your **closed
-positions** from **Bitunix** and **BingX** (signed REST APIs) and imports **Quantfury** from its
-exported **PDF** "Trading History Report", organises everything by **profiles** (personal trading and
-bot strategies), and lets you annotate positions to analyse how you trade.
+positions** from **Bitunix**, **BingX** and **BitMart** (REST APIs), imports **Quantfury** from its
+exported **PDF** "Trading History Report" and anything else from a **canonical Journal CSV**,
+organises everything by **profiles** (personal trading and bot strategies), and lets you annotate
+positions to analyse how you trade.
 
 By **Sephilabs**. Licensed under **AGPL-3.0-only** (see [LICENSE](LICENSE)) — its network clause means
 anyone running a modified version as a network service must publish the source.
@@ -18,7 +19,7 @@ anyone running a modified version as a network service must publish the source.
 - [Tech stack](#tech-stack)
 - [Running it](#running-it)
 - [Connecting your accounts](#connecting-your-accounts)
-  - [Bitunix / BingX (API)](#bitunix--bingx-api)
+  - [Bitunix / BingX / BitMart (API)](#bitunix--bingx--bitmart-api)
   - [Quantfury (PDF import)](#quantfury-pdf-import)
   - [Journal CSV import](#journal-csv-import)
 - [Development](#development)
@@ -28,11 +29,15 @@ anyone running a modified version as a network service must publish the source.
 
 - **Profiles** (`PERSONAL` / `BOT`), each owning its own data sources (1:N). Profiles are private to
   one user and never shared. Each bot strategy lives on its own sub-account / API key.
-- **Three sources behind one connector abstraction** — adding a source is a new module, not a core
+- **Five sources behind one connector abstraction** — adding a source is a new module, not a core
   change:
   - **Bitunix** — pulls already-closed positions (with realized PnL) via signed REST.
   - **BingX** — pulls fills and **reconstructs** flat-to-flat positions (no clean closed-position API).
+  - **BitMart** — pulls fills (keyed REST, API key only) and reconstructs positions the same way;
+    PnL/fees come straight from the fill payload.
   - **Quantfury** — parses the exported **PDF**; no public API.
+  - **Journal CSV** — manual import in tradelog's canonical format, for hand-kept journals or dead
+    exchanges.
 - **Canonical positions** are *flat-to-flat*: from net exposure leaving zero until it returns to zero
   is one position — scaling in/out within that lifecycle stays a single position.
 - **Realized PnL, fees and funding are stored separately and summably** (USDT for now), never
@@ -41,7 +46,8 @@ anyone running a modified version as a network service must publish the source.
   duplicate, and the first connect backfills as far back as each source allows (Bitunix from account
   opening, **BingX only ~30 days**, Quantfury whatever the PDF holds — see
   [How far back each source goes](#how-far-back-each-source-goes)). Triggers:
-  automatic **on login** (async, rate-limited per exchange), **manual** (per source or all), and the
+  automatic **on login** (async, rate-limited per exchange), a **nightly scheduled sweep** of every
+  active API source (default 04:00, `SYNC_SCHEDULE_CRON`), **manual** (per source or all), and the
   **Quantfury PDF upload**.
 - **Annotations**: a customizable per-user **tag taxonomy** (seeded with an *Origen* group you edit)
   plus a free-text note per position, with the operations (legs) of each position viewable.
@@ -52,6 +58,9 @@ anyone running a modified version as a network service must publish the source.
 - **Read-only, encrypted credentials**: API keys are AES-GCM encrypted at rest and decrypted only in
   the sync worker — never returned to the browser. Use **read-only keys** (no trading, no withdrawal);
   the app warns on permission errors but cannot enforce this on the exchange.
+- **Backup & restore**: one-click **JSON export** of everything the authenticated user owns (no
+  secrets included) and a matching **import** that replaces the account's data — guarded by an
+  explicit confirmation so a stray request can't wipe anything.
 - **UI**: Spanish/English (persisted per user), light/dark/system theme, responsive on desktop and
   mobile. An analytics dashboard with a shared **Period / Exchange / Origen** filter bar, plus the
   trading-capital & risk block above.
@@ -68,15 +77,19 @@ cursor.
 - **BingX** exposes only raw fills, which a shared reconstructor folds into flat-to-flat positions.
   Because BingX's fill endpoint reports **no per-fill PnL**, realized PnL is computed from the leg
   prices (gross of fees, which are tracked separately), and quantity is derived from notional ÷ price.
+- **BitMart** also exposes only fills, folded by the same reconstructor — but its fills carry
+  `realised_profit` and `paid_fees`, so PnL/fees come straight from the payload. Fill volume is in
+  contracts; the displayed quantity is scaled by the contract size from BitMart's public details
+  endpoint.
 - **Quantfury** PnL is likewise computed from the leg prices (its prices already include the spread
   and it charges no commission, so fees and funding are zero) and validated to match Quantfury's own
   printed totals.
 
 ## Tech stack
 
-- **Backend**: Kotlin 2.2 · Spring Boot 4 (web, security, data-jpa, session-jdbc, actuator) · Java 24 ·
-  PostgreSQL + Flyway · Argon2 · Bucket4j · Apache PDFBox · Micrometer/Prometheus.
-- **Frontend**: React 19 · Vite 7 · TypeScript · Tailwind 4 · TanStack Query · react-router 7 ·
+- **Backend**: Kotlin 2.4 · Spring Boot 4.1 (web, security, data-jpa, session-jdbc, actuator) ·
+  Java 25 · PostgreSQL + Flyway · Argon2 · Bucket4j · Apache PDFBox · Micrometer/Prometheus.
+- **Frontend**: React 19 · Vite 8 · TypeScript 7 · Tailwind 4 · TanStack Query · react-router 7 ·
   i18next · Recharts.
 - **Infra**: Docker Compose; an externally-managed Postgres on a shared Docker network; the frontend
   is served by nginx (SPA + `/api` proxy) behind an external reverse proxy.
@@ -122,21 +135,24 @@ History coverage differs **per source** — it's a limit of each platform, not o
 | --- | --- | --- |
 | **Bitunix** | Full — since you opened the account | Signed REST; backfilled on first sync |
 | **BingX** | **Only ~the last 30 days** | The `allFillOrders` API serves no older fills; older trades can't be retrieved |
+| **BitMart** | As far as its fill API retains | Keyed REST; fills pulled in 7-day windows until the history runs dry |
 | **Quantfury** | Full — whatever is in the exported PDF (typically your entire history) | Manual PDF import |
 | **Journal CSV** | Whatever you import | Manual CSV in the canonical format — for hand-kept journals or exchanges that no longer exist |
 
 So for **BingX**, sync it regularly — anything older than ~30 days is gone for good once it ages out of the API. For full long-term history on a platform that doesn't expose it via API, a Quantfury-style PDF/export import is the only path. For **dead exchanges** with no export at all, convert whatever records you kept into the **Journal CSV** format (see [Journal CSV import](#journal-csv-import)) — the in-app format reference is written so any AI assistant can do the conversion for you.
 
-### Bitunix / BingX (API)
+### Bitunix / BingX / BitMart (API)
 
 1. On the exchange, create an API key with **read-only** permissions — **no trading and no
    withdrawal** scope. (tradelog never needs more; a key with write scope is flagged.)
-2. In tradelog, add a data source of kind **Bitunix** or **BingX**, give it a label (e.g. the
-   sub-account or strategy name), and paste the **API key** and **API secret**.
+2. In tradelog, add a data source of kind **Bitunix**, **BingX** or **BitMart**, give it a label
+   (e.g. the sub-account or strategy name), and paste the **API key** and **API secret**. (BitMart's
+   private reads are keyed, not signed — only the API key is actually used.)
 3. The source syncs automatically on your next login, or immediately via **Sync now**. The first sync
    backfills as much history as the exchange API allows — **Bitunix** from account opening, **BingX
-   only ~the last 30 days** (see the table above). If the credentials are rejected or lack read
-   permission, the source moves to an **Error** state with an actionable message.
+   only ~the last 30 days**, **BitMart** as far as its fill API retains (see the table above). If the
+   credentials are rejected or lack read permission, the source moves to an **Error** state with an
+   actionable message.
 
 ### Quantfury (PDF import)
 
@@ -193,8 +209,8 @@ you only have position totals and no per-unit price, set `quantity=1` and put th
 returned in `entry_price` / `exit_price`. The optional `exchange` column records the venue the trade
 happened on (e.g. `FTX`); when blank, the data source's label is used — so naming the source after the
 venue and omitting the column works for a single-venue file. Every position carries this **exchange**
-(for the live connectors it's simply Bitunix/BingX/Quantfury), and the Positions page lets you filter
-by it. Re-importing the same file is idempotent (positions are keyed by a deterministic hash); each
+(for the live connectors it's simply Bitunix/BingX/BitMart/Quantfury), and the Positions page lets you
+filter by it. Re-importing the same file is idempotent (positions are keyed by a deterministic hash); each
 Journal CSV source has its own id namespace, so its rows can never collide with positions synced from
 an exchange.
 
@@ -217,7 +233,7 @@ docker run --rm \
   --add-host host.docker.internal:host-gateway \
   -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal \
   -e TESTCONTAINERS_RYUK_DISABLED=true \
-  -w /workspace gradle:9.0.0-jdk24 gradle --no-daemon test
+  -w /workspace gradle:9.6.1-jdk25 gradle --no-daemon test
 ```
 
 On a host with a local Gradle + Docker, plain `gradle test` works directly. Integration tests
@@ -226,7 +242,7 @@ Testcontainers and exercise the full Spring context, Flyway schema, JDBC session
 profile-ownership interceptor, credential encryption, idempotent position upsert, the taxonomy, and
 the Quantfury PDF import.
 
-Frontend (Node 24):
+Frontend (Node 26):
 
 ```bash
 cd frontend
@@ -252,6 +268,9 @@ TRADELOG_REAL_PDF=/path/to/report.pdf \
   serves ~the last 30 days** of fills via its API, so older BingX trades cannot be backfilled. BingX
   realized PnL is computed from leg prices (gross; fees tracked separately) since its fill endpoint
   reports none; Bitunix reports its own PnL/fees/funding directly.
+- The **BitMart** connector follows the same fill-reconstruction path as BingX (PnL/fees taken from
+  the fill payload, mapping verified against BitMart's official SDK); history depth depends on how
+  far back its fill API still serves data.
 - The **Quantfury** parser is validated end-to-end against a real report (computed vs printed PnL agree
   to rounding). Re-uploading the same export is safe.
 - **API keys must be read-only.** The app detects and warns on permission errors but cannot enforce

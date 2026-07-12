@@ -42,15 +42,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void (async () => {
-      await seedCsrf();
-      await refresh();
-      setLoading(false);
+      // A failed CSRF seed (backend down, network blip) must still resolve the loading state,
+      // otherwise the app hangs on the loading screen forever.
+      try {
+        await seedCsrf();
+        await refresh();
+      } catch {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [refresh]);
 
   const login = useCallback(async (email: string, password: string) => {
     await seedCsrf();
-    const res = await apiClient.post<Me>("/auth/login", { email, password, rememberMe: true });
+    const res = await apiClient.post<Me>("/auth/login", { email, password });
     setUser(res.data);
     syncI18n(res.data.locale);
   }, []);

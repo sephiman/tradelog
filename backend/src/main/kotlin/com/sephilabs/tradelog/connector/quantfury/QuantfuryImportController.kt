@@ -25,7 +25,7 @@ class QuantfuryImportController(
         @PathVariable dataSourceId: UUID,
         @RequestParam("file") file: MultipartFile,
     ): FileImportPreviewDto {
-        require(!file.isEmpty)
+        if (file.isEmpty) throw AppException.badRequest("IMPORT_PARSE_FAILED")
         return service.preview(profileId, dataSourceId, file.inputStream)
     }
 

@@ -12,8 +12,6 @@ import "./index.css";
 
 interface MutationMeta {
   silentSuccess?: boolean;
-  successMessage?: string;
-  silentError?: boolean;
 }
 
 const queryClient = new QueryClient({
@@ -28,11 +26,9 @@ const queryClient = new QueryClient({
     onSuccess: (_data, _vars, _ctx, mutation) => {
       const meta = mutation.options.meta as MutationMeta | undefined;
       if (meta?.silentSuccess) return;
-      showToast(i18n.t(meta?.successMessage ?? "common.saved"), "success");
+      showToast(i18n.t("common.saved"), "success");
     },
-    onError: (error, _vars, _ctx, mutation) => {
-      const meta = mutation.options.meta as MutationMeta | undefined;
-      if (meta?.silentError) return;
+    onError: (error) => {
       showToast(asApiError(error).message, "error");
     },
   }),

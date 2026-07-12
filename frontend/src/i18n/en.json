@@ -5,15 +5,14 @@
     "save": "Save",
     "cancel": "Cancel",
     "create": "Create",
-    "edit": "Edit",
     "delete": "Delete",
     "close": "Close",
-    "confirm": "Confirm",
     "none": "None",
     "all": "All",
-    "actions": "Actions",
-    "search": "Search",
-    "noData": "No data yet"
+    "noData": "No data yet",
+    "errorTitle": "Something went wrong.",
+    "reload": "Reload",
+    "networkError": "Network error — check your connection"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -38,7 +37,6 @@
   },
   "profiles": {
     "title": "Profiles",
-    "profile": "Profile",
     "activeProfile": "Active profile",
     "name": "Name",
     "kind": "Kind",
@@ -59,7 +57,6 @@
     "source": "Source",
     "exchange": "Exchange",
     "allExchanges": "All exchanges",
-    "opened": "Opened",
     "closed": "Closed",
     "qty": "Quantity",
     "volume": "Volume",
@@ -73,16 +70,13 @@
     "note": "Note",
     "origen": "Origen",
     "origenUnset": "(Unset)",
-    "tag": "Tag",
     "operations": "Operations",
     "noPositions": "No positions match the current filters.",
-    "filters": "Filters",
     "from": "From",
     "to": "To",
     "clearFilters": "Clear",
     "sort": "Sort",
     "addNote": "Add a note…",
-    "fillsTitle": "Operations",
     "action": "Action",
     "time": "Time",
     "price": "Price",
@@ -105,19 +99,18 @@
     "confirmDelete": "Delete this position? It will disappear everywhere and won't return on sync.",
     "confirmBulkDelete": "Delete {{count}} positions?",
     "deleted": "Position deleted",
-    "bulkDeleted": "Deleted {{count}} positions"
+    "bulkDeleted": "Deleted {{count}} positions",
+    "toggleDetails": "Show details"
   },
   "dataSources": {
     "title": "Data sources",
     "label": "Label",
     "kind": "Source",
-    "status": "Status",
     "active": "Active",
     "error": "Error",
     "disabled": "Disabled",
     "apiKey": "API key (read-only)",
     "apiSecret": "API secret",
-    "passphrase": "Passphrase (optional)",
     "lastSynced": "Last synced",
     "positions": "Positions",
     "new": "Add data source",
@@ -148,7 +141,6 @@
     }
   },
   "journalCsv": {
-    "title": "Trade journal CSV import",
     "hint": "Upload a CSV of closed positions in tradelog's canonical format (below). Ideal for hand-kept journals or dead exchanges. Re-uploading the same file is safe (duplicates are updated in place).",
     "preview": "Preview",
     "import": "Import",
@@ -196,10 +188,8 @@
   "quantfury": {
     "title": "Quantfury PDF import",
     "hint": "Upload the Quantfury \"Trading History Report\" PDF. Closed positions are parsed and imported; re-uploading is safe (duplicates are skipped).",
-    "pickFile": "Choose PDF",
     "preview": "Preview",
     "import": "Import",
-    "previewTitle": "Preview",
     "totalPositions": "Closed positions",
     "dateRange": "Date range",
     "sumPnl": "Total realized PnL",
@@ -209,11 +199,8 @@
   "taxonomy": {
     "title": "Tags (Origen)",
     "hint": "Customize the tags you can assign to positions. Each group is single-select per position.",
-    "group": "Group",
-    "newGroup": "New group",
     "newTag": "New tag",
-    "tagName": "Tag name",
-    "groupName": "Group name"
+    "tagName": "Tag name"
   },
   "settings": {
     "account": "Account",
@@ -357,7 +344,6 @@
     "mostProfitableInfo": "Pairs ranked by positive total PnL.",
     "leastProfitable": "Least profitable pairs",
     "leastProfitableInfo": "Pairs ranked by negative total PnL.",
-    "pair": "Pair",
     "fees": "Fees",
     "feesInfo": "Total fees for each day of the month.",
     "monthTotal": "Month total",
@@ -368,10 +354,9 @@
     "feeRatioInfo": "Per-day return on fees: net PnL ÷ fees. Month value is month PnL ÷ month fees, from monthly totals. Days with no trades or zero fees are skipped."
   },
   "sync": {
-    "running": "Syncing…",
-    "success": "Sync complete",
     "synced": "Synced {{inserted}} new, {{updated}} updated",
-    "failed": "Sync failed"
+    "failed": "Sync failed",
+    "skipped": "Sync already in progress — try again shortly"
   },
   "quickSync": {
     "label": "Quick sync",

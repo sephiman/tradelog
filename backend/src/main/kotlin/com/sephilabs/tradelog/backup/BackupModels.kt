@@ -13,10 +13,10 @@ import java.time.Instant
 /**
  * The current version of the export envelope shape. The importer refuses any file whose
  * [BackupMeta.exportVersion] exceeds this, so a file written by a newer app is never silently
- * mis-read. [schemaVersion] is informational (the latest applied Flyway migration at export time).
+ * mis-read. [BackupMeta.schemaVersion] is informational (the latest applied Flyway migration at
+ * export time, read from Flyway so it can't go stale).
  */
 const val BACKUP_EXPORT_VERSION = 1
-const val BACKUP_SCHEMA_VERSION = "V012"
 
 /**
  * A portable, self-contained snapshot of everything one user owns: their taxonomy, profiles, data

@@ -227,7 +227,7 @@ function CredentialsEditor({ profileId, source, onDone }: { profileId: string; s
           setApiSecret("");
           onDone();
         },
-        onError: () => showToast(t("sync.failed"), "error"),
+        // Errors surface via the global mutation-cache toast with the API's specific message.
       },
     );
   };

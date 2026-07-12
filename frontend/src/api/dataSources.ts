@@ -54,6 +54,7 @@ export function useCreateDataSource(profileId: string) {
 export function useUpdateDataSource(profileId: string) {
   const qc = useQueryClient();
   return useMutation({
+    meta: { silentSuccess: true },
     mutationFn: async ({ id, body }: { id: string; body: UpdateDataSourceRequest }) =>
       (await apiClient.put<DataSource>(`/profiles/${profileId}/data-sources/${id}`, body)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dataSources", profileId] }),

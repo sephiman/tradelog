@@ -11,12 +11,10 @@ import org.springframework.web.servlet.HandlerInterceptor
 import org.springframework.web.servlet.HandlerMapping
 import java.util.UUID
 
-const val ATTR_PROFILE_ID = "tl.profileId"
-
 /**
  * Enforces that the authenticated user owns the `{profileId}` in the request path before any
- * profile-scoped handler runs, and exposes it via [ProfileContext]. Profiles are private to a
- * single user — there is no sharing — so ownership is a single FK check.
+ * profile-scoped handler runs. Profiles are private to a single user — there is no sharing — so
+ * ownership is a single FK check. Handlers then take the validated id from their own path variable.
  */
 @Component
 class ProfileAccessInterceptor(
@@ -36,7 +34,6 @@ class ProfileAccessInterceptor(
         profiles.findByIdAndUserId(profileId, user.id)
             ?: throw AppException.forbidden("NOT_PROFILE_OWNER")
 
-        request.setAttribute(ATTR_PROFILE_ID, profileId)
         MDC.put("profileId", profileId.toString())
         return true
     }

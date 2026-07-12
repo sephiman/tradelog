@@ -159,6 +159,7 @@ export function useBulkSetTag(profileId: string) {
 export function useDeletePosition(profileId: string) {
   const qc = useQueryClient();
   return useMutation({
+    meta: { silentSuccess: true },
     mutationFn: async (positionId: string) => {
       await apiClient.delete(`/profiles/${profileId}/positions/${positionId}`);
     },
@@ -177,6 +178,7 @@ export interface BulkDeleteBody {
 export function useBulkDeletePositions(profileId: string) {
   const qc = useQueryClient();
   return useMutation({
+    meta: { silentSuccess: true },
     mutationFn: async (body: BulkDeleteBody) => {
       const res = await apiClient.post<{ deleted: number }>(`/profiles/${profileId}/positions/bulk-delete`, body);
       return res.data;

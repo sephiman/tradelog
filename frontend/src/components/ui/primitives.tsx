@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { forwardRef, useEffect, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type LabelHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
@@ -125,6 +126,7 @@ export function Modal({
   children: React.ReactNode;
   className?: string;
 }) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -155,7 +157,7 @@ export function Modal({
             <h2 className="font-semibold">{title}</h2>
             <button
               type="button"
-              aria-label="Close"
+              aria-label={t("common.close")}
               onClick={onClose}
               className="rounded-md p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
             >

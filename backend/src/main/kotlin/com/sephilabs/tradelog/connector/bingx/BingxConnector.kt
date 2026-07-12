@@ -40,7 +40,7 @@ class BingxConnector(
 ) : ApiConnector {
 
     private val log = LoggerFactory.getLogger(BingxConnector::class.java)
-    private val client: RestClient = RestClient.builder().baseUrl(props.connectors.bingx.baseUrl).build()
+    private val client: RestClient = ExchangeHttp.restClient(props.connectors.bingx)
 
     override val kind = SourceKind.BINGX
 

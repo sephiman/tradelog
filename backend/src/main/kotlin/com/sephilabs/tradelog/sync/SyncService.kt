@@ -41,13 +41,30 @@ class SyncService(
         return syncApiSource(ds, trigger)
     }
 
+    /**
+     * Source ids with a run currently in flight. The login sweep, the nightly sweep, a manual sync
+     * and a file upload can all fire for the same source at once; two concurrent upserts of the same
+     * source race on the (data source, external id) unique index and spuriously mark a legitimate
+     * run as ERROR. In-process is sufficient — the app runs as a single instance.
+     */
+    private val inFlight = java.util.concurrent.ConcurrentHashMap.newKeySet<UUID>()
+
+    private fun <T> withSourceLock(dataSourceId: UUID, block: () -> T): T {
+        if (!inFlight.add(dataSourceId)) throw AppException.tooManyRequests("SYNC_ALREADY_RUNNING")
+        try {
+            return block()
+        } finally {
+            inFlight.remove(dataSourceId)
+        }
+    }
+
     /** Core API sync used by both manual and on-login triggers. Throws only on rate limiting (429). */
-    fun syncApiSource(ds: DataSource, trigger: SyncTrigger): SyncRunDto {
+    fun syncApiSource(ds: DataSource, trigger: SyncTrigger): SyncRunDto = withSourceLock(ds.id) {
         if (!rateLimiter.tryAcquire(ds.kind)) throw AppException.tooManyRequests("SYNC_RATE_LIMITED")
         val connector = registry.api(ds.kind)
         val run = store.startRun(ds.id, trigger)
         log.info("Sync starting: source={} kind={} trigger={} run={}", ds.id, ds.kind, trigger, run.id)
-        return try {
+        try {
             val creds = dataSourceService.credentialsOf(ds)
             val cursor = dataSourceService.cursorOf(ds)
             val batch = connector.fetchClosedPositions(creds, cursor, ds.syncFrom ?: backfillFloor())
@@ -93,10 +110,10 @@ class SyncService(
         }
     }
 
-    /** Persist a batch parsed from a file source (Quantfury PDF). */
-    fun importFile(ds: DataSource, records: List<PositionRecord>, trigger: SyncTrigger): SyncRunDto {
+    /** Persist a batch parsed from a file source (Quantfury PDF, Journal CSV). */
+    fun importFile(ds: DataSource, records: List<PositionRecord>, trigger: SyncTrigger): SyncRunDto = withSourceLock(ds.id) {
         val run = store.startRun(ds.id, trigger)
-        return try {
+        try {
             val finished = store.completeFileSuccess(ds.id, run.id, records)
             metrics.syncRun(ds.kind.name, trigger.name, "success")
             metrics.positionsUpserted(ds.kind.name, finished.inserted + finished.updated)

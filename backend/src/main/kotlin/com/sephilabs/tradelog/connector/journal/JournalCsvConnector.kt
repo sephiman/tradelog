@@ -5,6 +5,7 @@ import com.fasterxml.jackson.dataformat.csv.CsvMapper
 import com.fasterxml.jackson.dataformat.csv.CsvSchema
 import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.connector.FileImportConnector
+import com.sephilabs.tradelog.connector.PositionReconstructor
 import com.sephilabs.tradelog.connector.PositionRecord
 import com.sephilabs.tradelog.connector.Symbol
 import com.sephilabs.tradelog.connector.Symbols
@@ -70,7 +71,8 @@ class JournalCsvConnector : FileImportConnector {
         val exitPrice = num(row.required("exit_price"))
         val fees = row.optional("fees")?.let(::num) ?: BigDecimal.ZERO
         val funding = row.optional("funding")?.let(::num) ?: BigDecimal.ZERO
-        val realizedPnl = row.optional("realized_pnl")?.let(::num) ?: computePnl(side, entryPrice, exitPrice, qty)
+        val realizedPnl = row.optional("realized_pnl")?.let(::num)
+            ?: PositionReconstructor.realizedFromPrices(side, entryPrice, exitPrice, qty)
         val exchange = row.optional("exchange")?.take(MAX_EXCHANGE_LEN)
         val note = row.optional("note")
 
@@ -112,11 +114,6 @@ class JournalCsvConnector : FileImportConnector {
 
     private fun jsonStr(s: String): String =
         "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
-    private fun computePnl(side: PositionSide, entry: BigDecimal, exit: BigDecimal, qty: BigDecimal): BigDecimal {
-        val diff = if (side == PositionSide.LONG) exit.subtract(entry) else entry.subtract(exit)
-        return diff.multiply(qty)
-    }
 
     private fun readRows(input: InputStream): List<Map<String, String>> {
         val schema = CsvSchema.emptySchema()

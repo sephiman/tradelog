@@ -7,6 +7,7 @@ import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.config.AppProperties
 import com.sephilabs.tradelog.connector.ApiConnector
 import com.sephilabs.tradelog.connector.ExchangeCredentials
+import com.sephilabs.tradelog.connector.ExchangeHttp
 import com.sephilabs.tradelog.connector.ExchangeSign
 import com.sephilabs.tradelog.connector.PositionRecord
 import com.sephilabs.tradelog.connector.SyncBatch
@@ -42,7 +43,7 @@ class BitunixConnector(
 ) : ApiConnector {
 
     private val log = LoggerFactory.getLogger(BitunixConnector::class.java)
-    private val client: RestClient = RestClient.builder().baseUrl(props.connectors.bitunix.baseUrl).build()
+    private val client: RestClient = ExchangeHttp.restClient(props.connectors.bitunix)
 
     override val kind = SourceKind.BITUNIX
 

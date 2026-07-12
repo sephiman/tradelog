@@ -503,7 +503,13 @@ function PositionRow({ profileId, position, origen, selected, selectDisabled, on
           {origen && <OrigenSelect origen={origen} value={currentTagId} onChange={onTagChange} className="w-32" />}
         </td>
         <td className="text-right">
-          <button type="button" onClick={() => setExpanded((v) => !v)} className="px-2 text-gray-500 hover:text-primary">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-label={t("positions.toggleDetails")}
+            aria-expanded={expanded}
+            className="px-2 text-gray-500 hover:text-primary"
+          >
             {position.note ? "📝" : ""} {expanded ? "▲" : "▼"}
           </button>
         </td>
@@ -564,6 +570,8 @@ function PositionCard({ profileId, position, origen, selected, selectDisabled, o
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
+              aria-label={t("positions.toggleDetails")}
+              aria-expanded={expanded}
               className="shrink-0 px-2 text-gray-500 hover:text-primary"
             >
               {position.note ? "📝" : ""} {expanded ? "▲" : "▼"}

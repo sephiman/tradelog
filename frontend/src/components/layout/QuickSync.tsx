@@ -9,8 +9,8 @@ import { QuantfuryUploadCard } from "@/features/settings/QuantfuryUploadCard";
 
 /**
  * Header split button: the main action syncs the active profile's API exchanges
- * (Bitunix/BingX) in one click; the caret menu also exposes the Quantfury PDF
- * import, which has no API and can only be updated by uploading a report.
+ * (Bitunix/BingX/BitMart) in one click; the caret menu also exposes the Quantfury
+ * PDF import, which has no API and can only be updated by uploading a report.
  */
 export function QuickSync() {
   const { t } = useTranslation();
@@ -33,7 +33,7 @@ export function QuickSync() {
   }, [menuOpen]);
 
   const quantfurySources = sources.filter((s) => s.kind === "QUANTFURY");
-  const hasApi = sources.some((s) => s.kind === "BITUNIX" || s.kind === "BINGX");
+  const hasApi = sources.some((s) => s.kind === "BITUNIX" || s.kind === "BINGX" || s.kind === "BITMART");
   const hasQuantfury = quantfurySources.length > 0;
 
   // Nothing to sync or import yet — keep the header clean.
@@ -43,11 +43,17 @@ export function QuickSync() {
     setMenuOpen(false);
     syncAll.mutate(undefined, {
       onSuccess: (runs) => {
+        // Empty means every source was skipped (rate-limited or a sync already in flight) —
+        // saying "Synced 0" would misreport a sync that never ran.
+        if (runs.length === 0) {
+          showToast(t("sync.skipped"), "info");
+          return;
+        }
         const ins = runs.reduce((a, r) => a + r.inserted, 0);
         const upd = runs.reduce((a, r) => a + r.updated, 0);
         showToast(t("sync.synced", { inserted: ins, updated: upd }), "success");
       },
-      onError: () => showToast(t("sync.failed"), "error"),
+      // Errors surface via the global mutation-cache toast with the API's specific message.
     });
   };
 
