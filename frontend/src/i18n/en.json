@@ -12,7 +12,9 @@
     "noData": "No data yet",
     "errorTitle": "Something went wrong.",
     "reload": "Reload",
-    "networkError": "Network error — check your connection"
+    "networkError": "Network error — check your connection",
+    "loadFailed": "Couldn't load the data",
+    "retry": "Retry"
   },
   "nav": {
     "dashboard": "Dashboard",

@@ -69,6 +69,9 @@ class AuthController(
     /** Authenticates the credentials and persists the SecurityContext into the (JDBC-backed) session. */
     private fun establishSession(email: String, password: String, request: HttpServletRequest, response: HttpServletResponse) {
         val auth = authManager.authenticate(UsernamePasswordAuthenticationToken(email, password))
+        // Rotate the session id across the privilege change (session-fixation protection). With
+        // formLogin disabled, Spring Security's own SessionFixationProtectionStrategy never runs.
+        request.getSession(false)?.let { request.changeSessionId() }
         val context = SecurityContextHolder.createEmptyContext().apply { authentication = auth }
         SecurityContextHolder.setContext(context)
         contextRepo.saveContext(context, request, response)
@@ -87,6 +90,10 @@ class AuthController(
         request: HttpServletRequest,
         response: HttpServletResponse,
     ): ResponseEntity<MeResponse> {
+        // Same per-IP budget as login: registration is unauthenticated, runs Argon2, and creates
+        // rows — without a limiter it is a spam/CPU amplifier.
+        val ip = request.remoteAddr ?: "unknown"
+        if (!rateLimiter.tryAcquire("register:$ip")) throw AppException.tooManyRequests()
         val user = authService.register(body)
         // Log the new user straight in, so the SPA's authenticated state is backed by a real session
         // (otherwise the first write after registering 401s until an explicit login).

@@ -38,8 +38,11 @@ export function pairOf(p: ClosedPosition): string {
   return `${p.symbolBase}/${p.symbolQuote}`;
 }
 
+// Compare as instants, not strings: ISO timestamps omit a zero fractional second, and
+// "…:05.500Z" sorts lexicographically BEFORE "…:05Z" ('.' < 'Z'), mis-ordering same-second trades.
 const byClose = (a: ClosedPosition, b: ClosedPosition): number =>
-  a.closedAt < b.closedAt ? -1 : a.closedAt > b.closedAt ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  new Date(a.closedAt).getTime() - new Date(b.closedAt).getTime() ||
+  (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 const sum = (xs: Decimal[]): Decimal => xs.reduce((acc, x) => acc.plus(x), ZERO);
 

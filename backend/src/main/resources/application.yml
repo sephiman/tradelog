@@ -1,6 +1,10 @@
 spring:
   application:
     name: tradelog
+  lifecycle:
+    # Must stay under the container's stop_grace_period (40s in docker-compose.yml) so in-flight
+    # requests drain before Docker's SIGKILL.
+    timeout-per-shutdown-phase: 25s
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:tradelog}
     username: ${DB_USERNAME:tradelog}
@@ -46,7 +50,11 @@ server:
         secure: ${APP_COOKIE_SECURE:true}
         same-site: lax
         max-age: 30d
-  forward-headers-strategy: framework
+  # NATIVE = Tomcat's RemoteIpValve, which walks X-Forwarded-For right-to-left and only trusts
+  # private-range proxies. The FRAMEWORK strategy takes the LEFT-most XFF value, which the client
+  # controls (nginx appends rather than replaces) — that let an attacker spoof a fresh IP per
+  # request and sidestep the per-IP login rate limit.
+  forward-headers-strategy: native
   shutdown: graceful
 
 management:

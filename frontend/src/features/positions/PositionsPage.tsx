@@ -17,6 +17,7 @@ import {
 } from "@/api/positions";
 import { useTaxonomy, type TagGroup } from "@/api/taxonomy";
 import { Badge, Button, Card, CardBody, Input, Select, Textarea } from "@/components/ui/primitives";
+import { QueryError } from "@/components/ui/QueryError";
 import { cn } from "@/lib/cn";
 import { dateInputToIso, fmtDateTime, fmtNum, fmtUsd, isoToDateInput, pnlTone, toDecimal } from "@/lib/format";
 import { showToast } from "@/lib/toastBus";
@@ -28,7 +29,7 @@ export function PositionsPage() {
   const { t } = useTranslation();
   const { activeProfileId } = useActiveProfile();
   const [filters, setFilters] = useState<PositionFilters>({ sort: "closed_desc", page: 0, size: 50 });
-  const { data, isLoading } = usePositions(activeProfileId, filters);
+  const { data, isLoading, isError, refetch } = usePositions(activeProfileId, filters);
   const { data: exchanges = [] } = usePositionExchanges(activeProfileId);
   const { data: taxonomy = [] } = useTaxonomy();
   const origen = useMemo(() => taxonomy.find((g) => g.code === "origen") ?? taxonomy[0], [taxonomy]);
@@ -306,7 +307,9 @@ export function PositionsPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {isError ? (
+                <tr><td colSpan={12}><QueryError onRetry={() => void refetch()} /></td></tr>
+              ) : isLoading ? (
                 <tr><td colSpan={12} className="py-8 text-center text-gray-500">{t("common.loading")}</td></tr>
               ) : items.length === 0 ? (
                 <tr><td colSpan={12} className="py-8 text-center text-gray-500 dark:text-gray-400">{t("positions.noPositions")}</td></tr>
@@ -328,7 +331,9 @@ export function PositionsPage() {
         </div>
 
         <div className="md:hidden">
-          {isLoading ? (
+          {isError ? (
+            <QueryError onRetry={() => void refetch()} />
+          ) : isLoading ? (
             <div className="py-8 text-center text-gray-500">{t("common.loading")}</div>
           ) : items.length === 0 ? (
             <div className="py-8 text-center text-gray-500 dark:text-gray-400">{t("positions.noPositions")}</div>

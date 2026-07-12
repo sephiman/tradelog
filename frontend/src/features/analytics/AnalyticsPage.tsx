@@ -6,6 +6,7 @@ import { useTaxonomy } from "@/api/taxonomy";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { useAuth } from "@/auth/AuthContext";
 import { Card, CardBody } from "@/components/ui/primitives";
+import { QueryError } from "@/components/ui/QueryError";
 import { useAnalyticsFilters } from "./useAnalyticsFilters";
 import { filterRows } from "./applyFilters";
 import { FilterBar } from "./FilterBar";
@@ -33,7 +34,7 @@ export function AnalyticsPage() {
   const { user } = useAuth();
   const timeZone = user?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  const { data: rows = [], isLoading } = useClosedPositions(activeProfileId);
+  const { data: rows = [], isLoading, isError, refetch } = useClosedPositions(activeProfileId);
   const { data: exchanges = [] } = usePositionExchanges(activeProfileId);
   const { data: taxonomy = [] } = useTaxonomy();
   const origenTags = useMemo(
@@ -65,6 +66,12 @@ export function AnalyticsPage() {
           filters (it uses the Exchange filter only). It renders even with no closed positions. */}
       {view === "capital" ? (
         capital
+      ) : isError ? (
+        <Card>
+          <CardBody>
+            <QueryError onRetry={() => void refetch()} />
+          </CardBody>
+        </Card>
       ) : isLoading ? (
         <Card>
           <CardBody>

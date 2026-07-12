@@ -7,6 +7,8 @@ import com.sephilabs.tradelog.identity.user.UserRepository
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Component
+import org.springframework.web.context.request.RequestAttributes.SCOPE_REQUEST
+import org.springframework.web.context.request.RequestContextHolder
 
 @Component
 class CurrentUser(private val users: UserRepository) {
@@ -19,6 +21,18 @@ class CurrentUser(private val users: UserRepository) {
             is String -> principal
             else -> throw AppException.unauthorized()
         }
-        return users.findByEmailIgnoreCase(email) ?: throw AppException.unauthorized()
+        // The MDC filter, the profile interceptor and the controller all resolve the user on a
+        // typical request — cache the row per request so it is one SELECT, not three or four.
+        val attrs = RequestContextHolder.getRequestAttributes()
+        (attrs?.getAttribute(ATTR_USER, SCOPE_REQUEST) as? User)
+            ?.takeIf { it.email.equals(email, ignoreCase = true) }
+            ?.let { return it }
+        val user = users.findByEmailIgnoreCase(email) ?: throw AppException.unauthorized()
+        attrs?.setAttribute(ATTR_USER, user, SCOPE_REQUEST)
+        return user
+    }
+
+    private companion object {
+        const val ATTR_USER = "tl.currentUser"
     }
 }

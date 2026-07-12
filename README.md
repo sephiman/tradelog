@@ -97,7 +97,9 @@ cursor.
 ## Running it
 
 Prerequisites: Docker, and a PostgreSQL reachable on the shared Docker network (default
-`all_dockers`) with a database + user already created for tradelog.
+`all_dockers`) with a database + user already created for tradelog. The migrations run
+`CREATE EXTENSION IF NOT EXISTS pgcrypto`, so the tradelog role needs permission to create
+extensions (or pre-create the extension as a superuser).
 
 ```bash
 cp .env.example .env
@@ -216,10 +218,12 @@ an exchange.
 
 ## Development
 
-The backend builds and tests via the Gradle Docker image (no local Gradle needed):
+The backend builds with the standard Gradle wrapper (a JDK 25 locally), or via the Gradle Docker
+image with no local toolchain:
 
 ```bash
-docker build ./backend                 # compile + bootJar
+cd backend && ./gradlew build          # compile + test + bootJar (local JDK)
+docker build ./backend                 # compile + bootJar (no local toolchain)
 ```
 
 **Tests.** Unit tests need nothing extra; the **integration tests use Testcontainers**, so the test

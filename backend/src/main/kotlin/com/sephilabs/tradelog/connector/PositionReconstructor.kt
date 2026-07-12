@@ -62,6 +62,13 @@ object PositionReconstructor {
 
         for (f in sorted) {
             var remaining = f.qty.abs()
+            if (remaining.signum() == 0) {
+                // A zero-quantity fill carries no exposure but may still carry money (e.g. a
+                // funding- or fee-only row). Attribute it to the open lifecycle rather than
+                // silently dropping it; with no open position there is nothing to attach it to.
+                acc?.absorb(f)
+                continue
+            }
             while (remaining > BigDecimal.ZERO) {
                 if (net.signum() == 0) {
                     // Opening from flat — consume the whole remainder on this side.
@@ -115,6 +122,13 @@ object PositionReconstructor {
         /** Total quantity opened on the entry side, used to scale the flat-detection tolerance. */
         fun entrySize(): BigDecimal = entryQty
 
+        /** Fold a zero-quantity fill's money (fee/PnL/funding) into this lifecycle; no leg is added. */
+        fun absorb(f: RawFill) {
+            fees = fees.add(f.fee)
+            pnl = pnl.add(f.realizedPnl)
+            funding = funding.add(f.funding)
+        }
+
         fun applyEntry(f: RawFill, portion: BigDecimal) {
             entryQty = entryQty.add(portion)
             entryNotional = entryNotional.add(f.price.multiply(portion))
@@ -139,16 +153,21 @@ object PositionReconstructor {
             funding = funding.add(f.funding.multiply(frac))
         }
 
-        private fun leg(action: FillAction, f: RawFill, portion: BigDecimal) = FillRecord(
-            seq = legs.size,
-            action = action,
-            side = if (f.buy) FillSide.BUY else FillSide.SELL,
-            ts = f.ts,
-            price = f.price,
-            qty = portion,
-            value = f.price.multiply(portion),
-            fee = f.fee,
-        )
+        private fun leg(action: FillAction, f: RawFill, portion: BigDecimal): FillRecord {
+            // A fill split across a zero-crossing produces one leg per side; each leg must carry
+            // its proportional share of the fill's fee or the legs would sum to more than the fill.
+            val frac = if (f.qty.signum() == 0) BigDecimal.ONE else portion.divide(f.qty.abs(), MC)
+            return FillRecord(
+                seq = legs.size,
+                action = action,
+                side = if (f.buy) FillSide.BUY else FillSide.SELL,
+                ts = f.ts,
+                price = f.price,
+                qty = portion,
+                value = f.price.multiply(portion),
+                fee = f.fee.multiply(frac),
+            )
+        }
 
         fun build(symbol: String, normalize: (String) -> Symbol): PositionRecord {
             // The last exit leg is the close.

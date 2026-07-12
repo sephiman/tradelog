@@ -33,13 +33,15 @@ class PositionService(
             "pnl_asc" -> Sort.by(Sort.Order.asc("netPnl"), Sort.Order.desc("closedAt"))
             else -> Sort.by(Sort.Order.desc("closedAt"))
         }
-        val pageable = PageRequest.of(criteria.page, criteria.size.coerceIn(1, 200), sort)
+        val size = criteria.size.coerceIn(1, 200)
+        val pageable = PageRequest.of(criteria.page, size, sort)
         val page = positions.findAll(PositionSpecs.fromCriteria(criteria), pageable)
         val ids = page.content.map { it.id }
         val tagViews = tagViewsByPosition(ids)
         val fillCounts = fillCountsByPosition(ids)
         val items = page.content.map { it.toDto(tagViews[it.id] ?: emptyList(), fillCounts[it.id] ?: 0) }
-        return PageResponse.of(items, criteria.page, criteria.size, page.totalElements)
+        // Echo the coerced size — reporting the raw requested size would break pagination math.
+        return PageResponse.of(items, criteria.page, size, page.totalElements)
     }
 
     @Transactional(readOnly = true)

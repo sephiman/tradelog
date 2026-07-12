@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.sephilabs.tradelog.observability
 
-import com.sephilabs.tradelog.identity.user.UserRepository
+import com.sephilabs.tradelog.identity.auth.CurrentUser
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -46,17 +46,17 @@ class MdcRequestContextFilter : OncePerRequestFilter() {
 
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE - 100)
-class AuthMdcFilter(private val users: UserRepository) : OncePerRequestFilter() {
+class AuthMdcFilter(private val currentUser: CurrentUser) : OncePerRequestFilter() {
 
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
         chain: FilterChain,
     ) {
-        val auth = SecurityContextHolder.getContext().authentication
-        val principal = auth?.principal
+        val principal = SecurityContextHolder.getContext().authentication?.principal
         if (principal is org.springframework.security.core.userdetails.UserDetails) {
-            users.findByEmailIgnoreCase(principal.username)?.let { MDC.put("userId", it.id.toString()) }
+            // Warms CurrentUser's request cache, so this is the request's single user lookup.
+            runCatching { currentUser.requireUser() }.getOrNull()?.let { MDC.put("userId", it.id.toString()) }
         }
         chain.doFilter(request, response)
     }
