@@ -7,7 +7,7 @@ import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { useAuth } from "@/auth/AuthContext";
 import { Card, CardBody } from "@/components/ui/primitives";
 import { QueryError } from "@/components/ui/QueryError";
-import { useAnalyticsFilters } from "./useAnalyticsFilters";
+import { useAnalyticsFilters, type DateRange } from "./useAnalyticsFilters";
 import { filterRows } from "./applyFilters";
 import { FilterBar } from "./FilterBar";
 import { ViewTabs, type ViewKey } from "./ViewTabs";
@@ -20,6 +20,8 @@ import { MostTradedCard, MostProfitableCard, LeastProfitableCard } from "./Pairs
 import { FeesCard, CumulativeFeesCard, FeeRatioCard } from "./FeesView";
 import { CapitalRiskView } from "./CapitalRiskView";
 import type { ClosedPosition } from "@/api/analytics";
+
+const NO_RANGE: DateRange = { from: null, to: null };
 
 /** A responsive pair of cards: two columns on desktop, stacked on mobile.
  * The base `grid-cols-1` is `minmax(0,1fr)`, which lets each track shrink to the
@@ -52,6 +54,14 @@ export function AnalyticsPage() {
   const filtered = useMemo(
     () => filterRows(rows, filters.range, filters.exchange, filters.origenTagId),
     [rows, filters.range, filters.exchange, filters.origenTagId],
+  );
+
+  // Cards with their own month/year navigator select their period themselves, so the global Period
+  // filter doesn't apply to them — only Exchange and Origen do. Otherwise the default "This month"
+  // preset would blank out any month/year the navigator moves to.
+  const navRows = useMemo(
+    () => filterRows(rows, NO_RANGE, filters.exchange, filters.origenTagId),
+    [rows, filters.exchange, filters.origenTagId],
   );
 
   const capital = <CapitalRiskView profileId={activeProfileId} exchange={filters.exchange} />;
@@ -88,7 +98,7 @@ export function AnalyticsPage() {
           </Card>
         </div>
       ) : (
-        <Dashboard view={view} rows={filtered} timeZone={timeZone} perfNav={perfNav} feesNav={feesNav} capital={capital} />
+        <Dashboard view={view} rows={filtered} navRows={navRows} timeZone={timeZone} perfNav={perfNav} feesNav={feesNav} capital={capital} />
       )}
     </div>
   );
@@ -97,6 +107,7 @@ export function AnalyticsPage() {
 function Dashboard({
   view,
   rows,
+  navRows,
   timeZone,
   perfNav,
   feesNav,
@@ -104,6 +115,8 @@ function Dashboard({
 }: {
   view: ViewKey;
   rows: ClosedPosition[];
+  /** Rows filtered by Exchange/Origen only — for cards whose own navigator picks the period. */
+  navRows: ClosedPosition[];
   timeZone: string;
   perfNav: ReturnType<typeof useMonthNavState>;
   feesNav: ReturnType<typeof useMonthNavState>;
@@ -121,10 +134,10 @@ function Dashboard({
     return (
       <div className="space-y-6">
         <Row>
-          <ActivityCard rows={rows} timeZone={timeZone} nav={perfNav} />
-          <PnlPerDayCard rows={rows} timeZone={timeZone} nav={perfNav} />
+          <ActivityCard rows={navRows} timeZone={timeZone} nav={perfNav} />
+          <PnlPerDayCard rows={navRows} timeZone={timeZone} nav={perfNav} />
         </Row>
-        <MonthlySummaryCard rows={rows} timeZone={timeZone} />
+        <MonthlySummaryCard rows={navRows} timeZone={timeZone} />
       </div>
     );
   }
@@ -150,7 +163,7 @@ function Dashboard({
           <LosingStreaksCard rows={rows} className="md:col-span-2" />
           <RecoveryCard rows={rows} className="md:col-span-1" />
         </div>
-        <CalendarCard rows={rows} timeZone={timeZone} />
+        <CalendarCard rows={navRows} timeZone={timeZone} />
       </div>
     );
   }
@@ -167,10 +180,10 @@ function Dashboard({
     return (
       <div className="space-y-6">
         <Row>
-          <FeesCard rows={rows} timeZone={timeZone} nav={feesNav} />
+          <FeesCard rows={navRows} timeZone={timeZone} nav={feesNav} />
           <CumulativeFeesCard rows={rows} />
         </Row>
-        <FeeRatioCard rows={rows} timeZone={timeZone} nav={feesNav} />
+        <FeeRatioCard rows={navRows} timeZone={timeZone} nav={feesNav} />
       </div>
     );
   }
@@ -184,8 +197,8 @@ function Dashboard({
         <CumulativeProfitCard rows={rows} />
       </Row>
       <Row>
-        <ActivityCard rows={rows} timeZone={timeZone} nav={perfNav} />
-        <PnlPerDayCard rows={rows} timeZone={timeZone} nav={perfNav} />
+        <ActivityCard rows={navRows} timeZone={timeZone} nav={perfNav} />
+        <PnlPerDayCard rows={navRows} timeZone={timeZone} nav={perfNav} />
       </Row>
       <Row>
         <WinRateByHourCard rows={rows} timeZone={timeZone} />
@@ -201,7 +214,7 @@ function Dashboard({
         <RecoveryCard rows={rows} className="md:col-span-1" />
       </div>
       <Row>
-        <CalendarCard rows={rows} timeZone={timeZone} />
+        <CalendarCard rows={navRows} timeZone={timeZone} />
         <MostTradedCard rows={rows} />
       </Row>
       <Row>
@@ -209,12 +222,12 @@ function Dashboard({
         <LeastProfitableCard rows={rows} />
       </Row>
       <Row>
-        <FeesCard rows={rows} timeZone={timeZone} nav={feesNav} />
+        <FeesCard rows={navRows} timeZone={timeZone} nav={feesNav} />
         <CumulativeFeesCard rows={rows} />
       </Row>
       <Row>
-        <FeeRatioCard rows={rows} timeZone={timeZone} nav={feesNav} />
-        <MonthlySummaryCard rows={rows} timeZone={timeZone} />
+        <FeeRatioCard rows={navRows} timeZone={timeZone} nav={feesNav} />
+        <MonthlySummaryCard rows={navRows} timeZone={timeZone} />
       </Row>
     </div>
   );
