@@ -212,13 +212,13 @@
     "timeZoneHint": "Tu zona horaria activa. Define los límites de día en todas partes: la analítica, las instantáneas de capital, los ajustes y los periodos de ROI.",
     "capital": {
       "title": "Capital y riesgo",
-      "historyHint": "El capital se registra como un historial fechado de ajustes e instantáneas diarias en la página Capital; las cifras de riesgo del panel usan el capital actual estimado derivado de él.",
+      "historyHint": "El capital se registra como un historial fechado de ajustes e instantáneas en la página Capital; las cifras de riesgo del panel usan el capital actual estimado derivado de él.",
       "manageLink": "Gestionar historial de capital",
       "riskLabel": "Riesgo por operación",
       "riskHint": "Los dos porcentajes del capital que estás dispuesto a arriesgar en una sola operación. Se usan para mostrar el máximo a perder por operación en el panel.",
       "riskPct": "Riesgo {{n}} (%)",
       "frequencyLabel": "Frecuencia de instantáneas",
-      "frequencyHint": "Cada cuánto la tarea de fondo registra el capital estimado como instantánea diaria. Los valores introducidos a mano siempre ganan — la tarea nunca los sobrescribe.",
+      "frequencyHint": "Cada cuánto la tarea de fondo registra el capital estimado como instantánea. Los valores introducidos a mano siempre ganan — la tarea nunca los sobrescribe.",
       "frequency": {
         "daily": "Diaria",
         "weekly": "Semanal (lunes)",
@@ -259,7 +259,7 @@
       "deleteConfirm": "¿Eliminar este ajuste? Los días posteriores se reestimarán desde el anterior."
     },
     "snapshots": {
-      "title": "Instantáneas diarias",
+      "title": "Instantáneas",
       "hint": "Capital estimado al inicio de cada día, registrado por la tarea de fondo según la frecuencia configurada. Editar un valor convierte ese día en un ajuste (ancla) para ese exchange — la tarea nunca sobrescribe valores manuales. Borra un valor manual para devolver el día al automático. Vacío o 0 significa sin capital ese día.",
       "from": "Desde",
       "to": "Hasta",
@@ -360,7 +360,7 @@
     "cumulativeProfit": "Beneficio acumulado",
     "cumulativeProfitInfo": "Suma acumulada de resultados netos ordenada por fecha de cierre — tu curva de capital.",
     "capitalEvolution": "Evolución del capital",
-    "capitalEvolutionInfo": "Tus instantáneas diarias de capital almacenadas, apiladas por exchange. Es el capital a lo largo del tiempo e INCLUYE tus ajustes manuales (depósitos, retiradas, correcciones) — no es el retorno del trading; para eso, mira Beneficio acumulado. Los marcadores señalan los días con un ajuste manual.",
+    "capitalEvolutionInfo": "Tus instantáneas de capital almacenadas, apiladas por exchange. Es el capital a lo largo del tiempo e INCLUYE tus ajustes manuales (depósitos, retiradas, correcciones) — no es el retorno del trading; para eso, mira Beneficio acumulado. Los marcadores señalan los días con un ajuste manual.",
     "capitalEvolutionSubtitle": "Capital a lo largo del tiempo, incluyendo tus ajustes — no es retorno del trading.",
     "capitalEvolutionAnchors": "Ajustes",
     "capitalEvolutionEmpty": "Aún no hay instantáneas de capital. Crea tu primer ajuste en la página Capital.",

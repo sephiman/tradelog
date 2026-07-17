@@ -212,13 +212,13 @@
     "timeZoneHint": "Your active time zone. It sets the day boundaries everywhere: analytics buckets, capital snapshots, adjustments and ROI periods.",
     "capital": {
       "title": "Trading capital & risk",
-      "historyHint": "Capital is tracked as a dated history of adjustments and daily snapshots on the Capital page; the dashboard's risk figures use the estimated current capital derived from it.",
+      "historyHint": "Capital is tracked as a dated history of adjustments and snapshots on the Capital page; the dashboard's risk figures use the estimated current capital derived from it.",
       "manageLink": "Manage capital history",
       "riskLabel": "Risk per trade",
       "riskHint": "The two percentages of capital you're willing to risk on a single trade. Used to show the maximum to lose per trade on the dashboard.",
       "riskPct": "Risk {{n}} (%)",
       "frequencyLabel": "Snapshot frequency",
-      "frequencyHint": "How often the background job records the estimated capital as a daily snapshot. Manually entered values always win — the job never overwrites them.",
+      "frequencyHint": "How often the background job records the estimated capital as a snapshot. Manually entered values always win — the job never overwrites them.",
       "frequency": {
         "daily": "Daily",
         "weekly": "Weekly (Mondays)",
@@ -259,7 +259,7 @@
       "deleteConfirm": "Delete this adjustment? Later days will be re-estimated from the previous one."
     },
     "snapshots": {
-      "title": "Daily snapshots",
+      "title": "Snapshots",
       "hint": "Estimated capital at the start of each day, recorded by the background job at your configured frequency. Editing a value turns that day into an adjustment (anchor) for that exchange — the job never overwrites manual values. Clear a manual value to return the day to automatic. Empty or 0 means no capital that day.",
       "from": "From",
       "to": "To",
@@ -360,7 +360,7 @@
     "cumulativeProfit": "Cumulative profit",
     "cumulativeProfitInfo": "Running sum of net results ordered by close date — your equity curve.",
     "capitalEvolution": "Capital evolution",
-    "capitalEvolutionInfo": "Your stored daily capital snapshots, stacked per exchange. This is capital over time and INCLUDES your manual adjustments (deposits, withdrawals, corrections) — it is not trading return; for that, see Cumulative profit. The markers flag days with a manual adjustment.",
+    "capitalEvolutionInfo": "Your stored capital snapshots, stacked per exchange. This is capital over time and INCLUDES your manual adjustments (deposits, withdrawals, corrections) — it is not trading return; for that, see Cumulative profit. The markers flag days with a manual adjustment.",
     "capitalEvolutionSubtitle": "Capital over time, including your adjustments — not trading return.",
     "capitalEvolutionAnchors": "Adjustments",
     "capitalEvolutionEmpty": "No capital snapshots yet. Create your first adjustment on the Capital page.",
