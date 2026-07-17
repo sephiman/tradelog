@@ -7,6 +7,7 @@ import {
   useCapital,
   useCapitalSnapshots,
   useDeleteAdjustment,
+  useDeleteSnapshotDay,
   usePatchAdjustment,
   useSaveAdjustments,
   type SnapshotValue,
@@ -280,6 +281,7 @@ function SnapshotsCard({ profileId }: { profileId: string }) {
   const { data } = useCapitalSnapshots(profileId, from || undefined, to || undefined);
   const { data: overview } = useCapital(profileId);
   const save = useSaveAdjustments(profileId);
+  const deleteDay = useDeleteSnapshotDay(profileId);
 
   // New exchanges appear as a column even before they have any snapshot value.
   const exchanges = useMemo(() => {
@@ -341,7 +343,8 @@ function SnapshotsCard({ profileId }: { profileId: string }) {
                       {ex}
                     </th>
                   ))}
-                  <th className={cn(thRight, "pr-0")}>{t("capital.snapshots.total")}</th>
+                  <th className={thRight}>{t("capital.snapshots.total")}</th>
+                  <th className="py-2" />
                 </tr>
               </thead>
               <tbody>
@@ -372,7 +375,20 @@ function SnapshotsCard({ profileId }: { profileId: string }) {
                           </td>
                         );
                       })}
-                      <td className="py-1.5 text-right font-medium tabular-nums">{fmtUsd(total)}</td>
+                      <td className="py-1.5 pr-3 text-right font-medium tabular-nums">{fmtUsd(total)}</td>
+                      <td className="py-1.5 text-right">
+                        <Button
+                          variant="ghost"
+                          className="px-2 py-1"
+                          aria-label={t("capital.snapshots.deleteDay")}
+                          disabled={deleteDay.isPending}
+                          onClick={() => {
+                            if (window.confirm(t("capital.snapshots.deleteDayConfirm"))) deleteDay.mutate(day.date);
+                          }}
+                        >
+                          {t("common.delete")}
+                        </Button>
+                      </td>
                     </tr>
                   );
                 })}

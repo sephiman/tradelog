@@ -92,6 +92,8 @@ interface CapitalSnapshotRepository : JpaRepository<CapitalSnapshot, UUID> {
 
     fun findByIdAndProfileId(id: UUID, profileId: UUID): CapitalSnapshot?
 
+    fun findAllByProfileIdAndSnapshotDate(profileId: UUID, date: LocalDate): List<CapitalSnapshot>
+
     fun findByProfileIdAndExchangeAndSnapshotDate(profileId: UUID, exchange: String, date: LocalDate): CapitalSnapshot?
 
     /** Profiles that have at least one anchor — the ones the snapshot job has anything to do for. */

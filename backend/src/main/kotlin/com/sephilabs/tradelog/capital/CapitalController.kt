@@ -73,6 +73,15 @@ class CapitalController(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
     ): SnapshotSeriesDto = history.snapshotSeries(profileId, from, to)
 
+    @DeleteMapping("/snapshots/{date}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteSnapshotDay(
+        @PathVariable profileId: UUID,
+        @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
+    ) {
+        history.deleteSnapshotDay(profileId, date)
+    }
+
     @GetMapping("/roi")
     fun roi(
         @PathVariable profileId: UUID,

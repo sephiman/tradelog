@@ -132,6 +132,21 @@ export function useDeleteAdjustment(profileId: string) {
   });
 }
 
+/**
+ * Delete every stored value of one day (manual ones included — they are anchors, so later days
+ * re-base). Days matching the profile's cadence are re-materialized right away; deletion is only
+ * permanent for off-cadence days.
+ */
+export function useDeleteSnapshotDay(profileId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (date: string) => {
+      await apiClient.delete(`/profiles/${profileId}/capital/snapshots/${date}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["capital", profileId] }),
+  });
+}
+
 /** Materialize the AUTO series at the configured frequency since the first adjustment, right now. */
 export function useBackfillSnapshots(profileId: string) {
   const qc = useQueryClient();

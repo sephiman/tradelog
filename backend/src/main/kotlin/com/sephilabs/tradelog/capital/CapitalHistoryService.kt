@@ -176,6 +176,22 @@ class CapitalHistoryService(
         return listAdjustments(profileId)
     }
 
+    /**
+     * Removes every stored value of one day, manual ones included (a manual value is an anchor, so
+     * later days re-base onto the previous one — same as deleting the adjustment). The recompute
+     * re-materializes the day right away when it matches the profile's cadence; deletion is only
+     * permanent for off-cadence days (e.g. pruning leftover daily rows after switching to weekly).
+     */
+    @Transactional
+    fun deleteSnapshotDay(profileId: UUID, date: LocalDate) {
+        val rows = snapshots.findAllByProfileIdAndSnapshotDate(profileId, date)
+        if (rows.isEmpty()) return
+        snapshots.deleteAll(rows)
+        // The recompute may re-insert the same (exchange, date) as AUTO — the deletes must land first.
+        snapshots.flush()
+        recomputeAutoSnapshots(profileId, rows.map { it.exchange }.toSet())
+    }
+
     @Transactional(readOnly = true)
     fun snapshotSeries(profileId: UUID, from: LocalDate?, to: LocalDate?): SnapshotSeriesDto {
         val rows = if (from != null && to != null) {

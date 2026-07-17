@@ -266,7 +266,9 @@
       "date": "Date",
       "total": "Total",
       "empty": "No snapshots in this range.",
-      "manualTitle": "Manual value (anchor) — the job never overwrites it"
+      "manualTitle": "Manual value (anchor) — the job never overwrites it",
+      "deleteDay": "Delete this day's snapshot",
+      "deleteDayConfirm": "Delete this day's stored snapshot? Manual values on it are adjustments and will be removed too — later days are re-estimated from the previous adjustment. Days matching your snapshot frequency are re-created automatically; deleting is permanent only for days outside the current frequency."
     }
   },
   "backup": {

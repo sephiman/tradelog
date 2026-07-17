@@ -266,7 +266,9 @@
       "date": "Fecha",
       "total": "Total",
       "empty": "No hay instantáneas en este rango.",
-      "manualTitle": "Valor manual (ancla) — la tarea nunca lo sobrescribe"
+      "manualTitle": "Valor manual (ancla) — la tarea nunca lo sobrescribe",
+      "deleteDay": "Eliminar la instantánea de este día",
+      "deleteDayConfirm": "¿Eliminar la instantánea guardada de este día? Los valores manuales de ese día son ajustes y también se eliminarán — los días posteriores se reestiman desde el ajuste anterior. Los días que coinciden con tu frecuencia de instantáneas se vuelven a crear automáticamente; el borrado solo es permanente para días fuera de la frecuencia actual."
     }
   },
   "backup": {

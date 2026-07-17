@@ -197,6 +197,38 @@ class CapitalHistoryIntegrationTest @Autowired constructor(
     }
 
     @Test
+    fun `deleting a snapshot day prunes off-cadence rows but cadence days re-materialize`() {
+        val (profile, dsId) = newProfile()
+        trade(profile.id, dsId, Instant.parse("2026-07-02T10:00:00Z"), "100")
+        // DAILY first, so every day gets a row; then WEEKLY, which keeps the daily rows around.
+        anchor(profile.id, LocalDate.of(2026, 7, 1), "Bitunix", "1000")
+        capitalService.updateSettings(
+            profile.id,
+            UpdateCapitalSettingsRequest(RiskPercentsInput(BigDecimal.ONE, BigDecimal("2")), SnapshotFrequency.WEEKLY),
+        )
+        fun dayRows(date: LocalDate) = history.snapshotSeries(profile.id, date, date).days
+
+        // Off-cadence day (Thursday July 2): the leftover daily row is pruned for good.
+        assertThat(dayRows(LocalDate.of(2026, 7, 2))).hasSize(1)
+        history.deleteSnapshotDay(profile.id, LocalDate.of(2026, 7, 2))
+        assertThat(dayRows(LocalDate.of(2026, 7, 2))).isEmpty()
+        history.recomputeAutoSnapshots(profile.id) // what the job does — must not resurrect it
+        assertThat(dayRows(LocalDate.of(2026, 7, 2))).isEmpty()
+
+        // Cadence day (Monday July 6): deletion re-materializes immediately with the same value.
+        history.deleteSnapshotDay(profile.id, LocalDate.of(2026, 7, 6))
+        val monday = dayRows(LocalDate.of(2026, 7, 6)).single().values.single()
+        assertThat(monday.amount).isEqualByComparingTo("1100")
+        assertThat(monday.manual).isFalse
+
+        // Deleting a day with a MANUAL value removes the anchor and re-bases what follows.
+        anchor(profile.id, LocalDate.of(2026, 7, 6), "Bitunix", "5000")
+        history.deleteSnapshotDay(profile.id, LocalDate.of(2026, 7, 6))
+        assertThat(history.listAdjustments(profile.id)).hasSize(1) // only the July-1 anchor remains
+        assertThat(dayRows(LocalDate.of(2026, 7, 6)).single().values.single().amount).isEqualByComparingTo("1100")
+    }
+
+    @Test
     fun `adjustment lifecycle - patch moves the anchor and delete drops orphaned autos`() {
         val (profile, dsId) = newProfile()
         trade(profile.id, dsId, Instant.parse("2026-07-02T10:00:00Z"), "100")
