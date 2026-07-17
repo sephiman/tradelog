@@ -4,11 +4,13 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { fmtDate, fmtUsd, pnlTone } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { ClosedPosition } from "@/api/analytics";
+import { useRoi } from "@/api/capital";
 import { computeStats, equityCurve } from "./compute";
 import { MetricCard } from "./MetricCard";
 import { InfoTooltip } from "./InfoTooltip";
 import { useChartTheme, WINRATE_LINE } from "./chartTheme";
 import { DASH, decStr, fmtPctFraction } from "./display";
+import type { DateRange } from "./useAnalyticsFilters";
 
 function Stat({ label, info, value, tone }: { label: string; info: string; value: ReactNode; tone?: string }) {
   return (
@@ -24,15 +26,42 @@ function Stat({ label, info, value, tone }: { label: string; info: string; value
 
 const money = (s: string | null, sign = false) => (s === null ? DASH : fmtUsd(s, { sign }));
 
-export function StatisticsCard({ rows }: { rows: ClosedPosition[] }) {
+/** Signed percent from a fraction string ("0.052" → "+5.20%"); blank when unavailable. */
+const fmtRoi = (roi: string | null | undefined): string => {
+  if (roi === null || roi === undefined) return DASH;
+  const n = Number(roi) * 100;
+  if (!Number.isFinite(n)) return DASH;
+  return `${n > 0 ? "+" : ""}${n.toFixed(2)}%`;
+};
+
+export function StatisticsCard({
+  rows,
+  profileId,
+  range,
+  exchange,
+}: {
+  rows: ClosedPosition[];
+  profileId: string | null;
+  /** Period filter bounds — ROI's denominator is the capital at the range's first day. */
+  range: DateRange;
+  exchange: string;
+}) {
   const { t } = useTranslation();
   const stats = useMemo(() => computeStats(rows), [rows]);
   const avgRR = stats.avgRR ? stats.avgRR.toFixed(2) : DASH;
+  // ROI follows Period and Exchange but deliberately NOT Origen: capital isn't tagged by origen.
+  const { data: roi } = useRoi(
+    profileId,
+    range.from?.toISOString(),
+    range.to?.toISOString(),
+    exchange,
+  );
 
   return (
     <MetricCard title={t("analytics.stats.title")} info={t("analytics.stats.info")}>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-5">
         <Stat label={t("analytics.stats.totalPnl")} info={t("analytics.stats.totalPnlInfo")} value={money(decStr(stats.totalPnl), true)} tone={pnlTone(stats.totalPnl.toString())} />
+        <Stat label={t("analytics.stats.roi")} info={t("analytics.stats.roiInfo")} value={fmtRoi(roi?.roi)} tone={roi?.roi != null ? pnlTone(roi.roi) : undefined} />
         <Stat label={t("analytics.stats.volume")} info={t("analytics.stats.volumeInfo")} value={money(decStr(stats.volume))} />
         <Stat label={t("analytics.stats.winRate")} info={t("analytics.stats.winRateInfo")} value={fmtPctFraction(stats.winRate)} />
         <Stat label={t("analytics.stats.avgWin")} info={t("analytics.stats.avgWinInfo")} value={money(decStr(stats.avgWin))} tone={stats.avgWin ? pnlTone(stats.avgWin.toString()) : undefined} />

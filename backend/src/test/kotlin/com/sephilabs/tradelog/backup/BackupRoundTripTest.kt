@@ -2,6 +2,12 @@
 package com.sephilabs.tradelog.backup
 
 import com.sephilabs.tradelog.IntegrationTestBase
+import com.sephilabs.tradelog.capital.CapitalRiskSettings
+import com.sephilabs.tradelog.capital.CapitalRiskSettingsRepository
+import com.sephilabs.tradelog.capital.CapitalSnapshot
+import com.sephilabs.tradelog.capital.CapitalSnapshotRepository
+import com.sephilabs.tradelog.capital.SnapshotFrequency
+import com.sephilabs.tradelog.capital.SnapshotSource
 import com.sephilabs.tradelog.connector.SyncCursor
 import com.sephilabs.tradelog.datasource.*
 import com.sephilabs.tradelog.identity.user.User
@@ -32,6 +38,8 @@ class BackupRoundTripTest @Autowired constructor(
     private val positionTags: PositionTagRepository,
     private val tagGroups: TagGroupRepository,
     private val tags: TagRepository,
+    private val capitalSnapshots: CapitalSnapshotRepository,
+    private val capitalRiskSettings: CapitalRiskSettingsRepository,
 ) : IntegrationTestBase() {
 
     @Test
@@ -73,9 +81,33 @@ class BackupRoundTripTest @Autowired constructor(
         )
         positionTags.save(PositionTag(PositionTagId(pos.id, group.id), signalTag.id))
 
+        // Capital history: risk settings plus one anchor and one auto-carried snapshot.
+        capitalRiskSettings.save(
+            CapitalRiskSettings(
+                profileId = profile.id, riskPct1 = BigDecimal("1.5"), riskPct2 = BigDecimal("3"),
+                snapshotFrequency = SnapshotFrequency.WEEKLY,
+            ),
+        )
+        capitalSnapshots.save(
+            CapitalSnapshot(
+                profileId = profile.id, exchange = "Bitunix", snapshotDate = java.time.LocalDate.of(2026, 3, 1),
+                amount = BigDecimal("1000.00000000"), source = SnapshotSource.MANUAL,
+            ),
+        )
+        capitalSnapshots.save(
+            CapitalSnapshot(
+                profileId = profile.id, exchange = "Bitunix", snapshotDate = java.time.LocalDate.of(2026, 3, 2),
+                amount = BigDecimal("1990.00000000"), source = SnapshotSource.AUTO,
+            ),
+        )
+
         // --- Export, then restore back into the same account with REPLACE semantics. ---
         val envelope = exportService.export(user)
         assertThat(envelope.profiles).hasSize(1)
+        val capitalBackup = envelope.profiles[0].capital
+        assertThat(capitalBackup).isNotNull
+        assertThat(capitalBackup!!.snapshotFrequency).isEqualTo(SnapshotFrequency.WEEKLY)
+        assertThat(capitalBackup.snapshots).hasSize(2)
         assertThat(envelope.profiles[0].dataSources).hasSize(2)
         val apiBackup = envelope.profiles[0].dataSources.first { it.kind == SourceKind.BITUNIX }
         assertThat(apiBackup.cursor).contains("ext-2")
@@ -113,6 +145,16 @@ class BackupRoundTripTest @Autowired constructor(
 
         assertThat(fills.findAllByPositionIdOrderBySeqAsc(rp.id)).singleElement()
             .satisfies({ assertThat(it.action).isEqualTo(FillAction.OPEN) })
+
+        // Capital settings and the full history come back with the profile.
+        val restoredRisk = capitalRiskSettings.findById(restoredProfiles[0].id).orElseThrow()
+        assertThat(restoredRisk.riskPct1).isEqualByComparingTo("1.5")
+        assertThat(restoredRisk.snapshotFrequency).isEqualTo(SnapshotFrequency.WEEKLY)
+        val restoredSnapshots = capitalSnapshots.findAllByProfileIdOrderBySnapshotDateAscExchangeAsc(restoredProfiles[0].id)
+        assertThat(restoredSnapshots).hasSize(2)
+        assertThat(restoredSnapshots[0].source).isEqualTo(SnapshotSource.MANUAL)
+        assertThat(restoredSnapshots[0].amount).isEqualByComparingTo("1000")
+        assertThat(restoredSnapshots[1].source).isEqualTo(SnapshotSource.AUTO)
 
         // The tag link resurfaces, resolved against the freshly recreated taxonomy.
         val restoredGroups = tagGroups.findAllByUserIdOrderBySortOrderAscNameAsc(user.id)

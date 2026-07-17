@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.sephilabs.tradelog.backup
 
+import com.sephilabs.tradelog.capital.CapitalRiskSettingsRepository
+import com.sephilabs.tradelog.capital.CapitalService
+import com.sephilabs.tradelog.capital.CapitalSnapshotRepository
+import com.sephilabs.tradelog.capital.SnapshotFrequency
 import com.sephilabs.tradelog.datasource.DataSourceRepository
 import com.sephilabs.tradelog.identity.user.User
 import com.sephilabs.tradelog.position.Position
@@ -28,6 +32,8 @@ class ExportService(
     private val positionTags: PositionTagRepository,
     private val tagGroups: TagGroupRepository,
     private val tags: TagRepository,
+    private val capitalSnapshots: CapitalSnapshotRepository,
+    private val capitalRiskSettings: CapitalRiskSettingsRepository,
     private val flyway: Flyway,
 ) {
 
@@ -76,6 +82,7 @@ class ExportService(
                         },
                     )
                 },
+                capital = toBackupCapital(profile.id),
             )
         }
 
@@ -84,6 +91,19 @@ class ExportService(
             user = BackupUser(email = user.email, locale = user.locale, timeZone = user.timeZone),
             taxonomy = taxonomy,
             profiles = backupProfiles,
+        )
+    }
+
+    /** Capital & risk settings plus the full capital history; null when the profile has neither. */
+    private fun toBackupCapital(profileId: UUID): BackupCapital? {
+        val risk = capitalRiskSettings.findById(profileId).orElse(null)
+        val rows = capitalSnapshots.findAllByProfileIdOrderBySnapshotDateAscExchangeAsc(profileId)
+        if (risk == null && rows.isEmpty()) return null
+        return BackupCapital(
+            riskPct1 = risk?.riskPct1 ?: CapitalService.DEFAULT_PCT_1,
+            riskPct2 = risk?.riskPct2 ?: CapitalService.DEFAULT_PCT_2,
+            snapshotFrequency = risk?.snapshotFrequency ?: SnapshotFrequency.DAILY,
+            snapshots = rows.map { BackupCapitalSnapshot(it.exchange, it.snapshotDate, it.amount, it.source) },
         )
     }
 

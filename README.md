@@ -51,19 +51,37 @@ anyone running a modified version as a network service must publish the source.
   **Quantfury PDF upload**.
 - **Annotations**: a customizable per-user **tag taxonomy** (seeded with an *Origen* group you edit)
   plus a free-text note per position, with the operations (legs) of each position viewable.
-- **Trading capital & risk**: record your **current capital per exchange** (USDT, entered manually)
-  and two configurable **risk percentages**; the dashboard shows total and per-exchange capital plus
-  the **maximum to lose per trade** at each risk %. It's a current balance — it follows the Exchange
-  filter but ignores Period/Origen. Structured so balances can later be fetched from the exchange API.
+- **Capital history & real ROI**: a dedicated **Capital** page tracks your trading capital as a
+  dated history of **adjustments** (anchors: your real balance per exchange on a date) plus
+  **automatic snapshots** carried forward from the latest anchor with the net PnL of trades closed
+  since. An adjustment is a **hard cut** — PnL closed before it is considered settled into that
+  balance — so deposits/withdrawals never read as trading gains. Snapshots are materialized by a background job
+  (**daily / weekly / monthly**, set in Settings; `CAPITAL_SNAPSHOT_ENABLED` / `CAPITAL_SNAPSHOT_CRON`)
+  and are editable to backfill history — **manual values always win** and editing a day turns it into
+  an anchor. All day boundaries use the **user's time zone**. The first adjustment is the starting
+  point: ROI and the capital chart stay empty until it exists.
+- **Trading capital & risk**: the dashboard block shows the **estimated current capital** (per
+  exchange and total, derived from the capital history) and the **maximum to lose per trade** at two
+  configurable **risk percentages**. It follows the Exchange filter but ignores Period/Origen.
+- **ROI card & capital evolution panel**: the Statistics panel gains a **ROI** for the selected
+  period — net PnL of the period's trades (counted from the most recent anchor) ÷ capital at the
+  period's first day (that day's snapshot or adjustment); blank when no snapshot/adjustment exists at
+  or before the period start. A **stacked area chart** plots the snapshotted capital per exchange
+  with anchor days overlaid as markers — capital over time (including your adjustments),
+  deliberately not the same thing as the Cumulative profit (PnL) chart. Both react to the Period/Exchange filters;
+  ROI ignores Origen (capital isn't tagged by origen).
 - **Read-only, encrypted credentials**: API keys are AES-GCM encrypted at rest and decrypted only in
   the sync worker — never returned to the browser. Use **read-only keys** (no trading, no withdrawal);
   the app warns on permission errors but cannot enforce this on the exchange.
-- **Backup & restore**: one-click **JSON export** of everything the authenticated user owns (no
-  secrets included) and a matching **import** that replaces the account's data — guarded by an
-  explicit confirmation so a stray request can't wipe anything.
+- **Backup & restore**: one-click **JSON export** of everything the authenticated user owns —
+  including the capital history and risk settings, but never secrets — and a matching **import** that
+  replaces the account's data, guarded by an explicit confirmation so a stray request can't wipe
+  anything. Exports from older app versions import fine (the importer only refuses files newer than
+  itself).
 - **UI**: Spanish/English (persisted per user), light/dark/system theme, responsive on desktop and
   mobile. An analytics dashboard with a shared **Period / Exchange / Origen** filter bar, plus the
-  trading-capital & risk block above.
+  trading-capital & risk block and capital-evolution panel above. Settings clearly shows the active
+  **time zone**, which governs day boundaries and ROI periods everywhere.
 
 ## How it works
 
@@ -243,8 +261,8 @@ docker run --rm \
 On a host with a local Gradle + Docker, plain `gradle test` works directly. Integration tests
 (`*IntegrationTest`, `*LifecycleTest`, `ApplicationContextTest`, …) spin up a real PostgreSQL via
 Testcontainers and exercise the full Spring context, Flyway schema, JDBC sessions, the
-profile-ownership interceptor, credential encryption, idempotent position upsert, the taxonomy, and
-the Quantfury PDF import.
+profile-ownership interceptor, credential encryption, idempotent position upsert, the taxonomy, the
+capital-history engine (anchors, carry-forward, snapshot cadence, ROI), and the Quantfury PDF import.
 
 Frontend (Node 26):
 

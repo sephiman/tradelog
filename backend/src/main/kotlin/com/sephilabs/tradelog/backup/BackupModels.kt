@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.sephilabs.tradelog.backup
 
+import com.sephilabs.tradelog.capital.SnapshotFrequency
+import com.sephilabs.tradelog.capital.SnapshotSource
 import com.sephilabs.tradelog.datasource.DataSourceStatus
 import com.sephilabs.tradelog.datasource.SourceKind
 import com.sephilabs.tradelog.position.FillAction
@@ -9,6 +11,7 @@ import com.sephilabs.tradelog.position.PositionSide
 import com.sephilabs.tradelog.profile.ProfileKind
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
 
 /**
  * The current version of the export envelope shape. The importer refuses any file whose
@@ -16,7 +19,7 @@ import java.time.Instant
  * mis-read. [BackupMeta.schemaVersion] is informational (the latest applied Flyway migration at
  * export time, read from Flyway so it can't go stale).
  */
-const val BACKUP_EXPORT_VERSION = 1
+const val BACKUP_EXPORT_VERSION = 2
 
 /**
  * A portable, self-contained snapshot of everything one user owns: their taxonomy, profiles, data
@@ -69,6 +72,23 @@ data class BackupProfile(
     val kind: ProfileKind,
     val strategyNote: String?,
     val dataSources: List<BackupDataSource>,
+    /** Capital & risk settings plus the capital history; null in pre-v2 exports. */
+    val capital: BackupCapital? = null,
+)
+
+data class BackupCapital(
+    val riskPct1: BigDecimal,
+    val riskPct2: BigDecimal,
+    val snapshotFrequency: SnapshotFrequency = SnapshotFrequency.DAILY,
+    val snapshots: List<BackupCapitalSnapshot> = emptyList(),
+)
+
+/** One capital snapshot row; MANUAL rows are the adjustment history (anchors), AUTO the estimates. */
+data class BackupCapitalSnapshot(
+    val exchange: String,
+    val date: LocalDate,
+    val amount: BigDecimal,
+    val source: SnapshotSource = SnapshotSource.MANUAL,
 )
 
 data class BackupDataSource(

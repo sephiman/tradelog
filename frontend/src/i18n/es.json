@@ -19,6 +19,7 @@
   "nav": {
     "dashboard": "Panel",
     "positions": "Posiciones",
+    "capital": "Capital",
     "settings": "Ajustes"
   },
   "auth": {
@@ -208,15 +209,64 @@
     "account": "Cuenta",
     "email": "Correo",
     "timeZone": "Zona horaria",
-    "timeZoneHint": "Se usa para agrupar la analítica por hora del día y día de la semana en tu hora local.",
+    "timeZoneHint": "Tu zona horaria activa. Define los límites de día en todas partes: la analítica, las instantáneas de capital, los ajustes y los periodos de ROI.",
     "capital": {
       "title": "Capital y riesgo",
-      "exchangesLabel": "Capital de trading por exchange (USDT)",
-      "exchangesHint": "Tu saldo actual en cada exchange. Por ahora se introduce manualmente; no hay historial — al guardar se reemplaza el valor anterior.",
-      "noExchanges": "Aún no hay exchanges. Añade primero una fuente de datos o importa un historial de operaciones.",
+      "historyHint": "El capital se registra como un historial fechado de ajustes e instantáneas diarias en la página Capital; las cifras de riesgo del panel usan el capital actual estimado derivado de él.",
+      "manageLink": "Gestionar historial de capital",
       "riskLabel": "Riesgo por operación",
       "riskHint": "Los dos porcentajes del capital que estás dispuesto a arriesgar en una sola operación. Se usan para mostrar el máximo a perder por operación en el panel.",
-      "riskPct": "Riesgo {{n}} (%)"
+      "riskPct": "Riesgo {{n}} (%)",
+      "frequencyLabel": "Frecuencia de instantáneas",
+      "frequencyHint": "Cada cuánto la tarea de fondo registra el capital estimado como instantánea diaria. Los valores introducidos a mano siempre ganan — la tarea nunca los sobrescribe.",
+      "frequency": {
+        "daily": "Diaria",
+        "weekly": "Semanal (lunes)",
+        "monthly": "Mensual (día 1)"
+      },
+      "backfill": "Rellenar instantáneas ahora",
+      "backfillRunning": "Rellenando…",
+      "backfillHint": "Materializa la serie de instantáneas con la frecuencia de arriba, desde tu primer ajuste hasta hoy, y refresca los valores desactualizados — sin esperar a la tarea de fondo. Los valores manuales no se tocan.",
+      "backfillNeedsAnchor": "Crea tu primer ajuste en la página Capital para poder rellenar.",
+      "backfillDone": "Instantáneas rellenadas: {{created}} creadas, {{updated}} refrescadas",
+      "timeZoneNote": "Zona horaria activa: {{tz}}. Define los límites de día de instantáneas, ajustes y periodos de ROI — cámbiala en Cuenta, más arriba."
+    }
+  },
+  "capital": {
+    "title": "Capital",
+    "timeZoneNote": "Zona horaria: {{tz}} — los límites de día de las instantáneas, los ajustes y los periodos de ROI la usan.",
+    "estimated": {
+      "title": "Capital estimado actual",
+      "hint": "Tu último ajuste por exchange, arrastrado con el PnL neto de las operaciones cerradas desde entonces.",
+      "total": "Total",
+      "empty": "Aún no hay ajustes. Tu historial de capital empieza con el primer ajuste — añádelo abajo.",
+      "exchange": "Exchange",
+      "estimate": "Estimado ahora",
+      "anchor": "Último ajuste",
+      "anchorValue": "{{amount}} el {{date}}"
+    },
+    "adjustments": {
+      "title": "Historial de ajustes",
+      "hint": "Un ajuste registra tu saldo real por exchange en una fecha (al inicio de ese día, en tu zona horaria). Es la verdad en ese punto y un corte duro: las operaciones anteriores dejan de contar — las estimaciones y el ROI continúan desde él.",
+      "firstMandatory": "El primer ajuste es el punto de partida de tu historial de capital. El ROI y el gráfico de capital quedan vacíos hasta que lo añadas.",
+      "date": "Fecha",
+      "exchange": "Exchange",
+      "amount": "Saldo (USDT)",
+      "add": "Añadir ajuste",
+      "addHint": "Rellena el saldo de los exchanges que quieras anclar en esa fecha; deja el resto vacíos.",
+      "none": "Aún no hay ajustes.",
+      "edit": "Editar",
+      "deleteConfirm": "¿Eliminar este ajuste? Los días posteriores se reestimarán desde el anterior."
+    },
+    "snapshots": {
+      "title": "Instantáneas diarias",
+      "hint": "Capital estimado al inicio de cada día, registrado por la tarea de fondo según la frecuencia configurada. Editar un valor convierte ese día en un ajuste (ancla) para ese exchange — la tarea nunca sobrescribe valores manuales. Borra un valor manual para devolver el día al automático. Vacío o 0 significa sin capital ese día.",
+      "from": "Desde",
+      "to": "Hasta",
+      "date": "Fecha",
+      "total": "Total",
+      "empty": "No hay instantáneas en este rango.",
+      "manualTitle": "Valor manual (ancla) — la tarea nunca lo sobrescribe"
     }
   },
   "backup": {
@@ -263,11 +313,12 @@
     },
     "capital": {
       "title": "Capital y riesgo",
-      "info": "Tu saldo actual y el máximo a perder por operación. Es un saldo actual — usa solo el filtro de Exchange y no cambia con los filtros de Periodo u Origen.",
-      "empty": "No hay capital de trading definido. Añádelo en Ajustes → Capital y riesgo.",
+      "info": "Tu capital actual estimado — el último ajuste por exchange arrastrado con el PnL neto de las operaciones cerradas desde entonces — y el máximo a perder por operación. Usa solo el filtro de Exchange y no cambia con los filtros de Periodo u Origen.",
+      "empty": "Aún no hay historial de capital.",
+      "emptyCta": "Crea tu primer ajuste en la página Capital",
       "totalCapital": "Capital total",
       "capital": "Capital",
-      "capitalInfo": "Suma de tu capital actual en el/los exchange(s) seleccionado(s).",
+      "capitalInfo": "Suma de tu capital actual estimado en el/los exchange(s) seleccionado(s).",
       "maxLossAt": "Máx. a perder por operación @ {{pct}}%",
       "maxLossInfo": "Capital × % de riesgo. El máximo a perder en una sola operación — no el tamaño de la posición."
     },
@@ -285,6 +336,8 @@
       "info": "Cifras clave sobre el conjunto filtrado de operaciones cerradas. El PnL es neto de comisiones y financiación.",
       "totalPnl": "PnL total",
       "totalPnlInfo": "Suma del resultado neto de todas las operaciones del conjunto.",
+      "roi": "ROI",
+      "roiInfo": "PnL neto de las operaciones del periodo — contadas desde tu último ajuste de capital (el corte duro) — dividido por tu capital en el primer día del periodo (la instantánea o el ajuste de ese día). En blanco si no existe instantánea ni ajuste en o antes del inicio del periodo. Sigue los filtros de Periodo y Exchange pero NO el de Origen: el capital no se etiqueta por origen.",
       "volume": "Volumen",
       "volumeInfo": "Nocional total negociado en el conjunto, contando ambas patas: cantidad × (precio de entrada + precio de salida), sumado sobre todas las operaciones.",
       "winRate": "Tasa de acierto",
@@ -304,6 +357,12 @@
     },
     "cumulativeProfit": "Beneficio acumulado",
     "cumulativeProfitInfo": "Suma acumulada de resultados netos ordenada por fecha de cierre — tu curva de capital.",
+    "capitalEvolution": "Evolución del capital",
+    "capitalEvolutionInfo": "Tus instantáneas diarias de capital almacenadas, apiladas por exchange. Es el capital a lo largo del tiempo e INCLUYE tus ajustes manuales (depósitos, retiradas, correcciones) — no es el retorno del trading; para eso, mira Beneficio acumulado. Los marcadores señalan los días con un ajuste manual.",
+    "capitalEvolutionSubtitle": "Capital a lo largo del tiempo, incluyendo tus ajustes — no es retorno del trading.",
+    "capitalEvolutionAnchors": "Ajustes",
+    "capitalEvolutionEmpty": "Aún no hay instantáneas de capital. Crea tu primer ajuste en la página Capital.",
+    "capitalEvolutionOther": "Otros",
     "activity": "Actividad",
     "activityInfo": "Número de operaciones largas y cortas por día, con la tasa de acierto de cada día.",
     "pnlPerDay": "PnL por día",

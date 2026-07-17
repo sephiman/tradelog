@@ -43,6 +43,13 @@ interface ClosedPositionSummary {
     val funding: BigDecimal
 }
 
+/** Minimal projection for capital carry-forward math: when a trade closed, where, and its net result. */
+interface ClosedPnl {
+    val closedAt: Instant
+    val exchange: String?
+    val netPnl: BigDecimal
+}
+
 interface PositionRepository : JpaRepository<Position, UUID>, JpaSpecificationExecutor<Position> {
 
     /** Loads a LIVE (non-deleted) position the caller owns; soft-deleted rows read as not found. */
@@ -68,6 +75,9 @@ interface PositionRepository : JpaRepository<Position, UUID>, JpaSpecificationEx
 
     @Query("SELECT DISTINCT p.exchange FROM Position p WHERE p.profileId = :profileId AND p.exchange IS NOT NULL AND p.deletedAt IS NULL ORDER BY p.exchange")
     fun findDistinctExchanges(@Param("profileId") profileId: UUID): List<String>
+
+    /** Live trades closed at/after [from], for capital carry-forward and ROI aggregation. */
+    fun findAllByProfileIdAndClosedAtGreaterThanEqualAndDeletedAtIsNull(profileId: UUID, from: Instant): List<ClosedPnl>
 }
 
 interface PositionFillRepository : JpaRepository<PositionFill, UUID> {

@@ -19,6 +19,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "positions": "Positions",
+    "capital": "Capital",
     "settings": "Settings"
   },
   "auth": {
@@ -208,15 +209,64 @@
     "account": "Account",
     "email": "Email",
     "timeZone": "Time zone",
-    "timeZoneHint": "Used to group analytics by hour of day and weekday in your local time.",
+    "timeZoneHint": "Your active time zone. It sets the day boundaries everywhere: analytics buckets, capital snapshots, adjustments and ROI periods.",
     "capital": {
       "title": "Trading capital & risk",
-      "exchangesLabel": "Trading capital per exchange (USDT)",
-      "exchangesHint": "Your current balance on each exchange. Entered manually for now; there's no history — saving overwrites the previous value.",
-      "noExchanges": "No exchanges yet. Add a data source or import a trade history first.",
+      "historyHint": "Capital is tracked as a dated history of adjustments and daily snapshots on the Capital page; the dashboard's risk figures use the estimated current capital derived from it.",
+      "manageLink": "Manage capital history",
       "riskLabel": "Risk per trade",
       "riskHint": "The two percentages of capital you're willing to risk on a single trade. Used to show the maximum to lose per trade on the dashboard.",
-      "riskPct": "Risk {{n}} (%)"
+      "riskPct": "Risk {{n}} (%)",
+      "frequencyLabel": "Snapshot frequency",
+      "frequencyHint": "How often the background job records the estimated capital as a daily snapshot. Manually entered values always win — the job never overwrites them.",
+      "frequency": {
+        "daily": "Daily",
+        "weekly": "Weekly (Mondays)",
+        "monthly": "Monthly (1st of the month)"
+      },
+      "backfill": "Backfill snapshots now",
+      "backfillRunning": "Backfilling…",
+      "backfillHint": "Materializes the snapshot series at the frequency above, from your first adjustment through today, and refreshes stale values — without waiting for the background job. Manual values are never touched.",
+      "backfillNeedsAnchor": "Create your first adjustment on the Capital page to enable backfilling.",
+      "backfillDone": "Snapshots backfilled: {{created}} created, {{updated}} refreshed",
+      "timeZoneNote": "Active time zone: {{tz}}. It sets the day boundaries for snapshots, adjustments and ROI periods — change it in Account above."
+    }
+  },
+  "capital": {
+    "title": "Capital",
+    "timeZoneNote": "Time zone: {{tz}} — day boundaries for snapshots, adjustments and ROI periods use it.",
+    "estimated": {
+      "title": "Current estimated capital",
+      "hint": "Your latest adjustment per exchange, carried forward with the net PnL of trades closed since.",
+      "total": "Total",
+      "empty": "No adjustments yet. Your capital history starts with the first adjustment — add it below.",
+      "exchange": "Exchange",
+      "estimate": "Estimated now",
+      "anchor": "Latest adjustment",
+      "anchorValue": "{{amount}} on {{date}}"
+    },
+    "adjustments": {
+      "title": "Adjustment history",
+      "hint": "An adjustment records your real balance per exchange on a date (at the start of that day, in your time zone). It is the truth at that point and a hard cut: earlier trades stop counting — estimates and ROI continue from it.",
+      "firstMandatory": "The first adjustment is the starting point of your capital history. ROI and the capital chart stay empty until you add it.",
+      "date": "Date",
+      "exchange": "Exchange",
+      "amount": "Balance (USDT)",
+      "add": "Add adjustment",
+      "addHint": "Fill in the balance of the exchanges you want to anchor on that date; leave the rest empty.",
+      "none": "No adjustments yet.",
+      "edit": "Edit",
+      "deleteConfirm": "Delete this adjustment? Later days will be re-estimated from the previous one."
+    },
+    "snapshots": {
+      "title": "Daily snapshots",
+      "hint": "Estimated capital at the start of each day, recorded by the background job at your configured frequency. Editing a value turns that day into an adjustment (anchor) for that exchange — the job never overwrites manual values. Clear a manual value to return the day to automatic. Empty or 0 means no capital that day.",
+      "from": "From",
+      "to": "To",
+      "date": "Date",
+      "total": "Total",
+      "empty": "No snapshots in this range.",
+      "manualTitle": "Manual value (anchor) — the job never overwrites it"
     }
   },
   "backup": {
@@ -263,11 +313,12 @@
     },
     "capital": {
       "title": "Trading capital & risk",
-      "info": "Your current balance and the maximum to lose per trade. This is a current balance — it uses the Exchange filter only and does not change with the Period or Origen filters.",
-      "empty": "No trading capital set. Add it in Settings → Trading capital & risk.",
+      "info": "Your estimated current capital — the latest adjustment per exchange carried forward with the net PnL of trades closed since — and the maximum to lose per trade. It uses the Exchange filter only and does not change with the Period or Origen filters.",
+      "empty": "No capital history yet.",
+      "emptyCta": "Create your first adjustment on the Capital page",
       "totalCapital": "Total capital",
       "capital": "Capital",
-      "capitalInfo": "Sum of your current capital across the selected exchange(s).",
+      "capitalInfo": "Sum of your estimated current capital across the selected exchange(s).",
       "maxLossAt": "Max loss per trade @ {{pct}}%",
       "maxLossInfo": "Capital × risk %. The maximum to lose on a single trade — not the position size."
     },
@@ -285,6 +336,8 @@
       "info": "Key figures over the filtered set of closed trades. PnL is net of fees and funding.",
       "totalPnl": "Total PnL",
       "totalPnlInfo": "Sum of the net result of every trade in the set.",
+      "roi": "ROI",
+      "roiInfo": "Net PnL of the period's trades — counted from your most recent capital adjustment (the hard cut) — divided by your capital at the first day of the period (that day's snapshot or adjustment). Blank when no snapshot or adjustment exists at or before the period start. Follows the Period and Exchange filters but NOT Origen: capital isn't tagged by origen.",
       "volume": "Volume",
       "volumeInfo": "Total notional traded across the set, counting both legs: quantity × (entry price + exit price), summed over every trade.",
       "winRate": "Win rate",
@@ -304,6 +357,12 @@
     },
     "cumulativeProfit": "Cumulative profit",
     "cumulativeProfitInfo": "Running sum of net results ordered by close date — your equity curve.",
+    "capitalEvolution": "Capital evolution",
+    "capitalEvolutionInfo": "Your stored daily capital snapshots, stacked per exchange. This is capital over time and INCLUDES your manual adjustments (deposits, withdrawals, corrections) — it is not trading return; for that, see Cumulative profit. The markers flag days with a manual adjustment.",
+    "capitalEvolutionSubtitle": "Capital over time, including your adjustments — not trading return.",
+    "capitalEvolutionAnchors": "Adjustments",
+    "capitalEvolutionEmpty": "No capital snapshots yet. Create your first adjustment on the Capital page.",
+    "capitalEvolutionOther": "Other",
     "activity": "Activity",
     "activityInfo": "Count of long and short trades per day, with each day's win rate.",
     "pnlPerDay": "PnL per day",

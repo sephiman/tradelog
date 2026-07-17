@@ -39,6 +39,9 @@ const AnalyticsPage = lazyPage(() =>
 const PositionsPage = lazyPage(() =>
   import("@/features/positions/PositionsPage").then((m) => ({ default: m.PositionsPage })),
 );
+const CapitalPage = lazyPage(() =>
+  import("@/features/capital/CapitalPage").then((m) => ({ default: m.CapitalPage })),
+);
 const SettingsPage = lazyPage(() =>
   import("@/features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
@@ -67,6 +70,7 @@ export default function App() {
                       <Route index element={<Navigate to="/dashboard" replace />} />
                       <Route path="dashboard" element={<AnalyticsPage />} />
                       <Route path="positions" element={<PositionsPage />} />
+                      <Route path="capital" element={<CapitalPage />} />
                       <Route path="settings" element={<SettingsPage />} />
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />
                     </Routes>

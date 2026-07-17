@@ -14,6 +14,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const nav = [
     { to: "/dashboard", label: t("nav.dashboard") },
     { to: "/positions", label: t("nav.positions") },
+    { to: "/capital", label: t("nav.capital") },
     { to: "/settings", label: t("nav.settings") },
   ];
 

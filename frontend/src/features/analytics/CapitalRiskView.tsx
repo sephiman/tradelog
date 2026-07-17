@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Decimal from "decimal.js";
 import { fmtUsd, toDecimal } from "@/lib/format";
@@ -25,8 +26,9 @@ const fmtPct = (s: string): string => {
 };
 
 /**
- * Current trading capital and the max loss per trade. Honors ONLY the Exchange filter —
- * it is a current balance and is deliberately independent of the Period/Origen filters.
+ * Estimated current trading capital (latest adjustment carried forward with net PnL) and the max
+ * loss per trade. Honors ONLY the Exchange filter — it is a current balance and is deliberately
+ * independent of the Period/Origen filters.
  */
 export function CapitalRiskView({ profileId, exchange }: { profileId: string | null; exchange: string }) {
   const { t } = useTranslation();
@@ -34,7 +36,8 @@ export function CapitalRiskView({ profileId, exchange }: { profileId: string | n
 
   const entries = useMemo<CapitalEntry[]>(() => {
     if (!data) return [];
-    return exchange === "ALL" ? data.entries : data.entries.filter((e) => e.exchange === exchange);
+    const anchored = data.entries.filter((e) => e.amount !== null);
+    return exchange === "ALL" ? anchored : anchored.filter((e) => e.exchange === exchange);
   }, [data, exchange]);
 
   const total = useMemo(
@@ -57,7 +60,12 @@ export function CapitalRiskView({ profileId, exchange }: { profileId: string | n
   return (
     <MetricCard title={t("analytics.capital.title")} info={t("analytics.capital.info")}>
       {nothingSet ? (
-        <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">{t("analytics.capital.empty")}</p>
+        <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+          {t("analytics.capital.empty")}{" "}
+          <Link to="/capital" className="text-primary hover:underline">
+            {t("analytics.capital.emptyCta")}
+          </Link>
+        </p>
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">

@@ -11,6 +11,7 @@ data class AppProperties(
     val crypto: Crypto = Crypto(),
     val sync: Sync = Sync(),
     val connectors: Connectors = Connectors(),
+    val capital: Capital = Capital(),
 ) {
     data class Security(
         val cookieSecure: Boolean = true,
@@ -77,6 +78,18 @@ data class AppProperties(
         val corePoolSize: Int = 2,
         val maxPoolSize: Int = 4,
         val queueCapacity: Int = 100,
+    )
+
+    data class Capital(
+        val snapshot: CapitalSnapshotSchedule = CapitalSnapshotSchedule(),
+    )
+
+    data class CapitalSnapshotSchedule(
+        // Background job that materializes AUTO capital snapshots on each profile's cadence days.
+        val enabled: Boolean = true,
+        // Quartz-style cron (seconds field first); hourly because day boundaries are per-user
+        // time zones, so a user's "new day" can begin at any server hour. Idempotent re-runs.
+        val cron: String = "0 20 * * * *",
     )
 
     data class Connectors(

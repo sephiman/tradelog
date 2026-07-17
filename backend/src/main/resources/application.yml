@@ -130,6 +130,13 @@ app:
       enabled: ${SYNC_SCHEDULE_ENABLED:true}
       cron: ${SYNC_SCHEDULE_CRON:0 0 4 * * *}
       spacing-ms: ${SYNC_SCHEDULE_SPACING_MS:3000}
+  capital:
+    # Background job that materializes the AUTO capital snapshots (the manual-wins carry-forward
+    # series behind the Capital page and the ROI/evolution dashboard panels). Hourly because day
+    # boundaries follow each user's time zone; the recompute is idempotent.
+    snapshot:
+      enabled: ${CAPITAL_SNAPSHOT_ENABLED:true}
+      cron: ${CAPITAL_SNAPSHOT_CRON:0 20 * * * *}
   connectors:
     bitunix:
       base-url: ${BITUNIX_BASE_URL:https://fapi.bitunix.com}

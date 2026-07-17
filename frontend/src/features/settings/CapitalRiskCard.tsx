@@ -1,58 +1,62 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useCapital, useUpdateCapital, type CapitalSettings } from "@/api/capital";
-import { Button, Card, CardBody, CardHeader, Input, Label } from "@/components/ui/primitives";
+import {
+  useBackfillSnapshots,
+  useCapital,
+  useUpdateCapitalSettings,
+  type SnapshotFrequency,
+} from "@/api/capital";
+import { Button, Card, CardBody, CardHeader, Input, Label, Select } from "@/components/ui/primitives";
+import { showToast } from "@/lib/toastBus";
 
-/** Strip a backend NUMERIC string ("1000.00000000") down to an editable value ("1000"). */
+const FREQUENCIES: SnapshotFrequency[] = ["DAILY", "WEEKLY", "MONTHLY"];
+
+/** Strip a backend NUMERIC string ("1.000") down to an editable value ("1"). */
 function toInput(amount: string | undefined): string {
   if (!amount) return "";
   const n = Number(amount);
   return Number.isFinite(n) ? String(n) : amount;
 }
 
-function buildState(data: CapitalSettings) {
-  const byExchange: Record<string, string> = {};
-  for (const e of data.entries) byExchange[e.exchange] = toInput(e.amount);
-  const amounts: Record<string, string> = {};
-  for (const ex of data.knownExchanges) amounts[ex] = byExchange[ex] ?? "";
-  return {
-    amounts,
-    pct1: toInput(data.riskPercents.pct1),
-    pct2: toInput(data.riskPercents.pct2),
-  };
-}
-
-/** Trading capital per exchange (USDT) + the two configurable risk percentages. */
+/**
+ * Risk percentages and the snapshot-job frequency. The old per-exchange capital inputs are
+ * superseded by the Capital page's adjustment history — this card links there instead.
+ */
 export function CapitalRiskCard({ profileId }: { profileId: string }) {
   const { t } = useTranslation();
   const { data } = useCapital(profileId);
-  const updateMut = useUpdateCapital(profileId);
+  const updateMut = useUpdateCapitalSettings(profileId);
+  const backfillMut = useBackfillSnapshots(profileId);
 
-  const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [pct1, setPct1] = useState("");
   const [pct2, setPct2] = useState("");
+  const [frequency, setFrequency] = useState<SnapshotFrequency>("DAILY");
 
   // Seed the form whenever the server data changes (load, profile switch, post-save refetch).
   useEffect(() => {
     if (!data) return;
-    const s = buildState(data);
-    setAmounts(s.amounts);
-    setPct1(s.pct1);
-    setPct2(s.pct2);
+    setPct1(toInput(data.riskPercents.pct1));
+    setPct2(toInput(data.riskPercents.pct2));
+    setFrequency(data.snapshotFrequency);
   }, [data]);
 
   if (!data) return null;
 
   const onSave = () => {
-    updateMut.mutate(
-      {
-        entries: data.knownExchanges.map((ex) => ({
-          exchange: ex,
-          amount: amounts[ex]?.trim() ? amounts[ex].trim() : null,
-        })),
-        riskPercents: { pct1: pct1.trim() || "0", pct2: pct2.trim() || "0" },
-      });
+    updateMut.mutate({
+      riskPercents: { pct1: pct1.trim() || "0", pct2: pct2.trim() || "0" },
+      snapshotFrequency: frequency,
+    });
   };
+
+  const onBackfill = () => {
+    backfillMut.mutate(undefined, {
+      onSuccess: (r) => showToast(t("settings.capital.backfillDone", { created: r.created, updated: r.updated })),
+    });
+  };
+
+  const frequencyLabel = (f: SnapshotFrequency) => t(`settings.capital.frequency.${f.toLowerCase()}`);
 
   return (
     <Card>
@@ -61,29 +65,10 @@ export function CapitalRiskCard({ profileId }: { profileId: string }) {
       </CardHeader>
       <CardBody className="space-y-6">
         <div>
-          <Label>{t("settings.capital.exchangesLabel")}</Label>
-          <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">{t("settings.capital.exchangesHint")}</p>
-          {data.knownExchanges.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t("settings.capital.noExchanges")}</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {data.knownExchanges.map((ex) => (
-                <div key={ex}>
-                  <Label htmlFor={`cap-${ex}`}>{ex}</Label>
-                  <Input
-                    id={`cap-${ex}`}
-                    type="number"
-                    min="0"
-                    step="any"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={amounts[ex] ?? ""}
-                    onChange={(e) => setAmounts((prev) => ({ ...prev, [ex]: e.target.value }))}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          <p className="text-sm text-gray-600 dark:text-gray-300">{t("settings.capital.historyHint")}</p>
+          <Link to="/capital" className="mt-1 inline-block text-sm text-primary hover:underline">
+            {t("settings.capital.manageLink")} →
+          </Link>
         </div>
 
         <div>
@@ -118,6 +103,39 @@ export function CapitalRiskCard({ profileId }: { profileId: string }) {
             </div>
           </div>
         </div>
+
+        <div>
+          <Label htmlFor="snap-frequency">{t("settings.capital.frequencyLabel")}</Label>
+          <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">{t("settings.capital.frequencyHint")}</p>
+          <Select
+            id="snap-frequency"
+            className="max-w-xs"
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value as SnapshotFrequency)}
+          >
+            {FREQUENCIES.map((f) => (
+              <option key={f} value={f}>
+                {frequencyLabel(f)}
+              </option>
+            ))}
+          </Select>
+          <div className="mt-3">
+            <Button
+              variant="secondary"
+              onClick={onBackfill}
+              disabled={backfillMut.isPending || !data.hasAnchors}
+            >
+              {backfillMut.isPending ? t("settings.capital.backfillRunning") : t("settings.capital.backfill")}
+            </Button>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {data.hasAnchors ? t("settings.capital.backfillHint") : t("settings.capital.backfillNeedsAnchor")}
+            </p>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {t("settings.capital.timeZoneNote", { tz: data.timeZone })}
+        </p>
 
         <Button onClick={onSave} disabled={updateMut.isPending}>
           {t("common.save")}

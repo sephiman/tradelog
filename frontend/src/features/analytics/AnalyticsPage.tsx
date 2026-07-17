@@ -19,6 +19,7 @@ import { WinningStreaksCard, LosingStreaksCard, RecoveryCard, CalendarCard } fro
 import { MostTradedCard, MostProfitableCard, LeastProfitableCard } from "./PairsView";
 import { FeesCard, CumulativeFeesCard, FeeRatioCard } from "./FeesView";
 import { CapitalRiskView } from "./CapitalRiskView";
+import { CapitalEvolutionCard } from "./CapitalEvolutionCard";
 import type { ClosedPosition } from "@/api/analytics";
 
 const NO_RANGE: DateRange = { from: null, to: null };
@@ -65,6 +66,9 @@ export function AnalyticsPage() {
   );
 
   const capital = <CapitalRiskView profileId={activeProfileId} exchange={filters.exchange} />;
+  const capitalEvolution = (
+    <CapitalEvolutionCard profileId={activeProfileId} range={filters.range} exchange={filters.exchange} />
+  );
 
   return (
     <div className="space-y-6">
@@ -75,7 +79,10 @@ export function AnalyticsPage() {
       {/* Capital & risk is a current balance: independent of trade history and the Period/Origen
           filters (it uses the Exchange filter only). It renders even with no closed positions. */}
       {view === "capital" ? (
-        capital
+        <div className="space-y-6">
+          {capital}
+          {capitalEvolution}
+        </div>
       ) : isError ? (
         <Card>
           <CardBody>
@@ -91,6 +98,7 @@ export function AnalyticsPage() {
       ) : rows.length === 0 ? (
         <div className="space-y-6">
           {view === "all" && capital}
+          {view === "all" && capitalEvolution}
           <Card>
             <CardBody>
               <p className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">{t("analytics.noData")}</p>
@@ -98,7 +106,19 @@ export function AnalyticsPage() {
           </Card>
         </div>
       ) : (
-        <Dashboard view={view} rows={filtered} navRows={navRows} timeZone={timeZone} perfNav={perfNav} feesNav={feesNav} capital={capital} />
+        <Dashboard
+          view={view}
+          rows={filtered}
+          navRows={navRows}
+          timeZone={timeZone}
+          perfNav={perfNav}
+          feesNav={feesNav}
+          capital={capital}
+          capitalEvolution={capitalEvolution}
+          profileId={activeProfileId}
+          range={filters.range}
+          exchange={filters.exchange}
+        />
       )}
     </div>
   );
@@ -112,6 +132,10 @@ function Dashboard({
   perfNav,
   feesNav,
   capital,
+  capitalEvolution,
+  profileId,
+  range,
+  exchange,
 }: {
   view: ViewKey;
   rows: ClosedPosition[];
@@ -121,11 +145,15 @@ function Dashboard({
   perfNav: ReturnType<typeof useMonthNavState>;
   feesNav: ReturnType<typeof useMonthNavState>;
   capital: ReactNode;
+  capitalEvolution: ReactNode;
+  profileId: string | null;
+  range: DateRange;
+  exchange: string;
 }) {
   if (view === "summary") {
     return (
       <div className="space-y-6">
-        <StatisticsCard rows={rows} />
+        <StatisticsCard rows={rows} profileId={profileId} range={range} exchange={exchange} />
         <CumulativeProfitCard rows={rows} />
       </div>
     );
@@ -191,11 +219,12 @@ function Dashboard({
   // view === "all": the full dashboard, matching the reference layout.
   return (
     <div className="space-y-6">
-      <StatisticsCard rows={rows} />
+      <StatisticsCard rows={rows} profileId={profileId} range={range} exchange={exchange} />
       <Row>
         {capital}
         <CumulativeProfitCard rows={rows} />
       </Row>
+      {capitalEvolution}
       <Row>
         <ActivityCard rows={navRows} timeZone={timeZone} nav={perfNav} />
         <PnlPerDayCard rows={navRows} timeZone={timeZone} nav={perfNav} />

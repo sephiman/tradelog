@@ -27,6 +27,20 @@ export const WINRATE_LINE = LINE_ACCENT;
 // Amber for fee amounts (a cost — not a category, not a PnL sign).
 export const FEE_COLOR = "#f59e0b";
 
+/**
+ * Categorical palette for per-exchange series (capital evolution). Red/green stay reserved for
+ * PnL sign, so this order skips those hue families. Both mode variants were validated with the
+ * palette checker (lightness band, chroma, adjacent-pair CVD ≥ 8, normal-vision ≥ 15) against
+ * white and gray-800 surfaces. Hues are assigned to exchanges in fixed alphabetical order and
+ * never re-assigned when a filter hides series; a 6th+ exchange folds into "Other" (muted slate).
+ */
+export const EXCHANGE_SERIES_LIGHT = ["#2a78d6", "#eda100", "#4a3aa7", "#1baf7a", "#eb6834"];
+export const EXCHANGE_SERIES_DARK = ["#3987e5", "#c98500", "#9085e9", "#199e70", "#d95926"];
+export const EXCHANGE_OTHER_LIGHT = "#64748b";
+export const EXCHANGE_OTHER_DARK = "#94a3b8";
+/** Marker for manual adjustment (anchor) days overlaid on the capital evolution chart. */
+export const ANCHOR_MARKER = "#f59e0b";
+
 /** Hex fill for a signed value — the chart analog of `pnlTone`. */
 export function barColor(n: number): string {
   if (n > 0) return GREEN;
