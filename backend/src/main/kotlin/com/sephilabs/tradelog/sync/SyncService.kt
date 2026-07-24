@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.sephilabs.tradelog.sync
 
+import com.sephilabs.tradelog.capital.CapitalHistoryService
 import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.config.AppProperties
 import com.sephilabs.tradelog.connector.ConnectorRegistry
@@ -30,6 +31,7 @@ class SyncService(
     private val rateLimiter: ExchangeRateLimiter,
     private val props: AppProperties,
     private val metrics: AppMetrics,
+    private val capitalHistory: CapitalHistoryService,
 ) {
     private val log = LoggerFactory.getLogger(SyncService::class.java)
 
@@ -72,6 +74,7 @@ class SyncService(
             metrics.syncRun(ds.kind.name, trigger.name, "success")
             metrics.positionsUpserted(ds.kind.name, finished.inserted + finished.updated)
             log.info("Sync success: source={} kind={} inserted={} updated={}", ds.id, ds.kind, finished.inserted, finished.updated)
+            refreshCapitalSnapshots(ds.profileId, finished)
             SyncRunDto.of(finished)
         } catch (e: Exception) {
             val code = (e as? AppException)?.code ?: "SYNC_FAILED"
@@ -118,6 +121,7 @@ class SyncService(
             metrics.syncRun(ds.kind.name, trigger.name, "success")
             metrics.positionsUpserted(ds.kind.name, finished.inserted + finished.updated)
             log.info("Import success: source={} kind={} inserted={} updated={}", ds.id, ds.kind, finished.inserted, finished.updated)
+            refreshCapitalSnapshots(ds.profileId, finished)
             SyncRunDto.of(finished)
         } catch (e: Exception) {
             val code = (e as? AppException)?.code ?: "IMPORT_FAILED"
@@ -127,6 +131,19 @@ class SyncService(
             metrics.syncRun(ds.kind.name, trigger.name, "error")
             SyncRunDto.of(finished)
         }
+    }
+
+    /**
+     * Re-derives the profile's AUTO capital snapshots right after a run lands new or changed trades,
+     * so the capital chart and ROI base reflect them immediately instead of waiting for the hourly
+     * job. Skipped when nothing changed. MANUAL anchors are never touched (the recompute preserves
+     * them by design). Runs in its own transaction after the upsert has committed and is guarded:
+     * the run has already succeeded, so a recompute failure only logs — it never fails the sync.
+     */
+    private fun refreshCapitalSnapshots(profileId: UUID, run: SyncRun) {
+        if (run.inserted + run.updated == 0) return
+        runCatching { capitalHistory.recomputeAutoSnapshots(profileId) }
+            .onFailure { log.warn("Capital snapshot refresh after sync failed for profile {}", profileId, it) }
     }
 
     private fun backfillFloor(): Instant? {

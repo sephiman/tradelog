@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
-import type { SyncRun } from "./sync";
+import { invalidateAfterSync, type SyncRun } from "./sync";
 
 export interface PreviewPosition {
   symbol: string;
@@ -52,11 +52,6 @@ export function useQuantfuryExecute(profileId: string, dataSourceId: string) {
           { headers: { "Content-Type": null } },
         )
       ).data,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dataSources", profileId] });
-      qc.invalidateQueries({ queryKey: ["positions", profileId] });
-      qc.invalidateQueries({ queryKey: ["positionExchanges", profileId] });
-      qc.invalidateQueries({ queryKey: ["analyticsClosed", profileId] });
-    },
+    onSuccess: () => invalidateAfterSync(qc, profileId),
   });
 }

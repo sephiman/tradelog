@@ -15,11 +15,19 @@ export interface SyncRun {
   errorCode: string | null;
 }
 
-function invalidate(qc: ReturnType<typeof useQueryClient>, profileId: string) {
+/**
+ * Everything a completed sync/import can change. Capital is included because the backend now
+ * refreshes the AUTO snapshot series (chart + ROI base) as new trades land, so the cached capital
+ * views would otherwise stay stale. `invalidateQueries` matches by key prefix, so the single
+ * `["capital", profileId]` entry covers the overview, adjustments, snapshots and ROI sub-queries.
+ * Shared with the Quantfury import so the two lists never drift apart.
+ */
+export function invalidateAfterSync(qc: ReturnType<typeof useQueryClient>, profileId: string) {
   qc.invalidateQueries({ queryKey: ["dataSources", profileId] });
   qc.invalidateQueries({ queryKey: ["positions", profileId] });
   qc.invalidateQueries({ queryKey: ["positionExchanges", profileId] });
   qc.invalidateQueries({ queryKey: ["analyticsClosed", profileId] });
+  qc.invalidateQueries({ queryKey: ["capital", profileId] });
 }
 
 export function useSyncOne(profileId: string) {
@@ -28,7 +36,7 @@ export function useSyncOne(profileId: string) {
     meta: { silentSuccess: true },
     mutationFn: async (dataSourceId: string) =>
       (await apiClient.post<SyncRun>(`/profiles/${profileId}/data-sources/${dataSourceId}/sync`)).data,
-    onSuccess: () => invalidate(qc, profileId),
+    onSuccess: () => invalidateAfterSync(qc, profileId),
   });
 }
 
@@ -37,6 +45,6 @@ export function useSyncAll(profileId: string) {
   return useMutation({
     meta: { silentSuccess: true },
     mutationFn: async () => (await apiClient.post<SyncRun[]>(`/profiles/${profileId}/sync`)).data,
-    onSuccess: () => invalidate(qc, profileId),
+    onSuccess: () => invalidateAfterSync(qc, profileId),
   });
 }
