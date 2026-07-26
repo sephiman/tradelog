@@ -34,7 +34,7 @@ export function FeesCard({ rows, timeZone, nav }: { rows: ClosedPosition[]; time
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
             <XAxis dataKey="day" stroke={theme.axisColor} fontSize={12} />
             <YAxis stroke={theme.axisColor} fontSize={12} width={64} />
-            <Tooltip contentStyle={theme.tooltipStyle} formatter={(v) => [fmtUsd(Number(v)), t("analytics.fees")]} />
+            <Tooltip contentStyle={theme.tooltipStyle} cursor={theme.cursorStyle} formatter={(v) => [fmtUsd(Number(v)), t("analytics.fees")]} />
             <Bar dataKey="fee" name={t("analytics.fees")} fill={FEE_COLOR} />
           </BarChart>
         </ResponsiveContainer>
@@ -56,7 +56,7 @@ export function CumulativeFeesCard({ rows }: { rows: ClosedPosition[] }) {
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
             <XAxis dataKey="closedAt" tickFormatter={fmtDate} stroke={theme.axisColor} fontSize={12} minTickGap={32} />
             <YAxis stroke={theme.axisColor} fontSize={12} width={72} />
-            <Tooltip contentStyle={theme.tooltipStyle} labelFormatter={(v) => fmtDate(String(v))} formatter={(v) => [fmtUsd(Number(v)), t("analytics.cumulativeFees")]} />
+            <Tooltip contentStyle={theme.tooltipStyle} cursor={theme.cursorStyle} labelFormatter={(v) => fmtDate(String(v))} formatter={(v) => [fmtUsd(Number(v)), t("analytics.cumulativeFees")]} />
             <Line type="monotone" dataKey="cumulative" name={t("analytics.cumulativeFees")} stroke={LINE_ACCENT} dot={false} strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
@@ -89,8 +89,8 @@ export function FeeRatioCard({ rows, timeZone, nav }: { rows: ClosedPosition[]; 
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} />
             <XAxis dataKey="day" stroke={theme.axisColor} fontSize={12} />
             <YAxis stroke={theme.axisColor} fontSize={12} width={56} tickFormatter={(v: number) => fmtRatio(v, 1)} />
-            <Tooltip contentStyle={theme.tooltipStyle} formatter={(v) => [fmtRatio(Number(v)), t("analytics.feeRatio")]} />
-            <Bar dataKey="ratio" name={t("analytics.feeRatio")} shape={<SignedBar />} />
+            <Tooltip contentStyle={theme.tooltipStyle} cursor={theme.cursorStyle} formatter={(v) => [fmtRatio(Number(v)), t("analytics.feeRatio")]} />
+            <Bar dataKey="ratio" name={t("analytics.feeRatio")} fill={theme.seriesNeutral} shape={<SignedBar />} />
           </BarChart>
         </ResponsiveContainer>
       </div>

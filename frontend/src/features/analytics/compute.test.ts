@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ClosedPosition } from "@/api/analytics";
 import {
   computeStats,
+  computeMonthlyRoiSeries,
   cumulativeFees,
   directionBreakdown,
   equityCurve,
@@ -251,3 +252,94 @@ describe("fees", () => {
     expect(fr.monthRatio).toBeNull();
   });
 });
+
+describe("computeMonthlyRoiSeries", () => {
+  it("handles empty current and prev year data", () => {
+    const series = computeMonthlyRoiSeries([]);
+    expect(series).toHaveLength(12);
+    series.forEach((m, idx) => {
+      expect(m.month).toBe(idx + 1);
+      expect(m.roi).toBeNull();
+      expect(m.displayRoi).toBeNull();
+      expect(m.cumulativeRoi).toBeNull();
+      expect(m.movingAvg3m).toBeNull();
+    });
+  });
+
+  it("compounds cumulative ROI for valid months and produces gaps when month is missing", () => {
+    const currentData = [
+      { month: 1, roi: "0.10" }, // +10%
+      { month: 2, roi: "0.20" }, // +20% -> cumulative (1.1 * 1.2) - 1 = 32%
+      // month 3 missing
+      { month: 4, roi: "0.05" }, // +5% -> cumulative (1.1 * 1.2 * 1.05) - 1 = 38.6%
+    ];
+
+    const series = computeMonthlyRoiSeries(currentData);
+
+    // Month 1
+    expect(series[0].roi).toBe(10);
+    expect(series[0].cumulativeRoi).toBeCloseTo(10);
+
+    // Month 2
+    expect(series[1].roi).toBe(20);
+    expect(series[1].cumulativeRoi).toBeCloseTo(32);
+
+    // Month 3 (gap)
+    expect(series[2].roi).toBeNull();
+    expect(series[2].cumulativeRoi).toBeNull();
+
+    // Month 4 (valid month after gap)
+    expect(series[3].roi).toBe(5);
+    expect(series[3].cumulativeRoi).toBeCloseTo(38.6);
+  });
+
+  it("requires all 3 months for 3-month moving average and creates gaps if any month is missing", () => {
+    const currentData = [
+      { month: 1, roi: "0.10" }, // 10%
+      { month: 2, roi: "0.05" }, // 5%
+      { month: 3, roi: "0.15" }, // 15% -> avg (10 + 5 + 15) / 3 = 10%
+      // month 4 missing
+      { month: 5, roi: "0.06" }, // 6%
+      { month: 6, roi: "0.12" }, // 12% -> month 6 is missing month 4, so moving avg is null
+      { month: 7, roi: "0.03" }, // 3% -> avg (6 + 12 + 3) / 3 = 7%
+    ];
+
+    const series = computeMonthlyRoiSeries(currentData);
+
+    // Month 1 & 2 have < 3 months in current year (and no prev year data) -> null
+    expect(series[0].movingAvg3m).toBeNull();
+    expect(series[1].movingAvg3m).toBeNull();
+
+    // Month 3
+    expect(series[2].movingAvg3m).toBeCloseTo(10);
+
+    // Month 5 (month 4 missing) -> null
+    expect(series[4].movingAvg3m).toBeNull();
+
+    // Month 6 (month 4 missing for N-2) -> null
+    expect(series[5].movingAvg3m).toBeNull();
+
+    // Month 7 (months 5, 6, 7 all present)
+    expect(series[6].movingAvg3m).toBeCloseTo(7);
+  });
+
+  it("uses previous year data for January and February 3-month moving average", () => {
+    const prevYearData = [
+      { month: 11, roi: "0.04" }, // 4%
+      { month: 12, roi: "0.06" }, // 6%
+    ];
+
+    const currentData = [
+      { month: 1, roi: "0.05" }, // 5% -> Jan avg (4 + 6 + 5) / 3 = 5%
+      { month: 2, roi: "0.07" }, // 7% -> Feb avg (6 + 5 + 7) / 3 = 6%
+      { month: 3, roi: "0.03" }, // 3% -> Mar avg (5 + 7 + 3) / 3 = 5%
+    ];
+
+    const series = computeMonthlyRoiSeries(currentData, prevYearData);
+
+    expect(series[0].movingAvg3m).toBeCloseTo(5);
+    expect(series[1].movingAvg3m).toBeCloseTo(6);
+    expect(series[2].movingAvg3m).toBeCloseTo(5);
+  });
+});
+

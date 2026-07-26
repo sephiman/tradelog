@@ -90,6 +90,7 @@ export function CumulativeProfitCard({ rows }: { rows: ClosedPosition[] }) {
             <YAxis stroke={theme.axisColor} fontSize={12} width={72} />
             <Tooltip
               contentStyle={theme.tooltipStyle}
+              cursor={theme.cursorStyle}
               labelFormatter={(v) => fmtDate(String(v))}
               formatter={(v) => [fmtUsd(Number(v), { sign: true }), t("analytics.cumulativeProfit")]}
             />

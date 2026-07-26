@@ -526,3 +526,88 @@ export function feeRatioByDay(rows: ClosedPosition[], year: number, month: numbe
     monthRatio: ratio(monthPnl, monthFees),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Monthly ROI Series
+// ---------------------------------------------------------------------------
+
+export interface MonthlyRoiRawItem {
+  month: number;
+  roi: string | number | null;
+  startCapital?: string | number | null;
+  netPnl?: string | number | null;
+}
+
+export interface ComputedMonthlyRoi {
+  month: number;
+  roi: number | null; // exact percentage points, e.g. 5.2 or -3.1
+  displayRoi: number | null; // clamped [-100, 100] for bar shape rendering
+  cumulativeRoi: number | null; // compounded percentage points
+  movingAvg3m: number | null; // 3-month simple moving average percentage points
+  startCapital: string | number | null;
+  netPnl: string | number | null;
+}
+
+/**
+ * Computes monthly ROI metrics for 12 months of a given year:
+ * - ROI bars (clamped displayRoi)
+ * - Cumulative ROI: compound product (1+r1)*(1+r2)...(1+rN) - 1 for existing monthly ROIs up to month N. Only plotted for months with a real ROI value.
+ * - 3-month moving average: average ROI of months N, N-1, N-2. Requires ALL THREE to have real ROI values (using prevYearData for Jan/Feb when available).
+ */
+export function computeMonthlyRoiSeries(
+  currentYearData: MonthlyRoiRawItem[],
+  prevYearData: MonthlyRoiRawItem[] = []
+): ComputedMonthlyRoi[] {
+  const currentMap = new Map(currentYearData.map((item) => [item.month, item]));
+  const prevMap = new Map(prevYearData.map((item) => [item.month, item]));
+
+  const getRoiFraction = (yearOffset: 0 | -1, month: number): number | null => {
+    const map = yearOffset === 0 ? currentMap : prevMap;
+    const item = map.get(month);
+    if (item?.roi != null && item.roi !== "") {
+      const val = typeof item.roi === "number" ? item.roi : Number(item.roi);
+      return Number.isFinite(val) ? val : null;
+    }
+    return null;
+  };
+
+  return Array.from({ length: 12 }, (_, i) => {
+    const month = i + 1;
+    const item = currentMap.get(month);
+    const rawFraction = getRoiFraction(0, month);
+    const rawRoi = rawFraction != null ? rawFraction * 100 : null;
+    const displayRoi = rawRoi != null ? Math.min(100, Math.max(-100, rawRoi)) : null;
+
+    let cumulativeRoi: number | null = null;
+    if (rawFraction !== null) {
+      let compound = 1.0;
+      for (let k = 1; k <= month; k++) {
+        const r = getRoiFraction(0, k);
+        if (r !== null) {
+          compound *= 1.0 + r;
+        }
+      }
+      cumulativeRoi = (compound - 1.0) * 100;
+    }
+
+    const r0 = rawFraction;
+    const r1 = month > 1 ? getRoiFraction(0, month - 1) : getRoiFraction(-1, 12);
+    const r2 = month > 2 ? getRoiFraction(0, month - 2) : month === 2 ? getRoiFraction(-1, 12) : getRoiFraction(-1, 11);
+
+    let movingAvg3m: number | null = null;
+    if (r0 !== null && r1 !== null && r2 !== null) {
+      movingAvg3m = ((r0 + r1 + r2) / 3) * 100;
+    }
+
+    return {
+      month,
+      roi: rawRoi,
+      displayRoi,
+      cumulativeRoi,
+      movingAvg3m,
+      startCapital: item?.startCapital ?? null,
+      netPnl: item?.netPnl ?? null,
+    };
+  });
+}
+

@@ -256,7 +256,7 @@ function RateChart({
           <XAxis dataKey={xKey} tickFormatter={tickFormatter} stroke={theme.axisColor} fontSize={12} />
           <YAxis yAxisId="count" allowDecimals={false} stroke={theme.axisColor} fontSize={12} width={36} />
           <YAxis yAxisId="rate" orientation="right" domain={[0, 100]} unit="%" stroke={theme.axisColor} fontSize={12} width={44} />
-          <Tooltip contentStyle={theme.tooltipStyle} labelFormatter={(v) => (tickFormatter ? tickFormatter(Number(v)) : String(v))} />
+          <Tooltip contentStyle={theme.tooltipStyle} cursor={theme.cursorStyle} labelFormatter={(v) => (tickFormatter ? tickFormatter(Number(v)) : String(v))} />
           <Legend />
           <Bar yAxisId="count" dataKey="count" name={countLabel} fill={ACCENT} />
           <Line yAxisId="rate" type="linear" dataKey="winRate" name={rateLabel} stroke={WINRATE_LINE} dot={false} connectNulls />

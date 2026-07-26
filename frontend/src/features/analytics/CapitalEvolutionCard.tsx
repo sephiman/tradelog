@@ -108,6 +108,7 @@ export function CapitalEvolutionCard({
               <YAxis stroke={theme.axisColor} fontSize={12} width={72} />
               <Tooltip
                 contentStyle={theme.tooltipStyle}
+                cursor={theme.cursorStyle}
                 formatter={(value, name) => [fmtUsd(Number(value)), String(name)]}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />

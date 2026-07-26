@@ -23,6 +23,8 @@ export const VIOLET_SCALE = ["#7c3aed", "#a78bfa", "#c4b5fd"];
 // Single blue accent shared by every time series and win-rate line.
 export const LINE_ACCENT = "#0ea5e9";
 export const WINRATE_LINE = LINE_ACCENT;
+export const CUMULATIVE_ROI_LINE = "#0ea5e9";
+export const MOVING_AVG_3M_LINE = "#8b5cf6";
 
 // Amber for fee amounts (a cost — not a category, not a PnL sign).
 export const FEE_COLOR = "#f59e0b";
@@ -51,6 +53,8 @@ export function barColor(n: number): string {
 export interface ChartTheme {
   axisColor: string;
   gridColor: string;
+  seriesNeutral: string;
+  cursorStyle: { fill: string };
   tooltipStyle: CSSProperties;
 }
 
@@ -62,11 +66,17 @@ export function useChartTheme(): ChartTheme {
   return {
     axisColor: dark ? "#9ca3af" : "#6b7280",
     gridColor,
+    seriesNeutral: dark ? "#f3f4f6" : "#111827",
+    cursorStyle: {
+      fill: dark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
+    },
     tooltipStyle: {
       backgroundColor: dark ? "#1f2937" : "#fff",
       border: `1px solid ${gridColor}`,
       borderRadius: 8,
       fontSize: 12,
+      color: dark ? "#f3f4f6" : "#111827",
     },
   };
 }
+
