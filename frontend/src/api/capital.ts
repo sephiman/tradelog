@@ -185,3 +185,24 @@ export function useRoi(profileId: string | null, from?: string, to?: string, exc
       ).data,
   });
 }
+
+export interface MonthlyRoiItem {
+  month: number;
+  roi: string | null;
+  startCapital: string | null;
+  netPnl: string | null;
+}
+
+export function useMonthlyRoi(profileId: string | null, year: number, exchange?: string) {
+  return useQuery({
+    enabled: !!profileId,
+    queryKey: ["capital", profileId, "roi", "monthly", year, exchange ?? "ALL"],
+    queryFn: async () =>
+      (
+        await apiClient.get<MonthlyRoiItem[]>(`/profiles/${profileId}/capital/roi/monthly`, {
+          params: { year, exchange: exchange === "ALL" ? undefined : exchange },
+        })
+      ).data,
+  });
+}
+

@@ -280,6 +280,28 @@ class CapitalHistoryService(
     }
 
     /**
+     * ROI for each month (1..12) of a given [year]: applies the same ROI rule per month.
+     */
+    @Transactional(readOnly = true)
+    fun monthlyRoi(profileId: UUID, year: Int, exchange: String?): List<MonthlyRoiItemDto> {
+        val zone = zoneOf(profileId)
+        return (1..12).map { month ->
+            val firstDay = LocalDate.of(year, month, 1)
+            val lastDay = LocalDate.of(year, month, firstDay.lengthOfMonth())
+            val from = firstDay.atStartOfDay(zone).toInstant()
+            val to = lastDay.atTime(23, 59, 59, 999_999_999).atZone(zone).toInstant()
+            val res = roi(profileId, from, to, exchange)
+            MonthlyRoiItemDto(
+                month = month,
+                roi = res.roi,
+                startCapital = res.startCapital,
+                netPnl = res.netPnl,
+            )
+        }
+    }
+
+
+    /**
      * Re-derives every AUTO row from the anchors and stored trades: refreshes stale values, fills
      * the profile's cadence days, and drops rows that lost their basis (before the first anchor,
      * or the exchange no longer has anchors at all). MANUAL rows are never touched.

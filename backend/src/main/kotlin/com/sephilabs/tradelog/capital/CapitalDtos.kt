@@ -119,3 +119,11 @@ data class RoiDto(
     /** The anchor that truncated the numerator, when one falls inside the period. */
     val cutDate: LocalDate?,
 )
+
+data class MonthlyRoiItemDto(
+    val month: Int,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val roi: BigDecimal?,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val startCapital: BigDecimal?,
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val netPnl: BigDecimal?,
+)
+

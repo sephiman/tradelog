@@ -89,4 +89,12 @@ class CapitalController(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) to: Instant?,
         @RequestParam(required = false) exchange: String?,
     ): RoiDto = history.roi(profileId, from, to, exchange?.takeIf { it.isNotBlank() && it != "ALL" })
+
+    @GetMapping("/roi/monthly")
+    fun monthlyRoi(
+        @PathVariable profileId: UUID,
+        @RequestParam year: Int,
+        @RequestParam(required = false) exchange: String?,
+    ): List<MonthlyRoiItemDto> = history.monthlyRoi(profileId, year, exchange?.takeIf { it.isNotBlank() && it != "ALL" })
 }
+

@@ -371,6 +371,8 @@
     "pnlPerDayInfo": "Resultado neto total de cada día del mes.",
     "monthlySummary": "Resumen mensual",
     "monthlySummaryInfo": "Resultado neto por mes con la tasa de acierto mensual.",
+    "monthlyRoi": "ROI mensual",
+    "monthlyRoiInfo": "ROI para cada mes del año: PnL neto de las operaciones cerradas ese mes (desde el ajuste más reciente anterior/dentro del mes) dividido entre el capital del primer día de ese mes. Los huecos indican que no hay datos de capital en o antes del inicio de ese mes, no un 0% de ROI.",
     "winRateByHour": "Tasa de acierto por hora",
     "winRateByHourInfo": "Tasa de acierto y número de operaciones por cada hora del día, en tu zona horaria.",
     "winRateByWeekday": "Tasa de acierto por día de la semana",

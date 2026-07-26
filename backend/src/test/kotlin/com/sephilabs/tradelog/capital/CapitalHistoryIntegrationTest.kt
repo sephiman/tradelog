@@ -261,4 +261,41 @@ class CapitalHistoryIntegrationTest @Autowired constructor(
         assertThat(history.estimateNow(profile.id)).isEmpty()
         assertThat(history.roi(profile.id, null, null, null).roi).isNull()
     }
+
+    @Test
+    fun `monthlyRoi computes monthly ROI series with gaps before the first anchor`() {
+        val (profile, dsId) = newProfile()
+        anchor(profile.id, LocalDate.of(2026, 7, 1), "Bitunix", "1000")
+        trade(profile.id, dsId, Instant.parse("2026-07-10T10:00:00Z"), "100")
+        trade(profile.id, dsId, Instant.parse("2026-08-05T10:00:00Z"), "-50")
+
+        val monthly = history.monthlyRoi(profile.id, 2026, null)
+        assertThat(monthly).hasSize(12)
+
+        // Months 1 to 6 (Jan-Jun) have no anchor at or before their start -> null (gap)
+        for (m in 1..6) {
+            val item = monthly.first { it.month == m }
+            assertThat(item.roi).isNull()
+            assertThat(item.startCapital).isNull()
+            assertThat(item.netPnl).isNull()
+        }
+
+        // July (month 7): startCapital = 1000, netPnl = 100 -> ROI = 100 / 1000 = 0.1
+        val july = monthly.first { it.month == 7 }
+        assertThat(july.startCapital).isEqualByComparingTo("1000")
+        assertThat(july.netPnl).isEqualByComparingTo("100")
+        assertThat(july.roi).isEqualByComparingTo(BigDecimal("100").divide(BigDecimal("1000"), 8, RoundingMode.HALF_EVEN))
+
+        // August (month 8): startCapital at Aug 1 = 1000 + 100 = 1100, netPnl = -50 -> ROI = -50 / 1100
+        val aug = monthly.first { it.month == 8 }
+        assertThat(aug.startCapital).isEqualByComparingTo("1100")
+        assertThat(aug.netPnl).isEqualByComparingTo("-50")
+        assertThat(aug.roi).isEqualByComparingTo(BigDecimal("-50").divide(BigDecimal("1100"), 8, RoundingMode.HALF_EVEN))
+
+        // Unanchored exchange filtering -> all gaps
+        val bingx = history.monthlyRoi(profile.id, 2026, "BingX")
+        assertThat(bingx).hasSize(12)
+        assertThat(bingx).allMatch { it.roi == null && it.startCapital == null }
+    }
 }
+

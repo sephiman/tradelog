@@ -63,13 +63,15 @@ anyone running a modified version as a network service must publish the source.
 - **Trading capital & risk**: the dashboard block shows the **estimated current capital** (per
   exchange and total, derived from the capital history) and the **maximum to lose per trade** at two
   configurable **risk percentages**. It follows the Exchange filter but ignores Period/Origen.
-- **ROI card & capital evolution panel**: the Statistics panel gains a **ROI** for the selected
+- **ROI card, capital evolution & Monthly ROI**: the Statistics panel gains a **ROI** for the selected
   period — net PnL of the period's trades (counted from the most recent anchor) ÷ capital at the
   period's first day (that day's snapshot or adjustment); blank when no snapshot/adjustment exists at
-  or before the period start. A **stacked area chart** plots the snapshotted capital per exchange
+  or before the period start. A **Monthly ROI** widget (placed last on the dashboard and in performance view)
+  displays a yearly bar chart (`‹ year ›` navigation) plotting ROI per month using the same same-month capital basis rule,
+  showing gaps for months without starting capital data. A **stacked area chart** plots the snapshotted capital per exchange
   with anchor days overlaid as markers — capital over time (including your adjustments),
-  deliberately not the same thing as the Cumulative profit (PnL) chart. Both react to the Period/Exchange filters;
-  ROI ignores Origen (capital isn't tagged by origen).
+  deliberately not the same thing as the Cumulative profit (PnL) chart. ROI widgets react to the Exchange filter
+  (and ignore Origen and Period filters).
 - **Read-only, encrypted credentials**: API keys are AES-GCM encrypted at rest and decrypted only in
   the sync worker — never returned to the browser. Use **read-only keys** (no trading, no withdrawal);
   the app warns on permission errors but cannot enforce this on the exchange.
@@ -80,13 +82,13 @@ anyone running a modified version as a network service must publish the source.
   itself).
 - **UI & Analytics**: Spanish/English (persisted per user), light/dark/system theme, responsive on desktop and
   mobile. An analytics dashboard with a shared **Period / Exchange / Origen** filter bar across 7 dedicated view tabs:
-  - **Summary**: KPIs, equity curve chart, performance & behavior highlights.
-  - **Performance**: Monthly and yearly PnL and activity breakdowns.
+  - **Summary**: KPIs and equity curve chart.
+  - **Performance**: Activity breakdown, daily PnL, and monthly summary.
   - **Behavior**: Win rate by hour of day (0–23) and weekday, long vs. short direction performance, and trader style breakdown (scalper/day/swing with duration metrics).
   - **Streaks**: Winning & losing streak stats (average & longest length/PnL), recovery rate after losses, and a monthly PnL calendar.
   - **Pairs**: Rankings for most traded, most profitable, and least profitable pairs.
   - **Fees**: Daily fee breakdowns, cumulative fees chart, and return-on-fees efficiency ratio.
-  - **Capital**: Trading capital risk calculator and capital evolution stacked area chart.
+  - **Capital**: Trading capital risk calculator, capital evolution stacked area chart, and Monthly ROI.
   Settings clearly shows the active **time zone**, which governs day boundaries and ROI periods everywhere.
 
 ## How it works

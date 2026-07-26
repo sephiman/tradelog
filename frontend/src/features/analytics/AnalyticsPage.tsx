@@ -13,7 +13,8 @@ import { FilterBar } from "./FilterBar";
 import { ViewTabs, type ViewKey } from "./ViewTabs";
 import { useMonthNavState } from "./PeriodNav";
 import { StatisticsCard, CumulativeProfitCard } from "./SummaryView";
-import { ActivityCard, PnlPerDayCard, MonthlySummaryCard } from "./PerformanceView";
+import { ActivityCard, PnlPerDayCard, MonthlySummaryCard, MonthlyRoiCard } from "./PerformanceView";
+
 import { WinRateByHourCard, WinRateByWeekdayCard, TradeDirectionCard, TraderStyleCard } from "./BehaviorView";
 import { WinningStreaksCard, LosingStreaksCard, RecoveryCard, CalendarCard } from "./StreaksView";
 import { MostTradedCard, MostProfitableCard, LeastProfitableCard } from "./PairsView";
@@ -219,16 +220,18 @@ function Dashboard({
   // view === "all": the full dashboard, matching the reference layout.
   return (
     <div className="space-y-6">
+      {/* 1. Summary */}
       <StatisticsCard rows={rows} profileId={profileId} range={range} exchange={exchange} />
-      <Row>
-        {capital}
-        <CumulativeProfitCard rows={rows} />
-      </Row>
-      {capitalEvolution}
+      <CumulativeProfitCard rows={rows} />
+
+      {/* 2. Performance */}
       <Row>
         <ActivityCard rows={navRows} timeZone={timeZone} nav={perfNav} />
         <PnlPerDayCard rows={navRows} timeZone={timeZone} nav={perfNav} />
       </Row>
+      <MonthlySummaryCard rows={navRows} timeZone={timeZone} />
+
+      {/* 3. Behavior */}
       <Row>
         <WinRateByHourCard rows={rows} timeZone={timeZone} />
         <WinRateByWeekdayCard rows={rows} timeZone={timeZone} />
@@ -237,27 +240,33 @@ function Dashboard({
         <TradeDirectionCard rows={rows} />
         <TraderStyleCard rows={rows} />
       </Row>
+
+      {/* 4. Streaks */}
       <div className="grid gap-6 md:grid-cols-5">
         <WinningStreaksCard rows={rows} className="md:col-span-2" />
         <LosingStreaksCard rows={rows} className="md:col-span-2" />
         <RecoveryCard rows={rows} className="md:col-span-1" />
       </div>
-      <Row>
-        <CalendarCard rows={navRows} timeZone={timeZone} />
+      <CalendarCard rows={navRows} timeZone={timeZone} />
+
+      {/* 5. Pairs */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <MostTradedCard rows={rows} />
-      </Row>
-      <Row>
         <MostProfitableCard rows={rows} />
         <LeastProfitableCard rows={rows} />
-      </Row>
+      </div>
+
+      {/* 6. Fees */}
       <Row>
         <FeesCard rows={navRows} timeZone={timeZone} nav={feesNav} />
         <CumulativeFeesCard rows={rows} />
       </Row>
-      <Row>
-        <FeeRatioCard rows={navRows} timeZone={timeZone} nav={feesNav} />
-        <MonthlySummaryCard rows={navRows} timeZone={timeZone} />
-      </Row>
+      <FeeRatioCard rows={navRows} timeZone={timeZone} nav={feesNav} />
+
+      {/* 7. Capital */}
+      {capital}
+      {capitalEvolution}
+      <MonthlyRoiCard profileId={profileId} exchange={exchange} />
     </div>
   );
 }

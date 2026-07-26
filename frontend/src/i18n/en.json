@@ -371,6 +371,8 @@
     "pnlPerDayInfo": "Total net result for each day of the month.",
     "monthlySummary": "Monthly summary",
     "monthlySummaryInfo": "Net result per month with the monthly win rate.",
+    "monthlyRoi": "Monthly ROI",
+    "monthlyRoiInfo": "ROI for each month of the year: net PnL of trades closed that month (from the most recent adjustment before/within the month) divided by capital at the first day of that month. Gaps indicate no capital data at or before the start of that month, not 0% ROI.",
     "winRateByHour": "Win rate by hour",
     "winRateByHourInfo": "Win rate and number of trades for each hour of the day, in your time zone.",
     "winRateByWeekday": "Win rate by weekday",
