@@ -49,17 +49,17 @@ anyone running a modified version as a network service must publish the source.
   automatic **on login** (async, rate-limited per exchange), a **nightly scheduled sweep** of every
   active API source (default 04:00, `SYNC_SCHEDULE_CRON`), **manual** (per source or all), and the
   **Quantfury PDF upload**.
-- **Annotations**: a customizable per-user **tag taxonomy** (seeded with an *Origen* group you edit)
-  plus a free-text note per position, with the operations (legs) of each position viewable.
+- **Annotations & management**: a customizable per-user **tag taxonomy** (seeded with an *Origen* group you edit), free-text notes per position, and full position leg operations viewable. Supports **bulk tagging** (apply Origen tags to selected trades or all matching search filters) and **soft-deletion** (single or bulk delete/hide trades).
 - **Capital history & real ROI**: a dedicated **Capital** page tracks your trading capital as a
   dated history of **adjustments** (anchors: your real balance per exchange on a date) plus
   **automatic snapshots** carried forward from the latest anchor with the net PnL of trades closed
   since. An adjustment is a **hard cut** — PnL closed before it is considered settled into that
   balance — so deposits/withdrawals never read as trading gains. Snapshots are materialized by a background job
   (**daily / weekly / monthly**, set in Settings; `CAPITAL_SNAPSHOT_ENABLED` / `CAPITAL_SNAPSHOT_CRON`)
-  and are editable to backfill history — **manual values always win** and editing a day turns it into
-  an anchor. All day boundaries use the **user's time zone**. The first adjustment is the starting
-  point: ROI and the capital chart stay empty until it exists.
+  and are editable to backfill history — **manual values always win**, editing a day turns it into
+  an anchor, and individual snapshot days can be deleted or reset. Snapshot backfills can also be
+  triggered on demand without waiting for the scheduled job. All day boundaries use the **user's time zone**.
+  The first adjustment is the starting point: ROI and the capital chart stay empty until it exists.
 - **Trading capital & risk**: the dashboard block shows the **estimated current capital** (per
   exchange and total, derived from the capital history) and the **maximum to lose per trade** at two
   configurable **risk percentages**. It follows the Exchange filter but ignores Period/Origen.
@@ -78,10 +78,16 @@ anyone running a modified version as a network service must publish the source.
   replaces the account's data, guarded by an explicit confirmation so a stray request can't wipe
   anything. Exports from older app versions import fine (the importer only refuses files newer than
   itself).
-- **UI**: Spanish/English (persisted per user), light/dark/system theme, responsive on desktop and
-  mobile. An analytics dashboard with a shared **Period / Exchange / Origen** filter bar, plus the
-  trading-capital & risk block and capital-evolution panel above. Settings clearly shows the active
-  **time zone**, which governs day boundaries and ROI periods everywhere.
+- **UI & Analytics**: Spanish/English (persisted per user), light/dark/system theme, responsive on desktop and
+  mobile. An analytics dashboard with a shared **Period / Exchange / Origen** filter bar across 7 dedicated view tabs:
+  - **Summary**: KPIs, equity curve chart, performance & behavior highlights.
+  - **Performance**: Monthly and yearly PnL and activity breakdowns.
+  - **Behavior**: Win rate by hour of day (0–23) and weekday, long vs. short direction performance, and trader style breakdown (scalper/day/swing with duration metrics).
+  - **Streaks**: Winning & losing streak stats (average & longest length/PnL), recovery rate after losses, and a monthly PnL calendar.
+  - **Pairs**: Rankings for most traded, most profitable, and least profitable pairs.
+  - **Fees**: Daily fee breakdowns, cumulative fees chart, and return-on-fees efficiency ratio.
+  - **Capital**: Trading capital risk calculator and capital evolution stacked area chart.
+  Settings clearly shows the active **time zone**, which governs day boundaries and ROI periods everywhere.
 
 ## How it works
 
@@ -297,5 +303,4 @@ TRADELOG_REAL_PDF=/path/to/report.pdf \
   to rounding). Re-uploading the same export is safe.
 - **API keys must be read-only.** The app detects and warns on permission errors but cannot enforce
   key scope on the exchange — that's on you when creating the key.
-- Out of scope (Phase 1): open/unrealized positions, currency conversion, profiles shared between
-  users, and fine-grained analytics (win rate, R-multiple, expectancy, bot-vs-manual, by hour/day).
+- Out of scope (Phase 1): open/unrealized positions, currency conversion, and profiles shared between users. (Fine-grained analytics like win rate, expectancy, average R:R, hourly/weekday distribution, trader style, streaks, and fee efficiency are fully built and live in the dashboard.)

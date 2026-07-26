@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+echo "🔍 Running pre-push frontend verification..."
+
+cd frontend
+npm run build
+npm test
+
+echo "✅ Frontend pre-push checks passed!"
