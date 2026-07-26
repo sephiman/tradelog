@@ -286,6 +286,7 @@
   },
   "analytics": {
     "title": "Dashboard",
+    "maximize": "Maximize",
     "noData": "No closed positions yet. Add a data source or import a trade history.",
     "viewsLabel": "Views",
     "periodLabel": "Period",

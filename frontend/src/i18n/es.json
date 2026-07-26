@@ -286,6 +286,7 @@
   },
   "analytics": {
     "title": "Panel",
+    "maximize": "Maximizar",
     "noData": "Aún no hay posiciones cerradas. Añade una fuente de datos o importa un historial de operaciones.",
     "viewsLabel": "Vistas",
     "periodLabel": "Periodo",

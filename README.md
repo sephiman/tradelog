@@ -81,7 +81,7 @@ anyone running a modified version as a network service must publish the source.
   anything. Exports from older app versions import fine (the importer only refuses files newer than
   itself).
 - **UI & Analytics**: Spanish/English (persisted per user), light/dark/system theme, responsive on desktop and
-  mobile. An analytics dashboard with a shared **Period / Exchange / Origen** filter bar across 7 dedicated view tabs:
+  mobile. Every widget features a **Maximize** button (`⤢`) to open a high-resolution fullscreen modal overlay with auto-resizing charts and full detail view. An analytics dashboard with a shared **Period / Exchange / Origen** filter bar across 7 dedicated view tabs:
   - **Summary**: KPIs and equity curve chart.
   - **Performance**: Activity breakdown, daily PnL, and monthly summary.
   - **Behavior**: Win rate by hour of day (0–23) and weekday, long vs. short direction performance, and trader style breakdown (scalper/day/swing with duration metrics).
