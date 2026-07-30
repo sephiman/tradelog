@@ -74,4 +74,21 @@ class JournalCsvImportIntegrationTest @Autowired constructor(
 
         assertThat(positions.findDistinctExchanges(profileId)).containsExactly("Dead Exchanges", "FTX")
     }
+
+    @Test
+    fun `csv venues collapse onto one spelling per venue`() {
+        val (profileId, dsId) = journalSource("Old journal")
+        val bytes = csv(
+            // A venue tradelog connects to: whatever the file calls it, it must land on the BingX
+            // connector's own label — not beside it as a second venue with its own capital history.
+            "BTC/USDT;long;2024-01-02;2024-01-03;1;40000;41000;;0;0;bingx;",
+            "ETH/USDT;long;2024-01-04;2024-01-05;1;2000;2100;;0;0;BING-X;",
+            // An unknown venue: the first spelling in the file settles it for the rest.
+            "SOL/USDT;long;2024-01-06;2024-01-07;1;100;110;;0;0;Kraken;",
+            "SUI/USDT;long;2024-01-08;2024-01-09;1;1;2;;0;0;kraken;",
+        )
+
+        assertThat(importService.execute(profileId, dsId, bytes.inputStream()).inserted).isEqualTo(4)
+        assertThat(positions.findDistinctExchanges(profileId)).containsExactly("BingX", "Kraken")
+    }
 }

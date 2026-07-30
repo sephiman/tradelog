@@ -20,7 +20,8 @@
     "dashboard": "Dashboard",
     "positions": "Positions",
     "capital": "Capital",
-    "settings": "Settings"
+    "settings": "Settings",
+    "menu": "Menu"
   },
   "auth": {
     "login": "Log in",
@@ -183,7 +184,7 @@
         "realized_pnl": "Gross result before fees. Empty = computed from prices.",
         "fees": "Total commissions. Defaults to 0.",
         "funding": "Total funding paid/received. Defaults to 0.",
-        "exchange": "Venue this trade came from (e.g. FTX). Becomes the position's exchange; if blank, this data source's label is used.",
+        "exchange": "Venue this trade came from (e.g. FTX). Becomes the position's exchange; if blank, this data source's label is used. Spelling doesn't matter: a venue tradelog connects to (Bitunix, BingX, BitMart, Quantfury) is stored under its usual name, so the rows merge with what syncs.",
         "note": "Free text, e.g. your rationale."
       }
     }

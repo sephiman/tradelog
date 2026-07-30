@@ -3,6 +3,7 @@ package com.sephilabs.tradelog.capital
 
 import com.sephilabs.tradelog.common.Usdt
 import com.sephilabs.tradelog.common.errors.AppException
+import com.sephilabs.tradelog.datasource.Venues
 import com.sephilabs.tradelog.identity.user.UserRepository
 import com.sephilabs.tradelog.position.ClosedPnl
 import com.sephilabs.tradelog.position.PositionRepository
@@ -96,8 +97,9 @@ class CapitalHistoryService(
         if (request.date.isAfter(LocalDate.now(zone))) throw AppException.badRequest("INVALID_PARAMETER", "date")
 
         val touched = HashSet<String>()
+        val venues = positions.findDistinctExchanges(profileId)
         for (entry in request.entries) {
-            val exchange = entry.exchange.trim()
+            val exchange = Venues.canonical(entry.exchange, venues)
             if (exchange.isEmpty()) continue
             val existing = snapshots.findByProfileIdAndExchangeAndSnapshotDate(profileId, exchange, request.date)
             val amount = entry.amount

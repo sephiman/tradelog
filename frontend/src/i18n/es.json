@@ -20,7 +20,8 @@
     "dashboard": "Panel",
     "positions": "Posiciones",
     "capital": "Capital",
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "menu": "Menú"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -183,7 +184,7 @@
         "realized_pnl": "Resultado bruto antes de comisiones. Vacío = calculado a partir de los precios.",
         "fees": "Comisiones totales. Por defecto 0.",
         "funding": "Funding total pagado/recibido. Por defecto 0.",
-        "exchange": "Plataforma de origen (p. ej. FTX). Pasa a ser el exchange de la posición; si está vacío, se usa la etiqueta de esta fuente de datos.",
+        "exchange": "Plataforma de origen (p. ej. FTX). Pasa a ser el exchange de la posición; si está vacío, se usa la etiqueta de esta fuente de datos. Da igual cómo lo escribas: una plataforma con la que tradelog conecta (Bitunix, BingX, BitMart, Quantfury) se guarda con su nombre habitual, así que las filas se unen con lo que se sincroniza.",
         "note": "Texto libre, p. ej. tu razonamiento."
       }
     }

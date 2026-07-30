@@ -4,6 +4,7 @@ package com.sephilabs.tradelog.sync
 import com.sephilabs.tradelog.common.Usdt
 import com.sephilabs.tradelog.connector.PositionRecord
 import com.sephilabs.tradelog.datasource.SourceKind
+import com.sephilabs.tradelog.datasource.Venues
 import com.sephilabs.tradelog.position.Position
 import com.sephilabs.tradelog.position.PositionFill
 import com.sephilabs.tradelog.position.PositionFillRepository
@@ -36,8 +37,11 @@ class PositionUpsertService(
     ): UpsertCounts {
         var inserted = 0
         var updated = 0
+        // Seeded with the profile's venues so a CSV's free-text venue folds onto the spelling already
+        // in use; resolved names join it, keeping one spelling within this batch too.
+        val venues = LinkedHashSet(positions.findDistinctExchanges(profileId))
         for (r in records) {
-            val exchange = resolveExchange(r, source, sourceLabel)
+            val exchange = resolveExchange(r, source, sourceLabel, venues)
             val existing = positions.findByDataSourceIdAndExternalId(dataSourceId, r.externalId)
             // A soft-deleted position stays deleted: skip it so re-sync never resurrects what the user removed.
             if (existing != null && existing.deletedAt != null) continue
@@ -74,12 +78,22 @@ class PositionUpsertService(
 
     /**
      * The venue is the source itself for the live connectors; for a Journal CSV it is the row's
-     * supplied exchange, falling back to the data source label when the row leaves it blank.
+     * supplied exchange, falling back to the data source label when the row leaves it blank. Whatever
+     * it comes from, [Venues] settles the spelling — a CSV naming "bingx" must land on the same venue
+     * as the BingX connector's own rows, not beside them.
      */
-    private fun resolveExchange(r: PositionRecord, source: SourceKind, sourceLabel: String): String? =
-        r.exchange?.trim()?.takeIf { it.isNotEmpty() }
+    private fun resolveExchange(
+        r: PositionRecord,
+        source: SourceKind,
+        sourceLabel: String,
+        venues: MutableSet<String>,
+    ): String? {
+        val raw = r.exchange?.trim()?.takeIf { it.isNotEmpty() }
             ?: source.venueLabel
-            ?: sourceLabel.trim().takeIf { it.isNotEmpty() }?.take(64)
+            ?: sourceLabel.trim().takeIf { it.isNotEmpty() }
+            ?: return null
+        return Venues.canonical(raw, venues).take(MAX_EXCHANGE_LEN).also { venues.add(it) }
+    }
 
     private fun applySourceFields(p: Position, r: PositionRecord, exchange: String?) {
         p.exchange = exchange
@@ -107,6 +121,11 @@ class PositionUpsertService(
      */
     private fun netPnl(r: PositionRecord): BigDecimal =
         Usdt.normalize(r.realizedPnl.subtract(r.fees).subtract(r.funding))
+
+    /** Matches `positions.exchange`'s column width. */
+    private companion object {
+        const val MAX_EXCHANGE_LEN = 64
+    }
 
     private fun replaceFills(positionId: UUID, r: PositionRecord) {
         fills.deleteByPositionId(positionId)
