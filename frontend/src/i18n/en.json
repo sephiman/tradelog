@@ -362,7 +362,7 @@
     "cumulativeProfit": "Cumulative profit",
     "cumulativeProfitInfo": "Running sum of net results ordered by close date — your equity curve.",
     "capitalEvolution": "Capital evolution",
-    "capitalEvolutionInfo": "Your stored capital snapshots, stacked per exchange. This is capital over time and INCLUDES your manual adjustments (deposits, withdrawals, corrections) — it is not trading return; for that, see Cumulative profit. The markers flag days with a manual adjustment.",
+    "capitalEvolutionInfo": "Your stored capital snapshots, stacked per exchange. This is capital over time and INCLUDES your manual adjustments (deposits, withdrawals, corrections) — it is not trading return; for that, see Cumulative profit. The markers flag days with a manual adjustment. Benchmarks are off by default: each one projects the capital held at the start of the visible range forward at that asset's price, anchored per exchange on its own first day so adding an exchange mid-range is not read as growth. It is a lump sum in USD — capital added later is not projected, and it is not what you would have made trading.",
     "capitalEvolutionSubtitle": "Capital over time, including your adjustments — not trading return.",
     "capitalEvolutionAnchors": "Adjustments",
     "capitalEvolutionEmpty": "No capital snapshots yet. Create your first adjustment on the Capital page.",
@@ -374,7 +374,7 @@
     "monthlySummary": "Monthly summary",
     "monthlySummaryInfo": "Net result per month with the monthly win rate.",
     "monthlyRoi": "Monthly ROI",
-    "monthlyRoiInfo": "ROI for each month of the year: net PnL of trades closed that month (from the most recent adjustment before/within the month) divided by capital at the first day of that month. Gaps indicate no capital data at or before the start of that month, not 0% ROI. Cumulative ROI and 3-month avg are computed strictly from existing monthly data, never projected; 3-month avg requires 3 consecutive months of real data to show a point.",
+    "monthlyRoiInfo": "ROI for each month of the year: net PnL of trades closed that month (from the most recent adjustment before/within the month) divided by capital at the first day of that month. Gaps indicate no capital data at or before the start of that month, not 0% ROI. Cumulative ROI and 3-month avg are computed strictly from existing monthly data, never projected; 3-month avg requires 3 consecutive months of real data to show a point. Benchmarks are off by default — click one to compare. They show that asset's buy-and-hold return for the same month (price at month end ÷ price at month start − 1), always in USD, for comparison only: they are not part of your ROI. A benchmark month without price data is a gap, not 0%.",
     "cumulativeRoi": "Cumulative ROI",
     "movingAvg3m": "3-month avg",
     "winRateByHour": "Win rate by hour",
@@ -420,7 +420,18 @@
     "cumulativeFees": "Cumulative fees",
     "cumulativeFeesInfo": "Running sum of fees over time.",
     "feeRatio": "Fee ratio",
-    "feeRatioInfo": "Per-day return on fees: net PnL ÷ fees. Month value is month PnL ÷ month fees, from monthly totals. Days with no trades or zero fees are skipped."
+    "feeRatioInfo": "Per-day return on fees: net PnL ÷ fees. Month value is month PnL ÷ month fees, from monthly totals. Days with no trades or zero fees are skipped.",
+    "benchmarkNoData": "No price data yet — the background job has not filled this series.",
+    "benchmarkNoDataForYear": "No data for this year — this series does not cover it.",
+    "benchmarkNoDataForRange": "This series does not reach back to the start of the visible range.",
+    "capitalBenchmarkNote": "Lump-sum comparison: the capital already held at the start of the visible range, projected forward at the benchmark's price. Capital added after that point is NOT included, so deposits make the two diverge.",
+    "benchmark": {
+      "bitcoin": "Bitcoin",
+      "crypto_index": "Crypto index",
+      "msci_world": "MSCI World",
+      "sp500": "S&P 500",
+      "gold": "Gold"
+    }
   },
   "sync": {
     "synced": "Synced {{inserted}} new, {{updated}} updated",

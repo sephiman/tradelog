@@ -32,6 +32,15 @@ class AppMetrics(private val registry: MeterRegistry) {
             .increment()
     }
 
+    /** One nightly gap-fill attempt per benchmark; a failure means that series stayed stale. */
+    fun benchmarkRefresh(benchmark: String, outcome: String) {
+        Counter.builder("tl_benchmark_refresh_total")
+            .tag("benchmark", benchmark)
+            .tag("outcome", outcome)
+            .register(registry)
+            .increment()
+    }
+
     fun positionsUpserted(source: String, count: Int) {
         if (count <= 0) return
         Counter.builder("tl_positions_upserted_total")

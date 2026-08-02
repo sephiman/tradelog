@@ -362,7 +362,7 @@
     "cumulativeProfit": "Beneficio acumulado",
     "cumulativeProfitInfo": "Suma acumulada de resultados netos ordenada por fecha de cierre — tu curva de capital.",
     "capitalEvolution": "Evolución del capital",
-    "capitalEvolutionInfo": "Tus instantáneas de capital almacenadas, apiladas por exchange. Es el capital a lo largo del tiempo e INCLUYE tus ajustes manuales (depósitos, retiradas, correcciones) — no es el retorno del trading; para eso, mira Beneficio acumulado. Los marcadores señalan los días con un ajuste manual.",
+    "capitalEvolutionInfo": "Tus snapshots de capital almacenados, apilados por exchange. Esto es capital a lo largo del tiempo e INCLUYE tus ajustes manuales (ingresos, retiradas, correcciones): no es rentabilidad de trading; para eso, mira Beneficio acumulado. Los marcadores señalan los días con un ajuste manual. Los índices de referencia están desactivados por defecto: cada uno proyecta el capital que tenías al inicio del rango visible al precio de ese activo, anclado por exchange en su propio primer día para que añadir un exchange a mitad de rango no se lea como crecimiento. Es un cálculo a tanto alzado en USD: el capital añadido después no se proyecta, y no es lo que habrías ganado operando.",
     "capitalEvolutionSubtitle": "Capital a lo largo del tiempo, incluyendo tus ajustes — no es retorno del trading.",
     "capitalEvolutionAnchors": "Ajustes",
     "capitalEvolutionEmpty": "Aún no hay instantáneas de capital. Crea tu primer ajuste en la página Capital.",
@@ -374,7 +374,7 @@
     "monthlySummary": "Resumen mensual",
     "monthlySummaryInfo": "Resultado neto por mes con la tasa de acierto mensual.",
     "monthlyRoi": "ROI mensual",
-    "monthlyRoiInfo": "ROI para cada mes del año: PnL neto de las operaciones cerradas ese mes (desde el ajuste más reciente anterior/dentro del mes) dividido entre el capital del primer día de ese mes. Los huecos indican que no hay datos de capital en o antes del inicio de ese mes, no un 0% de ROI. El ROI acumulado y la media móvil de 3M se calculan estrictamente a partir de datos mensuales existentes, nunca proyectados; la media móvil requiere 3 meses consecutivos de datos reales para mostrar un punto.",
+    "monthlyRoiInfo": "ROI para cada mes del año: PnL neto de las operaciones cerradas ese mes (desde el ajuste más reciente anterior/dentro del mes) dividido entre el capital del primer día de ese mes. Los huecos indican que no hay datos de capital en o antes del inicio de ese mes, no un 0% de ROI. El ROI acumulado y la media móvil de 3M se calculan estrictamente a partir de datos mensuales existentes, nunca proyectados; la media móvil requiere 3 meses consecutivos de datos reales para mostrar un punto. Los índices de referencia están desactivados por defecto: pulsa uno para comparar. Muestran la rentabilidad de comprar y mantener ese activo durante el mismo mes (precio al cierre del mes ÷ precio al inicio del mes − 1), siempre en USD y solo a efectos de comparación: no forman parte de tu ROI. Un mes sin datos de precio es un hueco, no un 0%.",
     "cumulativeRoi": "ROI acumulado",
     "movingAvg3m": "Media móvil 3M",
     "winRateByHour": "Tasa de acierto por hora",
@@ -420,7 +420,18 @@
     "cumulativeFees": "Comisiones acumuladas",
     "cumulativeFeesInfo": "Suma acumulada de comisiones a lo largo del tiempo.",
     "feeRatio": "Ratio de comisiones",
-    "feeRatioInfo": "Retorno por comisión diario: PnL neto ÷ comisiones. El valor del mes es PnL del mes ÷ comisiones del mes, a partir de los totales mensuales. Se omiten los días sin operaciones o sin comisiones."
+    "feeRatioInfo": "Retorno por comisión diario: PnL neto ÷ comisiones. El valor del mes es PnL del mes ÷ comisiones del mes, a partir de los totales mensuales. Se omiten los días sin operaciones o sin comisiones.",
+    "benchmarkNoData": "Aún sin datos de precio: el proceso en segundo plano no ha rellenado esta serie.",
+    "benchmarkNoDataForYear": "Sin datos para este año: esta serie no lo cubre.",
+    "benchmarkNoDataForRange": "Esta serie no llega al inicio del rango visible.",
+    "capitalBenchmarkNote": "Comparación a tanto alzado: el capital que ya tenías al inicio del rango visible, proyectado al precio del índice. El capital añadido después NO se incluye, así que los ingresos hacen que ambas líneas diverjan.",
+    "benchmark": {
+      "bitcoin": "Bitcoin",
+      "crypto_index": "Índice cripto",
+      "msci_world": "MSCI World",
+      "sp500": "S&P 500",
+      "gold": "Oro"
+    }
   },
   "sync": {
     "synced": "Sincronizadas {{inserted}} nuevas, {{updated}} actualizadas",

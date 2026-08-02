@@ -137,6 +137,26 @@ app:
     snapshot:
       enabled: ${CAPITAL_SNAPSHOT_ENABLED:true}
       cron: ${CAPITAL_SNAPSHOT_CRON:0 20 * * * *}
+  benchmark:
+    # Buy-and-hold reference series (Bitcoin, crypto index, MSCI World, S&P 500, Gold) compared
+    # against monthly ROI. Global market data from keyless public endpoints — no credentials, and
+    # nothing user-specific. All closes are USD; no FX conversion happens anywhere in this feature.
+    yahoo:
+      base-url: ${BENCHMARK_YAHOO_BASE_URL:https://query1.finance.yahoo.com}
+      fallback-base-url: ${BENCHMARK_YAHOO_FALLBACK_BASE_URL:https://query2.finance.yahoo.com}
+      timeout-ms: ${BENCHMARK_YAHOO_TIMEOUT_MS:10000}
+      min-request-interval-ms: 1500
+    binance:
+      base-url: ${BENCHMARK_BINANCE_BASE_URL:https://api.binance.com}
+      timeout-ms: ${BENCHMARK_BINANCE_TIMEOUT_MS:10000}
+      min-request-interval-ms: 300
+    # How far back the first fill reaches, and the floor later gap-fills extend the head down to.
+    history-lookback-days: ${BENCHMARK_HISTORY_LOOKBACK_DAYS:3650}
+    # Fill missing history at startup so a fresh install has an overlay without waiting a night.
+    backfill-on-start: ${BENCHMARK_BACKFILL_ON_START:true}
+    schedule:
+      enabled: ${BENCHMARK_SCHEDULE_ENABLED:true}
+      cron: ${BENCHMARK_SCHEDULE_CRON:0 30 3 * * *}
   connectors:
     bitunix:
       base-url: ${BITUNIX_BASE_URL:https://fapi.bitunix.com}

@@ -12,6 +12,7 @@ data class AppProperties(
     val sync: Sync = Sync(),
     val connectors: Connectors = Connectors(),
     val capital: Capital = Capital(),
+    val benchmark: Benchmark = Benchmark(),
 ) {
     data class Security(
         val cookieSecure: Boolean = true,
@@ -90,6 +91,44 @@ data class AppProperties(
         // Quartz-style cron (seconds field first); hourly because day boundaries are per-user
         // time zones, so a user's "new day" can begin at any server hour. Idempotent re-runs.
         val cron: String = "0 20 * * * *",
+    )
+
+    /**
+     * Benchmark price history behind the Monthly ROI comparison lines. Both providers are keyless
+     * public market-data endpoints, and neither is an exchange connector: benchmarks are global
+     * reference data, unrelated to any user's trades or credentials.
+     */
+    data class Benchmark(
+        val yahoo: YahooEndpoint = YahooEndpoint(),
+        val binance: BenchmarkEndpoint = BenchmarkEndpoint("https://api.binance.com", minRequestIntervalMs = 300),
+        // How far back the first fill reaches. Also the floor the daily gap-fill extends the head
+        // down to, so an already-filled series never re-pulls history.
+        val historyLookbackDays: Long = 3650,
+        // Bootstrap missing history at startup (off in tests, so no test makes provider HTTP calls).
+        val backfillOnStart: Boolean = true,
+        val schedule: BenchmarkSchedule = BenchmarkSchedule(),
+    )
+
+    data class BenchmarkSchedule(
+        val enabled: Boolean = true,
+        // Quartz-style cron (seconds field first). Nightly is ample for daily closes; it runs
+        // before the sync sweep so a fresh benchmark day is in place by the time anyone looks.
+        val cron: String = "0 30 3 * * *",
+    )
+
+    data class BenchmarkEndpoint(
+        val baseUrl: String = "",
+        val timeoutMs: Long = 10000,
+        // Delay after each benchmark's fetch, keeping a full sweep well under any rate limiting.
+        val minRequestIntervalMs: Long = 1000,
+    )
+
+    /** Yahoo's chart API, which mirrors across two hosts; a transport failure retries on the second. */
+    data class YahooEndpoint(
+        val baseUrl: String = "https://query1.finance.yahoo.com",
+        val fallbackBaseUrl: String = "https://query2.finance.yahoo.com",
+        val timeoutMs: Long = 10000,
+        val minRequestIntervalMs: Long = 1500,
     )
 
     data class Connectors(

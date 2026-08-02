@@ -268,6 +268,13 @@ class CapitalHistoryIntegrationTest @Autowired constructor(
         anchor(profile.id, LocalDate.of(2026, 7, 1), "Bitunix", "1000")
         trade(profile.id, dsId, Instant.parse("2026-07-10T10:00:00Z"), "100")
         trade(profile.id, dsId, Instant.parse("2026-08-05T10:00:00Z"), "-50")
+        // Saving the anchor already materialized the AUTO series up to today, valuing every day at
+        // 1000 because no trade existed yet. Trades inserted straight through the repository skip
+        // the refresh a real sync or import performs (SyncService does exactly this call), so
+        // without it the stored 1 Aug value stays stale and August reads its capital as 1000.
+        // Whether "today" is before or after these dates then changes the result — which is how
+        // this test silently started failing once the calendar rolled into August 2026.
+        history.recomputeAutoSnapshots(profile.id)
 
         val monthly = history.monthlyRoi(profile.id, 2026, null)
         assertThat(monthly).hasSize(12)

@@ -51,6 +51,8 @@ export function barColor(n: number): string {
 }
 
 export interface ChartTheme {
+  /** Exposed so a chart can pick a light/dark variant of a categorical palette. */
+  dark: boolean;
   axisColor: string;
   gridColor: string;
   seriesNeutral: string;
@@ -64,6 +66,7 @@ export function useChartTheme(): ChartTheme {
   const dark = resolvedTheme === "dark";
   const gridColor = dark ? "#374151" : "#e5e7eb";
   return {
+    dark,
     axisColor: dark ? "#9ca3af" : "#6b7280",
     gridColor,
     seriesNeutral: dark ? "#f3f4f6" : "#111827",

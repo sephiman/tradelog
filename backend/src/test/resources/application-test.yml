@@ -8,9 +8,21 @@ spring:
 app:
   registration:
     mode: open
+  security:
+    # Every HTTP test registers or logs in from localhost, so they all share one per-IP bucket and
+    # the production 20/hour ceiling is a suite-wide budget. Hitting it makes an unrelated test fail
+    # with 429 depending on execution order — raise it here rather than rationing registrations.
+    login-rate:
+      per-minute: 100000
+      per-hour: 100000
   crypto:
     # Deterministic 32-byte AES key (base64 of "01234567890123456789012345678901") for tests.
     key: "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="
   bootstrap:
     admin-email: ""
     admin-password: ""
+  benchmark:
+    # No test may reach a price provider: tests seed benchmark_prices directly instead.
+    backfill-on-start: false
+    schedule:
+      enabled: false
