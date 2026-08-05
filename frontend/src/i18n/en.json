@@ -21,7 +21,8 @@
     "positions": "Positions",
     "capital": "Capital",
     "settings": "Settings",
-    "menu": "Menu"
+    "menu": "Menu",
+    "home": "Trade Log home"
   },
   "auth": {
     "login": "Log in",

@@ -21,7 +21,8 @@
     "positions": "Posiciones",
     "capital": "Capital",
     "settings": "Ajustes",
-    "menu": "Menú"
+    "menu": "Menú",
+    "home": "Inicio de Trade Log"
   },
   "auth": {
     "login": "Iniciar sesión",

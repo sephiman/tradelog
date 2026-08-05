@@ -24,7 +24,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="border-b border-border bg-white dark:border-gray-700 dark:bg-gray-800">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
           <div className="flex items-center gap-3 sm:contents">
-            <Logo className="h-7 w-auto shrink-0" />
+            <Logo to="/dashboard" onClick={() => setNavOpen(false)} className="h-7 w-auto shrink-0" />
 
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:order-5 sm:ml-0">
               <Button
