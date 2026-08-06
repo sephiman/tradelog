@@ -7,6 +7,8 @@ import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.config.AppProperties
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.http.MediaType
+import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientResponseException
 import java.util.SortedMap
@@ -59,23 +61,52 @@ abstract class SignedRestConnector(
         creds: ExchangeCredentials,
         path: String,
         params: Map<String, String> = emptyMap(),
+    ): JsonNode = send(creds, "GET", path, params) { path, query, auth ->
+        client.get()
+            .uri { b ->
+                b.path(path)
+                query.forEach { (k, v) -> b.queryParam(k, v) }
+                auth.query.forEach { (k, v) -> b.queryParam(k, v) }
+                b.build()
+            }
+            .headers { h -> auth.headers.forEach { (k, v) -> h.set(k, v) } }
+            .retrieve()
+            .body(String::class.java)
+    }
+
+    /** Signed POST with a form body (Kraken spot); [authorize] still sees the params as `query`. */
+    protected fun postForm(
+        creds: ExchangeCredentials,
+        path: String,
+        params: Map<String, String> = emptyMap(),
+    ): JsonNode = send(creds, "POST", path, params) { path, query, auth ->
+        val form = LinkedMultiValueMap<String, String>()
+        query.forEach { (k, v) -> form.add(k, v) }
+        auth.query.forEach { (k, v) -> form.add(k, v) }
+        client.post()
+            .uri { b -> b.path(path).build() }
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .headers { h -> auth.headers.forEach { (k, v) -> h.set(k, v) } }
+            .body(form)
+            .retrieve()
+            .body(String::class.java)
+    }
+
+    /** Signs, sends and validates one request, retrying while the venue says it is rate limited. */
+    private fun send(
+        creds: ExchangeCredentials,
+        method: String,
+        path: String,
+        params: Map<String, String>,
+        exchange: (String, SortedMap<String, String>, Auth) -> String?,
     ): JsonNode {
         var attempt = 0
         while (true) {
             val query = sortedMapOf<String, String>().apply { putAll(params) }
-            val auth = authorize(creds, "GET", path, query)
-            log.debug("{} request: GET {} params={} attempt={}", venue, path, params, attempt)
+            val auth = authorize(creds, method, path, query)
+            log.debug("{} request: {} {} params={} attempt={}", venue, method, path, params, attempt)
             val body = try {
-                client.get()
-                    .uri { b ->
-                        b.path(path)
-                        query.forEach { (k, v) -> b.queryParam(k, v) }
-                        auth.query.forEach { (k, v) -> b.queryParam(k, v) }
-                        b.build()
-                    }
-                    .headers { h -> auth.headers.forEach { (k, v) -> h.set(k, v) } }
-                    .retrieve()
-                    .body(String::class.java)
+                exchange(path, query, auth)
             } catch (e: RestClientResponseException) {
                 if (e.statusCode.value() == HTTP_TOO_MANY && attempt < maxRetries) {
                     backoff(++attempt, "HTTP $HTTP_TOO_MANY")

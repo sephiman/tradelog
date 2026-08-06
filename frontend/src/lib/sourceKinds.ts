@@ -9,7 +9,9 @@ export const SOURCE_KINDS: readonly SourceKind[] = [
   "BYBIT",
   "OKX",
   "BITGET",
+  "BITGET_CLASSIC",
   "KRAKEN_FUTURES",
+  "KRAKEN_SPOT",
   "GATEIO_FUTURES",
   "MEXC_FUTURES",
   "KUCOIN_FUTURES",
@@ -24,7 +26,7 @@ const FILE_KINDS: ReadonlySet<SourceKind> = new Set<SourceKind>(["QUANTFURY", "J
 export const isApiKind = (kind: SourceKind): boolean => !FILE_KINDS.has(kind);
 
 /** Venues needing an API passphrase. Mirrors `SourceKind.requiresPassphrase`. */
-const PASSPHRASE_KINDS: ReadonlySet<SourceKind> = new Set<SourceKind>(["OKX", "BITGET", "KUCOIN_FUTURES"]);
+const PASSPHRASE_KINDS: ReadonlySet<SourceKind> = new Set<SourceKind>(["OKX", "BITGET", "BITGET_CLASSIC", "KUCOIN_FUTURES"]);
 
 export const needsPassphrase = (kind: SourceKind): boolean => PASSPHRASE_KINDS.has(kind);
 
@@ -40,7 +42,9 @@ export const SOURCE_LABELS: Record<SourceKind, string> = {
   BYBIT: "Bybit",
   OKX: "OKX",
   BITGET: "Bitget",
+  BITGET_CLASSIC: "Bitget Classic",
   KRAKEN_FUTURES: "Kraken Futures",
+  KRAKEN_SPOT: "Kraken Spot",
   GATEIO_FUTURES: "Gate.io Futures",
   MEXC_FUTURES: "MEXC Futures",
   KUCOIN_FUTURES: "KuCoin Futures",

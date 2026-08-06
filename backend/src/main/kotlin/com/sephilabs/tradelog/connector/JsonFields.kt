@@ -75,3 +75,19 @@ fun JsonNode.rows(paths: List<String>): List<JsonNode> {
 }
 
 fun JsonNode.rows(vararg paths: String): List<JsonNode> = rows(paths.asList())
+
+/**
+ * Values of the first of [paths] holding an OBJECT keyed by id, as Kraken spot returns its trades.
+ * Kept separate from [rows] so that helper's meaning does not shift for the other ten connectors.
+ */
+fun JsonNode.objectValues(paths: List<String>): List<JsonNode> {
+    for (p in paths) {
+        var node: JsonNode = this
+        for (segment in p.split('.')) {
+            if (segment.isEmpty()) continue
+            node = node.path(segment)
+        }
+        if (node.isObject) return node.properties().map { it.value }
+    }
+    return emptyList()
+}

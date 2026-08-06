@@ -51,10 +51,31 @@ class SourceKindTest {
 
     @Test
     fun `exactly the three passphrase exchanges require one`() {
-        val expected = setOf(SourceKind.OKX, SourceKind.BITGET, SourceKind.KUCOIN_FUTURES)
+        val expected =
+            setOf(SourceKind.OKX, SourceKind.BITGET, SourceKind.BITGET_CLASSIC, SourceKind.KUCOIN_FUTURES)
         assertThat(SourceKind.entries.filter { it.requiresPassphrase }).containsExactlyInAnyOrderElementsOf(expected)
         // A file-import source can never need API credentials, let alone a passphrase.
         assertThat(SourceKind.entries.filter { it.requiresPassphrase }).allMatch { it.isApi }
+    }
+
+    @Test
+    fun `an exchange's two API generations stay distinct venues`() {
+        // Bitget classic and UTA keys are not interchangeable, and here they are also kept as separate
+        // venues — so their capital and ROI are tracked apart rather than as one balance.
+        assertThat(SourceKind.BITGET.venueLabel).isEqualTo("Bitget")
+        assertThat(SourceKind.BITGET_CLASSIC.venueLabel).isEqualTo("Bitget Classic")
+        assertThat(Venues.canonical("bitget classic")).isEqualTo("Bitget Classic")
+        assertThat(Venues.canonical("bitget")).isEqualTo("Bitget")
+    }
+
+    @Test
+    fun `Kraken spot and Kraken Futures are two venues, not one`() {
+        // Separate platforms with separate accounts and balances; a spot history must never fold into
+        // the futures one.
+        assertThat(SourceKind.KRAKEN_SPOT.venueLabel).isEqualTo("Kraken")
+        assertThat(SourceKind.KRAKEN_FUTURES.venueLabel).isEqualTo("Kraken Futures")
+        assertThat(Venues.canonical("kraken")).isEqualTo("Kraken")
+        assertThat(Venues.canonical("KRAKEN SPOT")).isEqualTo("KRAKEN SPOT")
     }
 
     @Test

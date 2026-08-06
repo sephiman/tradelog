@@ -182,6 +182,9 @@ app:
     kraken:
       base-url: ${KRAKEN_FUTURES_BASE_URL:https://futures.kraken.com}
       timeout-ms: ${KRAKEN_FUTURES_TIMEOUT_MS:10000}
+    kraken-spot:
+      base-url: ${KRAKEN_SPOT_BASE_URL:https://api.kraken.com}
+      timeout-ms: ${KRAKEN_SPOT_TIMEOUT_MS:10000}
     gateio:
       base-url: ${GATEIO_BASE_URL:https://api.gateio.ws}
       timeout-ms: ${GATEIO_TIMEOUT_MS:10000}

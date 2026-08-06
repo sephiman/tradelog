@@ -143,6 +143,7 @@ data class AppProperties(
         val bitget: ExchangeEndpoint = ExchangeEndpoint("https://api.bitget.com"),
         /** Kraken's futures platform lives on its own host, separate from Kraken spot. */
         val kraken: ExchangeEndpoint = ExchangeEndpoint("https://futures.kraken.com"),
+        val krakenSpot: ExchangeEndpoint = ExchangeEndpoint("https://api.kraken.com"),
         val gateio: ExchangeEndpoint = ExchangeEndpoint("https://api.gateio.ws"),
         val mexc: ExchangeEndpoint = ExchangeEndpoint("https://contract.mexc.com"),
         val kucoin: ExchangeEndpoint = ExchangeEndpoint("https://api-futures.kucoin.com"),

@@ -40,6 +40,9 @@ abstract class ReconstructingConnector(
     /** Venue reports no per-fill PnL, so derive it from leg prices. Exact for linear contracts. */
     protected open val derivePnlFromPrices: Boolean = false
 
+    /** Last chance to adjust a reconstructed position, e.g. to record a non-USDT settlement currency. */
+    protected open fun adjust(record: PositionRecord): PositionRecord = record
+
     final override fun fetchClosedPositions(
         credentials: ExchangeCredentials,
         cursor: SyncCursor,
@@ -91,6 +94,7 @@ abstract class ReconstructingConnector(
                 else backfillFrom == null || !it.closedAt.isBefore(backfillFrom)
             }
             .map { if (derivePnlFromPrices) it.copy(realizedPnl = PositionReconstructor.realizedFromPrices(it)) else it }
+            .map(::adjust)
         val maxClosed = records.maxOfOrNull { it.closedAt } ?: cursor.lastClosedAt
         log.info(
             "{} fetch: {} fills over {} window(s) -> {} reconstructed, {} new (cursor={}, sync_from={}, oldest requested={})",

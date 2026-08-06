@@ -1,8 +1,9 @@
 # tradelog
 
 A self-hosted, multi-user, multi-profile **crypto-futures trading journal**. It syncs your **closed
-positions** over REST from **Binance**, **Bybit**, **OKX**, **Bitget**, **Bitunix**, **BingX**,
-**BitMart**, **Kraken Futures**, **Gate.io**, **MEXC** and **KuCoin Futures**, imports **Quantfury**
+positions** over REST from **Binance**, **Bybit**, **OKX**, **Bitget** (UTA and classic), **Bitunix**,
+**BingX**, **BitMart**, **Kraken Futures**, **Kraken spot**, **Gate.io**, **MEXC** and
+**KuCoin Futures**, imports **Quantfury**
 from its exported **PDF** "Trading History Report" and anything else from a **canonical Journal CSV**,
 organises everything by **profiles** (personal trading and bot strategies), and lets you annotate
 positions to analyse how you trade.
@@ -30,25 +31,27 @@ anyone running a modified version as a network service must publish the source.
 
 - **Profiles** (`PERSONAL` / `BOT`), each owning its own data sources (1:N). Profiles are private to
   one user and never shared. Each bot strategy lives on its own sub-account / API key.
-- **Thirteen sources behind one connector abstraction** — adding a source is a new module, not a core
+- **Fifteen sources behind one connector abstraction** — adding a source is a new module, not a core
   change. Every exchange falls into one of two shapes, and each shape's hard-won logic lives in one
   shared base class rather than in each connector:
   - **Closed-position venues** — the exchange serves finished positions with realized PnL, so each row
     maps 1:1 and every figure comes from the venue: **Bitunix** (full history since the account was
-    opened), **OKX**, **Bitget** (Unified Trading Account), **Gate.io** (PnL arrives already split into
-    trading result, funding and fees — the cleanest payload of the lot), **MEXC**, **KuCoin Futures**.
+    opened), **OKX**, **Bitget** (both the Unified Trading Account v3 API and the pre-UTA classic v2 —
+    the keys are not interchangeable, so they are separate sources), **Gate.io** (PnL arrives already
+    split into trading result, funding and fees — the cleanest payload of the lot), **MEXC**,
+    **KuCoin Futures**.
   - **Fill-reconstruction venues** — the exchange exposes only fills, which are pulled over time
     windows and folded into flat-to-flat positions: **Binance** (funding included), **Bybit** (funding
-    included, ~2 years deep), **BingX**, **BitMart**, **Kraken Futures**.
+    included, ~2 years deep), **BingX**, **BitMart**, **Kraken Futures**, **Kraken spot**.
   - **Quantfury** — parses the exported **PDF**; no public API.
   - **Journal CSV** — manual import in tradelog's canonical format, for hand-kept journals or dead
     exchanges.
 - **Read-only API keys only**, everywhere. **OKX**, **Bitget** and **KuCoin Futures** also need the API
   **passphrase** you chose when creating the key; it is encrypted at rest exactly like the secret and
   never sent back to the browser. The connection form asks for it only for those three.
-- **Kraken Futures is treated as its own venue**, not as "Kraken" — it is a separate platform with its
-  own API domain, authentication and account, so a Kraken *spot* history imported by CSV keeps its own
-  balance and ROI instead of merging into the futures one.
+- **Platforms that hold separate money are separate venues.** "Kraken Futures" and "Kraken" (spot) are
+  distinct — different API domains, authentication and accounts — as are "Bitget" and "Bitget Classic",
+  so each keeps its own capital history and ROI instead of being merged into one balance.
 - **Canonical positions** are *flat-to-flat*: from net exposure leaving zero until it returns to zero
   is one position — scaling in/out within that lifecycle stays a single position.
 - **Realized PnL, fees and funding are stored separately and summably** (USDT for now), never
@@ -193,11 +196,13 @@ History coverage differs **per source** — it's a limit of each platform, not o
 | **Bybit** | ~2 years | Closed positions are per closing *order*, so fills are used instead and folded flat-to-flat; funding included |
 | **OKX** | **Last 90 days** | Closed positions with PnL, fees and funding all reported separately |
 | **Bitget** | **Last 90 days** (30 per request) | Closed positions, Unified Trading Account API (v3) |
+| **Bitget Classic** | **Last 90 days** (30 per request) | The same, on the pre-UTA classic API (v2), for accounts not upgraded. A UTA key is rejected here and vice versa |
 | **Binance** | **~3 months** | No closed-position API at all: fills are reconstructed, and since fills require a symbol, the income endpoint reveals which symbols traded — that endpoint's 3-month retention is the real limit, not the 6 months of fills. Funding included |
 | **Gate.io** | As far as Gate retains | Closed positions, already flat-to-flat, with PnL pre-split into trading result / funding / fees |
 | **MEXC** | As far as MEXC retains | Closed positions with PnL and fees. **MEXC restricts futures API access**, so a new key may simply be refused |
 | **KuCoin Futures** | **Last 3 months** (7 per request) | Closed positions. Quantity is *derived* from the PnL and prices — this endpoint reports no size |
 | **Kraken Futures** | As far as Kraken retains | Its own platform and auth. Linear perpetuals (`PF_`) only. **Fees are not imported** — Kraken states its API fee values no longer reflect what was charged |
+| **Kraken** (spot) | Effectively all of it | A different account and balance from Kraken Futures. Positions are rebuilt from trade history, so a holding never fully sold does not appear until it is closed. Real fees; no funding; PnL in the pair's quote currency (often USD/EUR, never converted) |
 | **BingX** | **Only ~the last 30 days** | The `allFillOrders` API serves no older fills; older trades can't be retrieved |
 | **BitMart** | As far as its fill API retains — **the exchange closes on 2026-08-26** | Keyed REST; fills pulled in 7-day windows until the history runs dry |
 | **Quantfury** | Full — whatever is in the exported PDF (typically your entire history) | Manual PDF import |
@@ -218,14 +223,14 @@ So for **BingX**, sync it regularly — anything older than ~30 days is gone for
 
 ### Exchanges (API)
 
-The same three steps for every exchange — Binance, Bybit, OKX, Bitget, Bitunix, BingX, BitMart,
-Kraken Futures, Gate.io, MEXC and KuCoin Futures:
+The same three steps for every exchange — Binance, Bybit, OKX, Bitget, Bitget Classic, Bitunix,
+BingX, BitMart, Kraken Futures, Kraken spot, Gate.io, MEXC and KuCoin Futures:
 
 1. On the exchange, create an API key with **read-only** permissions — **no trading and no
    withdrawal** scope. (tradelog never needs more; a key with write scope is flagged.)
 2. In tradelog, add a data source of that kind, give it a label (e.g. the sub-account or strategy
    name), and paste the **API key** and **API secret**. Three exchanges need a third field:
-   **OKX**, **Bitget** and **KuCoin Futures** also ask for the **API passphrase** you chose when
+   **OKX**, **Bitget** (both generations) and **KuCoin Futures** also ask for the **API passphrase** you chose when
    creating the key — the form shows that input only for them. It is encrypted at rest like the
    secret and never shown again.
 3. The source syncs automatically on your next login, or immediately via **Sync now**. The first sync
@@ -235,12 +240,20 @@ Kraken Futures, Gate.io, MEXC and KuCoin Futures:
 
 Per-exchange notes worth knowing before you connect:
 
-- **Bitget** uses the **Unified Trading Account** (v3) API. A UTA key cannot call the older classic
-  endpoints and vice versa, so a classic-account key will be refused — that is Bitget's own account
-  split, not a tradelog setting.
+- **Bitget** comes in two flavours because the keys are not interchangeable: pick **Bitget** if your
+  account is on the **Unified Trading Account**, and **Bitget Classic** if it is not. The wrong one is
+  refused by Bitget itself. They are kept as separate venues, so if you upgrade to UTA later you will
+  have two capital columns; anchor the old one to 0 on the switchover date to wind it down.
 - **Kraken Futures** is a separate platform from Kraken spot, with its own API key page. Only linear
   perpetuals (`PF_`) are imported, and **fees are not** — Kraken documents that the fee values its API
   returns no longer reflect the fees actually charged, so importing none beats importing a wrong one.
+- **Kraken spot** is the other Kraken, and a different account and balance — it appears as the venue
+  "Kraken". Because spot has no closed-position concept, positions are rebuilt from your trade history:
+  a buy that you later sell in full becomes one LONG position, and anything you still hold is an open
+  position that correctly does not appear. There is no funding and no shorting, its fees *are* real, and
+  its PnL is recorded in the pair's quote currency — Kraken quotes plenty of pairs in USD and EUR, and
+  nothing in tradelog converts between currencies. The first sync walks back a decade in 30-day windows
+  and paces itself against Kraken's decaying call counter, so expect it to take a while.
 - **MEXC** restricts futures API access, so a newly created key may be refused outright. A permissions
   error there is that restriction rather than a misconfiguration.
 - **KuCoin Futures** reports no position size on its closed-position endpoint, so quantity is derived
@@ -368,8 +381,8 @@ TRADELOG_REAL_PDF=/path/to/report.pdf \
 - The **BitMart** connector follows the same fill-reconstruction path as BingX (PnL/fees taken from
   the fill payload, mapping verified against BitMart's official SDK); history depth depends on how
   far back its fill API still serves data. BitMart **closes on 2026-08-26** — see above.
-- The **eight newer exchanges** (Binance, Bybit, OKX, Bitget, Kraken Futures, Gate.io, MEXC, KuCoin
-  Futures) were built against each venue's current official API documentation, with the endpoint,
+- The **ten newer sources** (Binance, Bybit, OKX, Bitget, Bitget Classic, Kraken Futures, Kraken spot,
+  Gate.io, MEXC, KuCoin Futures) were built against each venue's current official API documentation, with the endpoint,
   pagination model, symbol format and money semantics verified per exchange before any code was
   written. Their field mappings are unit-tested against representative payloads — each one asserting
   that net PnL derives back to the figure that exchange itself publishes — but they have **not yet been

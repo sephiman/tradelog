@@ -3,6 +3,7 @@ package com.sephilabs.tradelog.connector
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sephilabs.tradelog.config.AppProperties
+import com.sephilabs.tradelog.connector.bitget.BitgetClassicConnector
 import com.sephilabs.tradelog.connector.bitget.BitgetConnector
 import com.sephilabs.tradelog.connector.gateio.GateioConnector
 import com.sephilabs.tradelog.connector.kucoin.KucoinConnector
@@ -117,6 +118,58 @@ class ClosedPositionMappingTest {
         assertThat(p.fees).isEqualByComparingTo("2")
         assertThat(p.funding).isEqualByComparingTo("2")
         assertThat(net(p)).isEqualByComparingTo("96")
+    }
+
+    @Test
+    fun `Bitget classic v2 maps the same figures under its older field names`() {
+        // The classic API renames most of these (holdSide, openAvgPrice, pnl, openFee, ctime) and wraps
+        // its cursor as endId. Both generations go through one mapping, so this pins that they agree.
+        val body = """
+            { "code": "00000", "data": { "endId": "1209", "list": [ {
+              "positionId": "1210", "symbol": "BTCUSDT", "holdSide": "short", "marginCoin": "USDT",
+              "openAvgPrice": "61000", "closeAvgPrice": "60000",
+              "openTotalPos": "0.5", "closeTotalPos": "0.5",
+              "pnl": "100", "netProfit": "96",
+              "openFee": "-1", "closeFee": "-1", "totalFunding": "-2",
+              "ctime": "1700000000000", "utime": "1700007200000"
+            } ] } }
+        """.trimIndent()
+
+        val p = BitgetClassicConnector(props, mapper).mapRows(parse(body)).single()
+
+        assertThat(p.symbol).isEqualTo(Symbol("BTC", "USDT"))
+        assertThat(p.side).isEqualTo(PositionSide.SHORT)
+        assertThat(p.qty).isEqualByComparingTo("0.5")
+        assertThat(p.realizedPnl).isEqualByComparingTo("100")
+        assertThat(p.fees).isEqualByComparingTo("2")
+        assertThat(p.funding).isEqualByComparingTo("2")
+        assertThat(net(p)).isEqualByComparingTo("96")
+    }
+
+    @Test
+    fun `both Bitget generations produce identical positions from their own payloads`() {
+        val uta = """
+            { "code": "00000", "data": { "list": [ {
+              "positionId": "77", "symbol": "ETHUSDT", "posSide": "long",
+              "openPriceAvg": "3000", "closePriceAvg": "3100", "closeTotalPos": "2",
+              "cumRealisedPnl": "200", "openFeeTotal": "-1.5", "closeFeeTotal": "-1.5",
+              "totalFunding": "-1", "createdTime": "1700000000000", "updatedTime": "1700007200000"
+            } ] } }
+        """.trimIndent()
+        val classic = """
+            { "code": "00000", "data": { "list": [ {
+              "positionId": "77", "symbol": "ETHUSDT", "holdSide": "long",
+              "openAvgPrice": "3000", "closeAvgPrice": "3100", "closeTotalPos": "2",
+              "pnl": "200", "openFee": "-1.5", "closeFee": "-1.5",
+              "totalFunding": "-1", "ctime": "1700000000000", "utime": "1700007200000"
+            } ] } }
+        """.trimIndent()
+
+        val fromUta = BitgetConnector(props, mapper).mapRows(parse(uta)).single()
+        val fromClassic = BitgetClassicConnector(props, mapper).mapRows(parse(classic)).single()
+
+        // `raw` differs (it is the verbatim payload); everything the journal stores must not.
+        assertThat(fromClassic.copy(raw = null)).isEqualTo(fromUta.copy(raw = null))
     }
 
     // ---------------------------------------------------------------------------------------------

@@ -6,16 +6,16 @@ import com.sephilabs.tradelog.config.AppProperties
 import com.sephilabs.tradelog.datasource.SourceKind
 import org.springframework.stereotype.Component
 
-/** Bitget on the Unified Trading Account (v3) API; classic accounts use [BitgetClassicConnector]. */
+/** Bitget on the pre-UTA classic (v2) API. Its keys and [BitgetConnector]'s are not interchangeable. */
 @Component
-class BitgetConnector(
+class BitgetClassicConnector(
     props: AppProperties,
     mapper: ObjectMapper,
 ) : BitgetPositionConnector(props.connectors.bitget, mapper, props) {
 
-    override val kind = SourceKind.BITGET
+    override val kind = SourceKind.BITGET_CLASSIC
 
-    override val historyPath = "/api/v3/position/history-position"
-    override val productParam = "category"
-    override val cursorParam = "cursor"
+    override val historyPath = "/api/v2/mix/position/history-position"
+    override val productParam = "productType"
+    override val cursorParam = "idLessThan"
 }

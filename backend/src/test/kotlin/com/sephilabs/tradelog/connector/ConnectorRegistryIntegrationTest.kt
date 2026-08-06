@@ -44,6 +44,7 @@ class ConnectorRegistryIntegrationTest @Autowired constructor(
             SourceKind.BYBIT to "BTCUSDT",
             SourceKind.OKX to "BTC-USDT-SWAP",
             SourceKind.BITGET to "BTCUSDT",
+            SourceKind.BITGET_CLASSIC to "BTCUSDT",
             SourceKind.GATEIO_FUTURES to "BTC_USDT",
             SourceKind.MEXC_FUTURES to "BTC_USDT",
             SourceKind.KUCOIN_FUTURES to "XBTUSDTM",
@@ -56,5 +57,7 @@ class ConnectorRegistryIntegrationTest @Autowired constructor(
         // Kraken's linear perpetuals are USD-quoted, so it is checked separately rather than forced.
         assertThat(registry.get(SourceKind.KRAKEN_FUTURES).normalizeSymbol("PF_XBTUSD"))
             .isEqualTo(Symbol("BTC", "USD"))
+        // Kraken SPOT is absent on purpose: its normalizer resolves against Kraken's live pair listing,
+        // and no test should depend on a network call. KrakenSpotConnectorTest covers it with a fixture.
     }
 }

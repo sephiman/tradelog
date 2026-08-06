@@ -16,8 +16,14 @@ enum class SourceKind {
     OKX,
     BITGET,
 
+    /** Bitget's pre-UTA classic API (v2); its keys and [BITGET]'s are not interchangeable. */
+    BITGET_CLASSIC,
+
     /** Kraken's separate futures platform. Not "Kraken": a spot history is a different balance. */
     KRAKEN_FUTURES,
+
+    /** Kraken's spot platform: a different account and balance from [KRAKEN_FUTURES]. */
+    KRAKEN_SPOT,
     GATEIO_FUTURES,
     MEXC_FUTURES,
     KUCOIN_FUTURES,
@@ -30,7 +36,8 @@ enum class SourceKind {
     val isApi: Boolean get() = this != QUANTFURY && this != JOURNAL_CSV
 
     /** Venues needing a third credential: the passphrase chosen when the API key was created. */
-    val requiresPassphrase: Boolean get() = this == OKX || this == BITGET || this == KUCOIN_FUTURES
+    val requiresPassphrase: Boolean
+        get() = this == OKX || this == BITGET || this == BITGET_CLASSIC || this == KUCOIN_FUTURES
 
     /** When the venue stops serving its API, for an exchange that has announced it is closing. */
     val retiredAt: Instant?
@@ -53,7 +60,9 @@ enum class SourceKind {
             BYBIT -> "Bybit"
             OKX -> "OKX"
             BITGET -> "Bitget"
+            BITGET_CLASSIC -> "Bitget Classic"
             KRAKEN_FUTURES -> "Kraken Futures"
+            KRAKEN_SPOT -> "Kraken"
             GATEIO_FUTURES -> "Gate.io"
             MEXC_FUTURES -> "MEXC"
             KUCOIN_FUTURES -> "KuCoin"
