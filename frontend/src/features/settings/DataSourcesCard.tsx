@@ -12,6 +12,14 @@ import { useSyncAll, useSyncOne } from "@/api/sync";
 import { Badge, Button, Card, CardBody, CardHeader, Input, Select } from "@/components/ui/primitives";
 import { showToast } from "@/lib/toastBus";
 import { dateInputToIso, fmtDate, fmtDateTime } from "@/lib/format";
+import {
+  isApiKind,
+  needsPassphrase,
+  retirementOf,
+  SOURCE_KINDS,
+  SOURCE_LABELS,
+  type Retirement,
+} from "@/lib/sourceKinds";
 import { QuantfuryUploadCard } from "./QuantfuryUploadCard";
 import { JournalCsvUploadCard } from "./JournalCsvUploadCard";
 
@@ -26,9 +34,11 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
   const [label, setLabel] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
+  const [passphrase, setPassphrase] = useState("");
   const [syncFrom, setSyncFrom] = useState("");
 
-  const isApi = kind === "BITUNIX" || kind === "BINGX" || kind === "BITMART";
+  const isApi = isApiKind(kind);
+  const wantsPassphrase = needsPassphrase(kind);
 
   const onCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,9 +49,19 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
         label: label.trim(),
         apiKey: isApi ? apiKey : undefined,
         apiSecret: isApi ? apiSecret : undefined,
+        // Only for venues that use one, so switching the dropdown can't leave a stale value.
+        passphrase: wantsPassphrase ? passphrase : undefined,
         syncFrom: isApi ? dateInputToIso(syncFrom) : undefined,
       },
-      { onSuccess: () => { setLabel(""); setApiKey(""); setApiSecret(""); setSyncFrom(""); } },
+      {
+        onSuccess: () => {
+          setLabel("");
+          setApiKey("");
+          setApiSecret("");
+          setPassphrase("");
+          setSyncFrom("");
+        },
+      },
     );
   };
 
@@ -54,7 +74,7 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
       },
     });
 
-  const hasApi = sources.some((s) => s.kind === "BITUNIX" || s.kind === "BINGX" || s.kind === "BITMART");
+  const hasApi = sources.some((s) => isApiKind(s.kind));
 
   return (
     <Card>
@@ -80,12 +100,12 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t("dataSources.kind")}</span>
-              <Select className="w-36" value={kind} onChange={(e) => setKind(e.target.value as SourceKind)}>
-                <option value="BITUNIX">Bitunix</option>
-                <option value="BINGX">BingX</option>
-                <option value="BITMART">BitMart</option>
-                <option value="QUANTFURY">Quantfury</option>
-                <option value="JOURNAL_CSV">Journal CSV</option>
+              <Select className="w-44" value={kind} onChange={(e) => setKind(e.target.value as SourceKind)}>
+                {SOURCE_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {SOURCE_LABELS[k]}
+                  </option>
+                ))}
               </Select>
             </label>
             <label className="flex flex-1 flex-col gap-1">
@@ -103,7 +123,13 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
               <div className="flex flex-wrap gap-3">
                 <Input className="flex-1" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t("dataSources.apiKey")} autoComplete="off" />
                 <Input className="flex-1" type="password" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} placeholder={t("dataSources.apiSecret")} autoComplete="off" />
+                {wantsPassphrase && (
+                  <Input className="flex-1" type="password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} placeholder={t("dataSources.passphrase")} autoComplete="off" />
+                )}
               </div>
+              {wantsPassphrase && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t("dataSources.passphraseHint")}</p>
+              )}
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t("dataSources.syncFrom")}</span>
                 <Input className="w-44" type="date" value={syncFrom} onChange={(e) => setSyncFrom(e.target.value)} />
@@ -122,8 +148,9 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
   const syncOne = useSyncOne(profileId);
   const updateMut = useUpdateDataSource(profileId);
   const [editingKeys, setEditingKeys] = useState(false);
-  const isApi = source.kind === "BITUNIX" || source.kind === "BINGX" || source.kind === "BITMART";
+  const isApi = isApiKind(source.kind);
   const isDisabled = source.status === "DISABLED";
+  const retirement = retirementOf(source.kind);
 
   const onToggleEnabled = () =>
     updateMut.mutate(
@@ -146,7 +173,7 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
   return (
     <li className="rounded-md border border-border p-3 dark:border-gray-700">
       <div className="flex flex-wrap items-center gap-3">
-        <Badge tone="sky">{source.kind}</Badge>
+        <Badge tone="sky">{SOURCE_LABELS[source.kind]}</Badge>
         <span className="font-medium">{source.label}</span>
         <Badge tone={statusTone}>{statusLabel}</Badge>
         {source.status === "ERROR" && source.statusDetail && (
@@ -187,6 +214,7 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
           <Button variant="ghost" onClick={onDelete}>{t("common.delete")}</Button>
         </div>
       </div>
+      {retirement && <RetirementNotice kind={source.kind} retirement={retirement} />}
       {isApi && editingKeys && (
         <CredentialsEditor profileId={profileId} source={source} onDone={() => setEditingKeys(false)} />
       )}
@@ -205,6 +233,22 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
   );
 }
 
+/** Warns before a venue shuts down, then states the fact. Nothing is ever deleted. */
+function RetirementNotice({ kind, retirement }: { kind: SourceKind; retirement: Retirement }) {
+  const { t } = useTranslation();
+  // Plain calendar date: a zone shift would show the wrong day either side of the closing date.
+  const args = { venue: SOURCE_LABELS[kind], date: retirement.date };
+  return retirement.closed ? (
+    <p className="mt-3 rounded-md bg-gray-100 p-2 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+      {t("dataSources.retirement.closed", args)}
+    </p>
+  ) : (
+    <p className="mt-3 rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+      {t("dataSources.retirement.closing", args)}
+    </p>
+  );
+}
+
 /**
  * Inline editor to set or rotate an API source's credentials without recreating it. Recreating would
  * cascade-delete the source's positions, so this is the safe path for expired keys and for attaching
@@ -215,16 +259,29 @@ function CredentialsEditor({ profileId, source, onDone }: { profileId: string; s
   const updateMut = useUpdateDataSource(profileId);
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
+  const [passphrase, setPassphrase] = useState("");
+
+  // Rotation replaces the whole set: stored secrets never reach the browser, so nothing to merge into.
+  const wantsPassphrase = needsPassphrase(source.kind);
+  const complete = !!apiKey.trim() && !!apiSecret.trim() && (!wantsPassphrase || !!passphrase.trim());
 
   const onSave = () => {
-    if (!apiKey.trim() || !apiSecret.trim()) return;
+    if (!complete) return;
     updateMut.mutate(
-      { id: source.id, body: { apiKey: apiKey.trim(), apiSecret: apiSecret.trim() } },
+      {
+        id: source.id,
+        body: {
+          apiKey: apiKey.trim(),
+          apiSecret: apiSecret.trim(),
+          passphrase: wantsPassphrase ? passphrase.trim() : undefined,
+        },
+      },
       {
         onSuccess: () => {
           showToast(t("dataSources.credentialsSaved"), "success");
           setApiKey("");
           setApiSecret("");
+          setPassphrase("");
           onDone();
         },
         // Errors surface via the global mutation-cache toast with the API's specific message.
@@ -238,10 +295,16 @@ function CredentialsEditor({ profileId, source, onDone }: { profileId: string; s
       <div className="flex flex-wrap gap-3">
         <Input className="flex-1" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t("dataSources.apiKey")} autoComplete="off" />
         <Input className="flex-1" type="password" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} placeholder={t("dataSources.apiSecret")} autoComplete="off" />
+        {wantsPassphrase && (
+          <Input className="flex-1" type="password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} placeholder={t("dataSources.passphrase")} autoComplete="off" />
+        )}
       </div>
+      {wantsPassphrase && (
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t("dataSources.passphraseHint")}</p>
+      )}
       <div className="mt-2 flex justify-end gap-2">
         <Button variant="ghost" onClick={onDone}>{t("common.cancel")}</Button>
-        <Button disabled={updateMut.isPending || !apiKey.trim() || !apiSecret.trim()} onClick={onSave}>
+        <Button disabled={updateMut.isPending || !complete} onClick={onSave}>
           {t("common.save")}
         </Button>
       </div>

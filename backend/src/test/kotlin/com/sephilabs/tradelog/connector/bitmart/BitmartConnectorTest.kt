@@ -3,6 +3,7 @@ package com.sephilabs.tradelog.connector.bitmart
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sephilabs.tradelog.config.AppProperties
+import com.sephilabs.tradelog.connector.ContractSizes
 import com.sephilabs.tradelog.connector.PositionReconstructor
 import com.sephilabs.tradelog.connector.Symbol
 import com.sephilabs.tradelog.position.PositionSide
@@ -22,7 +23,7 @@ class BitmartConnectorTest {
     private val normalize: (String) -> Symbol = connector::normalizeSymbol
 
     // BTCUSDT trades 0.001 BTC per contract; ETHUSDT 0.01 ETH per contract.
-    private val sizes = mapOf("BTCUSDT" to BigDecimal("0.001"), "ETHUSDT" to BigDecimal("0.01"))
+    private val sizes = ContractSizes.of(mapOf("BTCUSDT" to BigDecimal("0.001"), "ETHUSDT" to BigDecimal("0.01")))
 
     private fun parse(json: String) = ObjectMapper().readTree(json)
 
@@ -90,7 +91,7 @@ class BitmartConnectorTest {
             ] }
         """.trimIndent()
 
-        val p = PositionReconstructor.reconstruct(connector.mapTrades(parse(body), emptyMap()), normalize).single()
+        val p = PositionReconstructor.reconstruct(connector.mapTrades(parse(body), ContractSizes.NONE), normalize).single()
         // No contract size known => vol used as-is.
         assertEquals(0, p.qty.compareTo(BigDecimal("3")))
         assertEquals(PositionSide.LONG, p.side)

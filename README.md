@@ -1,8 +1,9 @@
 # tradelog
 
 A self-hosted, multi-user, multi-profile **crypto-futures trading journal**. It syncs your **closed
-positions** from **Bitunix**, **BingX** and **BitMart** (REST APIs), imports **Quantfury** from its
-exported **PDF** "Trading History Report" and anything else from a **canonical Journal CSV**,
+positions** over REST from **Binance**, **Bybit**, **OKX**, **Bitget**, **Bitunix**, **BingX**,
+**BitMart**, **Kraken Futures**, **Gate.io**, **MEXC** and **KuCoin Futures**, imports **Quantfury**
+from its exported **PDF** "Trading History Report" and anything else from a **canonical Journal CSV**,
 organises everything by **profiles** (personal trading and bot strategies), and lets you annotate
 positions to analyse how you trade.
 
@@ -19,7 +20,7 @@ anyone running a modified version as a network service must publish the source.
 - [Tech stack](#tech-stack)
 - [Running it](#running-it)
 - [Connecting your accounts](#connecting-your-accounts)
-  - [Bitunix / BingX / BitMart (API)](#bitunix--bingx--bitmart-api)
+  - [Exchanges (API)](#exchanges-api)
   - [Quantfury (PDF import)](#quantfury-pdf-import)
   - [Journal CSV import](#journal-csv-import)
 - [Development](#development)
@@ -29,15 +30,25 @@ anyone running a modified version as a network service must publish the source.
 
 - **Profiles** (`PERSONAL` / `BOT`), each owning its own data sources (1:N). Profiles are private to
   one user and never shared. Each bot strategy lives on its own sub-account / API key.
-- **Five sources behind one connector abstraction** — adding a source is a new module, not a core
-  change:
-  - **Bitunix** — pulls already-closed positions (with realized PnL) via signed REST.
-  - **BingX** — pulls fills and **reconstructs** flat-to-flat positions (no clean closed-position API).
-  - **BitMart** — pulls fills (keyed REST, API key only) and reconstructs positions the same way;
-    PnL/fees come straight from the fill payload.
+- **Thirteen sources behind one connector abstraction** — adding a source is a new module, not a core
+  change. Every exchange falls into one of two shapes, and each shape's hard-won logic lives in one
+  shared base class rather than in each connector:
+  - **Closed-position venues** — the exchange serves finished positions with realized PnL, so each row
+    maps 1:1 and every figure comes from the venue: **Bitunix** (full history since the account was
+    opened), **OKX**, **Bitget** (Unified Trading Account), **Gate.io** (PnL arrives already split into
+    trading result, funding and fees — the cleanest payload of the lot), **MEXC**, **KuCoin Futures**.
+  - **Fill-reconstruction venues** — the exchange exposes only fills, which are pulled over time
+    windows and folded into flat-to-flat positions: **Binance** (funding included), **Bybit** (funding
+    included, ~2 years deep), **BingX**, **BitMart**, **Kraken Futures**.
   - **Quantfury** — parses the exported **PDF**; no public API.
   - **Journal CSV** — manual import in tradelog's canonical format, for hand-kept journals or dead
     exchanges.
+- **Read-only API keys only**, everywhere. **OKX**, **Bitget** and **KuCoin Futures** also need the API
+  **passphrase** you chose when creating the key; it is encrypted at rest exactly like the secret and
+  never sent back to the browser. The connection form asks for it only for those three.
+- **Kraken Futures is treated as its own venue**, not as "Kraken" — it is a separate platform with its
+  own API domain, authentication and account, so a Kraken *spot* history imported by CSV keeps its own
+  balance and ROI instead of merging into the futures one.
 - **Canonical positions** are *flat-to-flat*: from net exposure leaving zero until it returns to zero
   is one position — scaling in/out within that lifecycle stays a single position.
 - **Realized PnL, fees and funding are stored separately and summably** (USDT for now), never
@@ -107,6 +118,23 @@ cursor.
   `realised_profit` and `paid_fees`, so PnL/fees come straight from the payload. Fill volume is in
   contracts; the displayed quantity is scaled by the contract size from BitMart's public details
   endpoint.
+- **Binance** has no closed-position endpoint, and its fill endpoint *requires* a symbol — so the
+  income endpoint (which takes none) is read first to learn which symbols actually traded in the
+  window, and only those are fetched. The same response carries the funding rows, which are folded in
+  as money-only fills, so Binance funding is real rather than zero.
+- **Bybit** could use its closed-PnL endpoint, but that returns one row per closing *order* rather than
+  per position, and rows cannot be recombined reliably once a position is scaled into between two
+  partial closes. Fills give the correct flat-to-flat lifecycle instead, and funding arrives in the
+  same execution stream.
+- **OKX, Bitget, Gate.io, MEXC and KuCoin Futures** all serve finished positions. Each reports the money
+  its own way — some give gross PnL with negative fee components, some give the net figure and leave the
+  gross to be backed out — so every connector's mapping is asserted by deriving net back to the
+  exchange's own published net for a sample payload. Gate.io needs the least work of any source: its
+  payload already splits PnL into trading result, funding and fees, exactly as tradelog stores them.
+- **Kraken Futures** is its own platform with its own signing scheme. Only linear perpetuals (`PF_`) are
+  imported, and no fee is recorded at all — Kraken documents that the fee values these endpoints return
+  no longer reflect what was charged, and `realized_pnl` is null on any paged request, so PnL comes from
+  the leg prices instead.
 - **Quantfury** PnL is likewise computed from the leg prices (its prices already include the spread
   and it charges no commission, so fees and funding are zero) and validated to match Quantfury's own
   printed totals.
@@ -161,26 +189,65 @@ History coverage differs **per source** — it's a limit of each platform, not o
 
 | Source | History available | How |
 | --- | --- | --- |
-| **Bitunix** | Full — since you opened the account | Signed REST; backfilled on first sync |
+| **Bitunix** | Full — since you opened the account | Signed REST; closed positions, backfilled on first sync |
+| **Bybit** | ~2 years | Closed positions are per closing *order*, so fills are used instead and folded flat-to-flat; funding included |
+| **OKX** | **Last 90 days** | Closed positions with PnL, fees and funding all reported separately |
+| **Bitget** | **Last 90 days** (30 per request) | Closed positions, Unified Trading Account API (v3) |
+| **Binance** | **~3 months** | No closed-position API at all: fills are reconstructed, and since fills require a symbol, the income endpoint reveals which symbols traded — that endpoint's 3-month retention is the real limit, not the 6 months of fills. Funding included |
+| **Gate.io** | As far as Gate retains | Closed positions, already flat-to-flat, with PnL pre-split into trading result / funding / fees |
+| **MEXC** | As far as MEXC retains | Closed positions with PnL and fees. **MEXC restricts futures API access**, so a new key may simply be refused |
+| **KuCoin Futures** | **Last 3 months** (7 per request) | Closed positions. Quantity is *derived* from the PnL and prices — this endpoint reports no size |
+| **Kraken Futures** | As far as Kraken retains | Its own platform and auth. Linear perpetuals (`PF_`) only. **Fees are not imported** — Kraken states its API fee values no longer reflect what was charged |
 | **BingX** | **Only ~the last 30 days** | The `allFillOrders` API serves no older fills; older trades can't be retrieved |
-| **BitMart** | As far as its fill API retains | Keyed REST; fills pulled in 7-day windows until the history runs dry |
+| **BitMart** | As far as its fill API retains — **the exchange closes on 2026-08-26** | Keyed REST; fills pulled in 7-day windows until the history runs dry |
 | **Quantfury** | Full — whatever is in the exported PDF (typically your entire history) | Manual PDF import |
 | **Journal CSV** | Whatever you import | Manual CSV in the canonical format — for hand-kept journals or exchanges that no longer exist |
 
+**BitMart is shutting down on 2026-08-26.** Sync it one last time and withdraw your funds before
+then; once the API is gone, any trade left there can no longer be imported. tradelog handles the
+closure as a **freeze, never a deletion**: on that date the data source moves itself to `DISABLED` so
+the nightly sweep stops calling a dead host, and everything already imported stays put — positions,
+PnL, fees, capital snapshots and adjustments all keep counting in every analytic for the period they
+cover. Record the withdrawal the ordinary way, as a capital **adjustment to 0** (an anchor, so it
+reads as money leaving rather than as a trading loss); the BitMart column then simply carries 0
+onward. A venue sitting at 0 with nothing left feeding it drops out of the dashboard's *Trading
+capital & risk* block, but stays in the Exchange filter, on the Capital page and in every historical
+view.
+
 So for **BingX**, sync it regularly — anything older than ~30 days is gone for good once it ages out of the API. For full long-term history on a platform that doesn't expose it via API, a Quantfury-style PDF/export import is the only path. For **dead exchanges** with no export at all, convert whatever records you kept into the **Journal CSV** format (see [Journal CSV import](#journal-csv-import)) — the in-app format reference is written so any AI assistant can do the conversion for you.
 
-### Bitunix / BingX / BitMart (API)
+### Exchanges (API)
+
+The same three steps for every exchange — Binance, Bybit, OKX, Bitget, Bitunix, BingX, BitMart,
+Kraken Futures, Gate.io, MEXC and KuCoin Futures:
 
 1. On the exchange, create an API key with **read-only** permissions — **no trading and no
    withdrawal** scope. (tradelog never needs more; a key with write scope is flagged.)
-2. In tradelog, add a data source of kind **Bitunix**, **BingX** or **BitMart**, give it a label
-   (e.g. the sub-account or strategy name), and paste the **API key** and **API secret**. (BitMart's
-   private reads are keyed, not signed — only the API key is actually used.)
+2. In tradelog, add a data source of that kind, give it a label (e.g. the sub-account or strategy
+   name), and paste the **API key** and **API secret**. Three exchanges need a third field:
+   **OKX**, **Bitget** and **KuCoin Futures** also ask for the **API passphrase** you chose when
+   creating the key — the form shows that input only for them. It is encrypted at rest like the
+   secret and never shown again.
 3. The source syncs automatically on your next login, or immediately via **Sync now**. The first sync
-   backfills as much history as the exchange API allows — **Bitunix** from account opening, **BingX
-   only ~the last 30 days**, **BitMart** as far as its fill API retains (see the table above). If the
-   credentials are rejected or lack read permission, the source moves to an **Error** state with an
-   actionable message.
+   backfills as much history as that exchange's API allows, which varies a great deal — see
+   [How far back each source goes](#how-far-back-each-source-goes). If the credentials are rejected or
+   lack read permission, the source moves to an **Error** state with an actionable message.
+
+Per-exchange notes worth knowing before you connect:
+
+- **Bitget** uses the **Unified Trading Account** (v3) API. A UTA key cannot call the older classic
+  endpoints and vice versa, so a classic-account key will be refused — that is Bitget's own account
+  split, not a tradelog setting.
+- **Kraken Futures** is a separate platform from Kraken spot, with its own API key page. Only linear
+  perpetuals (`PF_`) are imported, and **fees are not** — Kraken documents that the fee values its API
+  returns no longer reflect the fees actually charged, so importing none beats importing a wrong one.
+- **MEXC** restricts futures API access, so a newly created key may be refused outright. A permissions
+  error there is that restriction rather than a misconfiguration.
+- **KuCoin Futures** reports no position size on its closed-position endpoint, so quantity is derived
+  from the PnL and the entry/exit prices — exact for a linear perpetual, except on a trade that opened
+  and closed at the same price, which keeps a zero quantity. Its PnL, fees and funding are exact.
+- **BitMart**'s private reads are keyed, not signed, so only the API key is actually used — and it
+  **closes on 2026-08-26** (see above).
 
 ### Quantfury (PDF import)
 
@@ -237,7 +304,7 @@ you only have position totals and no per-unit price, set `quantity=1` and put th
 returned in `entry_price` / `exit_price`. The optional `exchange` column records the venue the trade
 happened on (e.g. `FTX`); when blank, the data source's label is used — so naming the source after the
 venue and omitting the column works for a single-venue file. Every position carries this **exchange**
-(for the live connectors it's simply Bitunix/BingX/BitMart/Quantfury), and the Positions page lets you
+(for the live connectors it's simply the venue's own name), and the Positions page lets you
 filter by it. Re-importing the same file is idempotent (positions are keyed by a deterministic hash); each
 Journal CSV source has its own id namespace, so its rows can never collide with positions synced from
 an exchange.
@@ -300,7 +367,16 @@ TRADELOG_REAL_PDF=/path/to/report.pdf \
   reports none; Bitunix reports its own PnL/fees/funding directly.
 - The **BitMart** connector follows the same fill-reconstruction path as BingX (PnL/fees taken from
   the fill payload, mapping verified against BitMart's official SDK); history depth depends on how
-  far back its fill API still serves data.
+  far back its fill API still serves data. BitMart **closes on 2026-08-26** — see above.
+- The **eight newer exchanges** (Binance, Bybit, OKX, Bitget, Kraken Futures, Gate.io, MEXC, KuCoin
+  Futures) were built against each venue's current official API documentation, with the endpoint,
+  pagination model, symbol format and money semantics verified per exchange before any code was
+  written. Their field mappings are unit-tested against representative payloads — each one asserting
+  that net PnL derives back to the figure that exchange itself publishes — but they have **not yet been
+  reconciled against live accounts** the way Bitunix and BingX have. Check the first sync's totals
+  against the exchange's own UI before trusting them, and note the per-exchange caveats already listed:
+  MEXC may refuse a new key outright, Kraken Futures imports no fees, and KuCoin Futures derives
+  quantity from PnL and prices.
 - The **Quantfury** parser is validated end-to-end against a real report (computed vs printed PnL agree
   to rounding). Re-uploading the same export is safe.
 - **API keys must be read-only.** The app detects and warns on permission errors but cannot enforce

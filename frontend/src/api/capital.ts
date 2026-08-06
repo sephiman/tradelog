@@ -9,6 +9,8 @@ export interface CapitalEntry {
   amount: string | null;
   anchorDate: string | null;
   anchorAmount: string | null;
+  /** At 0 with nothing feeding it. Only forward-looking views drop it; history keeps it. */
+  dormant: boolean;
 }
 
 export interface RiskPercents {

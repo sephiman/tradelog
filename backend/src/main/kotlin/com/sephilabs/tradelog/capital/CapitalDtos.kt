@@ -24,6 +24,11 @@ data class CapitalEntryDto(
     @JsonFormat(shape = JsonFormat.Shape.STRING) val amount: BigDecimal?,
     val anchorDate: LocalDate?,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val anchorAmount: BigDecimal?,
+    /**
+     * At 0 with nothing feeding it: a closed or disabled venue after the funds were withdrawn. Only
+     * the forward-looking capital & risk block drops these; historical views keep them.
+     */
+    val dormant: Boolean = false,
 )
 
 /**

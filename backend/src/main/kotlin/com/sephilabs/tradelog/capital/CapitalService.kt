@@ -4,6 +4,7 @@ package com.sephilabs.tradelog.capital
 import com.sephilabs.tradelog.common.Usdt
 import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.datasource.DataSourceRepository
+import com.sephilabs.tradelog.datasource.DataSourceStatus
 import com.sephilabs.tradelog.position.PositionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -28,6 +29,7 @@ class CapitalService(
         val estimates = history.estimateNow(profileId)
         val estimateByExchange = estimates.associateBy { it.exchange }
         val known = (knownExchanges(profileId) + estimates.map { it.exchange }).distinct().sorted()
+        val fed = syncingVenues(profileId)
         val entries = known.map { exchange ->
             val estimate = estimateByExchange[exchange]
             CapitalEntryDto(
@@ -35,6 +37,7 @@ class CapitalService(
                 amount = estimate?.amount,
                 anchorDate = estimate?.anchorDate,
                 anchorAmount = estimate?.anchorAmount,
+                dormant = estimate != null && estimate.amount.signum() == 0 && exchange !in fed,
             )
         }
         val total = estimates.fold(BigDecimal.ZERO) { acc, e -> acc.add(e.amount) }
@@ -71,6 +74,13 @@ class CapitalService(
         if (frequencyChanged) history.recomputeAutoSnapshots(profileId)
         return overview(profileId)
     }
+
+    /** Venues a live source still feeds. Absent + zero balance = [CapitalEntryDto.dormant]. */
+    private fun syncingVenues(profileId: UUID): Set<String> =
+        dataSources.findAllByProfileIdOrderByCreatedAtAsc(profileId)
+            .filter { it.status != DataSourceStatus.DISABLED }
+            .mapNotNull { it.kind.venueLabel }
+            .toSet()
 
     /** Exchanges the user can anchor capital for: traded venues ∪ configured data-source venues. */
     private fun knownExchanges(profileId: UUID): List<String> {

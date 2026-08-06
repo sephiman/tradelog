@@ -68,11 +68,13 @@ data class AppProperties(
         val spacingMs: Long = 3000,
     )
 
+    /**
+     * Throttles sync **runs** per exchange, not HTTP calls — one run makes many calls, and each
+     * connector paces those itself against its venue's documented quota. So this is uniform across
+     * venues: it exists to stop a backlog of user-triggered syncs from stacking up on one exchange.
+     */
     data class SyncRate(
-        val bitunixPerMinute: Long = 30,
-        val bingxPerMinute: Long = 30,
-        // BitMart limits private contract reads to ~6 req / 2s per key; 30/min stays well under.
-        val bitmartPerMinute: Long = 30,
+        val perMinute: Long = 30,
     )
 
     data class SyncExecutor(
@@ -135,6 +137,15 @@ data class AppProperties(
         val bitunix: ExchangeEndpoint = ExchangeEndpoint("https://fapi.bitunix.com"),
         val bingx: ExchangeEndpoint = ExchangeEndpoint("https://open-api.bingx.com"),
         val bitmart: ExchangeEndpoint = ExchangeEndpoint("https://api-cloud-v2.bitmart.com"),
+        val binance: ExchangeEndpoint = ExchangeEndpoint("https://fapi.binance.com"),
+        val bybit: ExchangeEndpoint = ExchangeEndpoint("https://api.bybit.com"),
+        val okx: ExchangeEndpoint = ExchangeEndpoint("https://www.okx.com"),
+        val bitget: ExchangeEndpoint = ExchangeEndpoint("https://api.bitget.com"),
+        /** Kraken's futures platform lives on its own host, separate from Kraken spot. */
+        val kraken: ExchangeEndpoint = ExchangeEndpoint("https://futures.kraken.com"),
+        val gateio: ExchangeEndpoint = ExchangeEndpoint("https://api.gateio.ws"),
+        val mexc: ExchangeEndpoint = ExchangeEndpoint("https://contract.mexc.com"),
+        val kucoin: ExchangeEndpoint = ExchangeEndpoint("https://api-futures.kucoin.com"),
     )
 
     data class ExchangeEndpoint(

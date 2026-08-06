@@ -5,6 +5,7 @@ import { useDataSources } from "@/api/dataSources";
 import { useSyncAll } from "@/api/sync";
 import { Button, Modal, Select } from "@/components/ui/primitives";
 import { showToast } from "@/lib/toastBus";
+import { isApiKind } from "@/lib/sourceKinds";
 import { QuantfuryUploadCard } from "@/features/settings/QuantfuryUploadCard";
 
 /**
@@ -33,7 +34,7 @@ export function QuickSync() {
   }, [menuOpen]);
 
   const quantfurySources = sources.filter((s) => s.kind === "QUANTFURY");
-  const hasApi = sources.some((s) => s.kind === "BITUNIX" || s.kind === "BINGX" || s.kind === "BITMART");
+  const hasApi = sources.some((s) => isApiKind(s.kind));
   const hasQuantfury = quantfurySources.length > 0;
 
   // Nothing to sync or import yet — keep the header clean.

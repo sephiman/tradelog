@@ -62,6 +62,13 @@ class SyncService(
 
     /** Core API sync used by both manual and on-login triggers. Throws only on rate limiting (429). */
     fun syncApiSource(ds: DataSource, trigger: SyncTrigger): SyncRunDto = withSourceLock(ds.id) {
+        // Past its closing date the venue has no API left: freeze the source once, and no later
+        // sweep picks it up. Its history is kept.
+        if (ds.kind.isRetired()) {
+            log.info("Sync skipped: source={} kind={} venue closed at {}", ds.id, ds.kind, ds.kind.retiredAt)
+            store.freezeRetired(ds.id)
+            throw AppException.badRequest("DATA_SOURCE_EXCHANGE_CLOSED", detail = ds.kind.venueLabel)
+        }
         if (!rateLimiter.tryAcquire(ds.kind)) throw AppException.tooManyRequests("SYNC_RATE_LIMITED")
         val connector = registry.api(ds.kind)
         val run = store.startRun(ds.id, trigger)

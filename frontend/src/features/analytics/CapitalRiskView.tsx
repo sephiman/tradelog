@@ -36,8 +36,12 @@ export function CapitalRiskView({ profileId, exchange }: { profileId: string | n
 
   const entries = useMemo<CapitalEntry[]>(() => {
     if (!data) return [];
-    const anchored = data.entries.filter((e) => e.amount !== null);
-    return exchange === "ALL" ? anchored : anchored.filter((e) => e.exchange === exchange);
+    // Dormant venues contribute a permanent 0 row, so they are dropped from ALL — but an explicit
+    // single-exchange selection is still honoured, since the venue stays in the Exchange filter.
+    const anchored = data.entries.filter((e) => e.amount !== null && !e.dormant);
+    return exchange === "ALL"
+      ? anchored
+      : data.entries.filter((e) => e.amount !== null && e.exchange === exchange);
   }, [data, exchange]);
 
   const total = useMemo(

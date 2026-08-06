@@ -63,6 +63,81 @@ class DataSourceIntegrationTest @Autowired constructor(
     }
 
     @Test
+    fun `a passphrase exchange stores all three credentials, encrypted`() {
+        val passphrase = "OKX-PASS-${UUID.randomUUID()}"
+        val dto = service.create(
+            newProfile(),
+            CreateDataSourceRequest(SourceKind.OKX, "okx", "key", "secret", passphrase = passphrase),
+        )
+
+        val entity = dataSources.findById(dto.id).orElseThrow()
+        // The passphrase is a secret like any other: never stored in the clear.
+        assertThat(entity.credentialsEnc!!).doesNotContain(passphrase)
+        assertThat(service.credentialsOf(entity).passphrase).isEqualTo(passphrase)
+    }
+
+    @Test
+    fun `a passphrase exchange is rejected without one, while the form is still open`() {
+        assertThatThrownBy {
+            service.create(newProfile(), CreateDataSourceRequest(SourceKind.BITGET, "bitget", "k", "s"))
+        }
+            .isInstanceOf(AppException::class.java)
+            .hasMessageContaining("DATA_SOURCE_PASSPHRASE_REQUIRED")
+        // Blank counts as missing — an empty input must not be accepted as a passphrase.
+        assertThatThrownBy {
+            service.create(
+                newProfile(),
+                CreateDataSourceRequest(SourceKind.KUCOIN_FUTURES, "kucoin", "k", "s", passphrase = "   "),
+            )
+        }
+            .isInstanceOf(AppException::class.java)
+            .hasMessageContaining("DATA_SOURCE_PASSPHRASE_REQUIRED")
+    }
+
+    @Test
+    fun `an exchange that uses no passphrase does not keep one it was sent`() {
+        // Storing it would leave a secret at rest that nothing can ever validate or use.
+        val dto = service.create(
+            newProfile(),
+            CreateDataSourceRequest(SourceKind.BYBIT, "bybit", "k", "s", passphrase = "stray-value"),
+        )
+        val entity = dataSources.findById(dto.id).orElseThrow()
+        assertThat(service.credentialsOf(entity).passphrase).isNull()
+        assertThat(entity.credentialsEnc!!).doesNotContain("stray-value")
+    }
+
+    @Test
+    fun `rotating a passphrase exchange's credentials replaces all three`() {
+        val profileId = newProfile()
+        val dto = service.create(
+            profileId,
+            CreateDataSourceRequest(SourceKind.OKX, "okx", "k1", "s1", passphrase = "p1"),
+        )
+
+        service.update(profileId, dto.id, UpdateDataSourceRequest(apiKey = "k2", apiSecret = "s2", passphrase = "p2"))
+
+        val rotated = service.credentialsOf(dataSources.findById(dto.id).orElseThrow())
+        assertThat(rotated.apiKey).isEqualTo("k2")
+        assertThat(rotated.apiSecret).isEqualTo("s2")
+        assertThat(rotated.passphrase).isEqualTo("p2")
+    }
+
+    @Test
+    fun `every new exchange kind is accepted by the database`() {
+        // The kind and source CHECK constraints list their values twice, in two tables. A kind missing
+        // from either one fails only when a row is written, so each is written here once.
+        val profileId = newProfile()
+        SourceKind.entries.filter { it.isApi }.forEach { kind ->
+            val dto = service.create(
+                profileId,
+                CreateDataSourceRequest(kind, "src-${kind.name}", "k", "s", passphrase = "p"),
+            )
+            assertThat(dto.kind).isEqualTo(kind)
+        }
+        assertThat(service.list(profileId)).hasSize(SourceKind.entries.count { it.isApi })
+    }
+
+    @Test
     fun `sync cursor round-trips through JSON`() {
         val dto = service.create(newProfile(), CreateDataSourceRequest(SourceKind.BITUNIX, "c", "k", "s"))
         val entity = dataSources.findById(dto.id).orElseThrow()

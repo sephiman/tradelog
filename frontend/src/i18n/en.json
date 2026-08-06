@@ -116,6 +116,8 @@
     "disabled": "Disabled",
     "apiKey": "API key (read-only)",
     "apiSecret": "API secret",
+    "passphrase": "API passphrase",
+    "passphraseHint": "This exchange also needs the passphrase you chose when you created the API key. It is encrypted at rest like the secret and never shown again.",
     "lastSynced": "Last synced",
     "positions": "Positions",
     "new": "Add data source",
@@ -136,11 +138,23 @@
     "syncFromLabel": "Synced from",
     "deleteConfirm": "Delete this data source and its positions?",
     "never": "Never",
+    "retirement": {
+      "closing": "{{venue}} shuts down on {{date}}. Sync one last time and withdraw your funds before then — once the API is gone, any trade left there can no longer be imported. Nothing already imported is deleted: your {{venue}} history stays and keeps counting.",
+      "closed": "{{venue}} closed on {{date}}, so syncing is off. Your {{venue}} history is kept in full and still counts in every analytic for the period it covers."
+    },
     "coverageLabel": "History coverage",
     "coverage": {
       "BITUNIX": "Full history since you opened the account.",
       "BINGX": "Only ~the last 30 days — BingX's API serves no older fills, so sync regularly; older trades can't be recovered.",
-      "BITMART": "Recent history only — BitMart's API serves a limited window of fills, so sync regularly; older trades can't be recovered. Only the API key is needed (read-only).",
+      "BITMART": "Recent history only — BitMart's API serves a limited window of fills, so sync regularly; older trades can't be recovered. Only the API key is needed (read-only). BitMart shuts down on 2026-08-26.",
+      "BINANCE_FUTURES": "About the last 3 months. Binance keeps fills for 6 months, but the endpoint that reveals which symbols you traded only goes back 3 — so sync at least quarterly. Funding is imported, so PnL is complete.",
+      "BYBIT": "Up to 2 years of fills, pulled in 7-day windows. Funding is imported alongside the trades, so PnL is complete.",
+      "OKX": "The last 90 days of closed positions — OKX serves no older ones, so sync regularly. PnL, fees and funding all come from OKX directly. Needs the API passphrase as well as key and secret.",
+      "BITGET": "The last 90 days of closed positions (Unified Trading Account). PnL, fees and funding come from Bitget directly. Needs the API passphrase as well as key and secret.",
+      "KRAKEN_FUTURES": "Kraken's separate futures platform — kept apart from any Kraken spot history, since it is a different account with its own balance. Linear perpetuals (PF_) only. Fees are NOT imported: Kraken states the fee values its API returns no longer reflect what was charged, so net PnL here reads slightly better than reality.",
+      "GATEIO_FUTURES": "Closed positions with PnL already split into trading result, funding and fees — the cleanest source here. Depth depends on what Gate.io retains.",
+      "MEXC_FUTURES": "Closed positions with PnL and leverage. Note: MEXC restricts futures API access, so a new key may be rejected — if syncing fails with a permissions error, that limit is why, not your setup.",
+      "KUCOIN_FUTURES": "The last 3 months of closed positions, pulled in 7-day windows. PnL, fees and funding come from KuCoin directly. Needs the API passphrase as well as key and secret.",
       "QUANTFURY": "Your entire history — whatever is in the uploaded PDF (no API, so nothing syncs automatically).",
       "JOURNAL_CSV": "Whatever you import — a manual CSV of closed positions, e.g. from exchanges that no longer exist. Nothing syncs automatically."
     }

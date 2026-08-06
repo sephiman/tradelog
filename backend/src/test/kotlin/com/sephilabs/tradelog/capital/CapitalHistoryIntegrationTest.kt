@@ -4,7 +4,9 @@ package com.sephilabs.tradelog.capital
 import com.sephilabs.tradelog.IntegrationTestBase
 import com.sephilabs.tradelog.datasource.CreateDataSourceRequest
 import com.sephilabs.tradelog.datasource.DataSourceService
+import com.sephilabs.tradelog.datasource.DataSourceStatus
 import com.sephilabs.tradelog.datasource.SourceKind
+import com.sephilabs.tradelog.datasource.UpdateDataSourceRequest
 import com.sephilabs.tradelog.identity.user.User
 import com.sephilabs.tradelog.identity.user.UserRepository
 import com.sephilabs.tradelog.position.Position
@@ -303,6 +305,63 @@ class CapitalHistoryIntegrationTest @Autowired constructor(
         val bingx = history.monthlyRoi(profile.id, 2026, "BingX")
         assertThat(bingx).hasSize(12)
         assertThat(bingx).allMatch { it.roi == null && it.startCapital == null }
+    }
+
+    /**
+     * A wound-down venue: the exchange closed, the funds were withdrawn to 0 and the source was
+     * frozen. It must go quiet in the forward-looking capital & risk block without disappearing —
+     * the entry, its history and its PnL all stay, because they are real trades from a real period.
+     */
+    @Test
+    fun `a venue at zero with nothing left feeding it is dormant, but its history still counts`() {
+        val (profile, dsId) = newProfile()
+        val bitmart = dataSourceService.create(
+            profile.id,
+            CreateDataSourceRequest(SourceKind.BITMART, "bitmart", "k", "s"),
+        )
+        trade(profile.id, dsId, Instant.parse("2026-07-02T10:00:00Z"), "250", exchange = "BitMart")
+        anchor(profile.id, LocalDate.of(2026, 7, 1), "BitMart", "1000")
+        // The withdrawal: an ordinary anchor to 0, not a PnL loss. Nothing trades there afterwards.
+        anchor(profile.id, LocalDate.of(2026, 7, 20), "BitMart", "0")
+        // A live venue also sitting at 0 — it must NOT be dormant; capital can still arrive there.
+        dataSourceService.create(profile.id, CreateDataSourceRequest(SourceKind.BITUNIX, "bitunix", "k", "s"))
+        anchor(profile.id, LocalDate.of(2026, 7, 20), "Bitunix", "0")
+        trade(profile.id, dsId, Instant.parse("2026-07-03T10:00:00Z"), "60", exchange = "Bitunix")
+
+        // While the source is still live, a zero balance alone is not enough to go dormant.
+        assertThat(capitalService.overview(profile.id).entries.single { it.exchange == "BitMart" }.dormant).isFalse
+
+        dataSourceService.update(
+            profile.id,
+            bitmart.id,
+            UpdateDataSourceRequest(status = DataSourceStatus.DISABLED),
+        )
+
+        val overview = capitalService.overview(profile.id)
+        with(overview.entries.single { it.exchange == "BitMart" }) {
+            assertThat(dormant).isTrue
+            assertThat(amount).isEqualByComparingTo("0")
+            // Still anchored and still listed — the Capital page and the Exchange filter keep it.
+            assertThat(anchorDate).isEqualTo(LocalDate.of(2026, 7, 20))
+        }
+        assertThat(overview.knownExchanges).contains("BitMart")
+        // A live venue at 0 stays in the risk block: it is flat, not finished.
+        assertThat(overview.entries.single { it.exchange == "Bitunix" }.dormant).isFalse
+
+        // The hard cut still applies to the closed venue's own history: the +250 closed before the
+        // 2026-07-20 anchor is settled into it, so the balance is 0 rather than 250.
+        assertThat(history.estimateNow(profile.id).single { it.exchange == "BitMart" }.amount)
+            .isEqualByComparingTo("0")
+        // And its trades are untouched, so ROI for the period it was alive is unchanged: July 1-15
+        // in Madrid time, denominated by the 1000 anchor that opened the period.
+        val july = history.roi(
+            profile.id,
+            Instant.parse("2026-06-30T22:00:00Z"),
+            Instant.parse("2026-07-15T21:59:59Z"),
+            "BitMart",
+        )
+        assertThat(july.startCapital).isEqualByComparingTo("1000")
+        assertThat(july.netPnl).isEqualByComparingTo("250")
     }
 }
 

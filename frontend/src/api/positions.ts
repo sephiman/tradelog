@@ -2,7 +2,21 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
 
 export type PositionSide = "LONG" | "SHORT";
-export type SourceKind = "BITUNIX" | "BINGX" | "BITMART" | "QUANTFURY" | "JOURNAL_CSV";
+/** Mirrors the backend `SourceKind`. See `lib/sourceKinds.ts` for the per-kind facts the UI needs. */
+export type SourceKind =
+  | "BITUNIX"
+  | "BINGX"
+  | "BITMART"
+  | "BINANCE_FUTURES"
+  | "BYBIT"
+  | "OKX"
+  | "BITGET"
+  | "KRAKEN_FUTURES"
+  | "GATEIO_FUTURES"
+  | "MEXC_FUTURES"
+  | "KUCOIN_FUTURES"
+  | "QUANTFURY"
+  | "JOURNAL_CSV";
 export type FillAction = "OPEN" | "ADD" | "REDUCE" | "CLOSE";
 
 export interface PositionTagView {

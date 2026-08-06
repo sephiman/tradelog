@@ -21,12 +21,9 @@ class ExchangeRateLimiter(private val props: AppProperties) {
     fun tryAcquire(kind: SourceKind): Boolean =
         buckets.computeIfAbsent(kind) { build(perMinute(it)) }.tryConsume(1)
 
-    private fun perMinute(kind: SourceKind): Long = when (kind) {
-        SourceKind.BITUNIX -> props.sync.rate.bitunixPerMinute
-        SourceKind.BINGX -> props.sync.rate.bingxPerMinute
-        SourceKind.BITMART -> props.sync.rate.bitmartPerMinute
-        SourceKind.QUANTFURY, SourceKind.JOURNAL_CSV -> Long.MAX_VALUE
-    }
+    // File-import sources make no outbound calls, so there is nothing to throttle for them.
+    private fun perMinute(kind: SourceKind): Long =
+        if (kind.isApi) props.sync.rate.perMinute else Long.MAX_VALUE
 
     private fun build(perMinute: Long): Bucket {
         val limit = Bandwidth.builder()

@@ -35,7 +35,7 @@ class DataSourceService(
             label = request.label.trim(),
         )
         if (request.kind.isApi) {
-            ds.credentialsEnc = encryptCredentials(request.apiKey, request.apiSecret, request.passphrase)
+            ds.credentialsEnc = encryptCredentials(request.kind, request.apiKey, request.apiSecret, request.passphrase)
             ds.syncFrom = request.syncFrom
         }
         dataSources.save(ds)
@@ -51,7 +51,7 @@ class DataSourceService(
             if (it != DataSourceStatus.ERROR) ds.statusDetail = null
         }
         if (ds.kind.isApi && !request.apiKey.isNullOrBlank() && !request.apiSecret.isNullOrBlank()) {
-            ds.credentialsEnc = encryptCredentials(request.apiKey, request.apiSecret, request.passphrase)
+            ds.credentialsEnc = encryptCredentials(ds.kind, request.apiKey, request.apiSecret, request.passphrase)
             // Rotating credentials clears a prior error state so the next sync can re-validate.
             if (ds.status == DataSourceStatus.ERROR) {
                 ds.status = DataSourceStatus.ACTIVE
@@ -84,11 +84,23 @@ class DataSourceService(
     private fun loadOwn(profileId: UUID, id: UUID): DataSource =
         dataSources.findByIdAndProfileId(id, profileId) ?: throw AppException.notFound("DATA_SOURCE_NOT_FOUND")
 
-    private fun encryptCredentials(apiKey: String?, apiSecret: String?, passphrase: String?): String {
+    /** The passphrase is kept only for venues that use one, never left at rest unused. */
+    private fun encryptCredentials(
+        kind: SourceKind,
+        apiKey: String?,
+        apiSecret: String?,
+        passphrase: String?,
+    ): String {
         if (apiKey.isNullOrBlank() || apiSecret.isNullOrBlank()) {
             throw AppException.badRequest("DATA_SOURCE_CREDENTIALS_REQUIRED")
         }
-        val json = objectMapper.writeValueAsString(DataSourceCredentials(apiKey.trim(), apiSecret.trim(), passphrase?.trim()?.takeIf { it.isNotEmpty() }))
+        val pass = passphrase?.trim()?.takeIf { it.isNotEmpty() }
+        if (kind.requiresPassphrase && pass == null) {
+            throw AppException.badRequest("DATA_SOURCE_PASSPHRASE_REQUIRED")
+        }
+        val json = objectMapper.writeValueAsString(
+            DataSourceCredentials(apiKey.trim(), apiSecret.trim(), pass.takeIf { kind.requiresPassphrase }),
+        )
         return crypto.encrypt(json)
     }
 

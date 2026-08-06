@@ -116,6 +116,8 @@
     "disabled": "Desactivada",
     "apiKey": "Clave API (solo lectura)",
     "apiSecret": "Secreto API",
+    "passphrase": "Passphrase de API",
+    "passphraseHint": "Este exchange necesita además la passphrase que elegiste al crear la clave de API. Se cifra igual que el secreto y no se vuelve a mostrar.",
     "lastSynced": "Última sincronización",
     "positions": "Posiciones",
     "new": "Añadir fuente",
@@ -136,11 +138,23 @@
     "syncFromLabel": "Sincronizado desde",
     "deleteConfirm": "¿Eliminar esta fuente y sus posiciones?",
     "never": "Nunca",
+    "retirement": {
+      "closing": "{{venue}} cierra el {{date}}. Sincroniza por última vez y retira tus fondos antes de esa fecha — cuando la API desaparezca, las operaciones que queden allí ya no se podrán importar. Nada de lo ya importado se borra: tu historial de {{venue}} se conserva y sigue contando.",
+      "closed": "{{venue}} cerró el {{date}}, así que la sincronización está desactivada. Tu historial de {{venue}} se conserva íntegro y sigue contando en todos los análisis del periodo que cubre."
+    },
     "coverageLabel": "Historial disponible",
     "coverage": {
       "BITUNIX": "Historial completo desde que abriste la cuenta.",
       "BINGX": "Solo ~los últimos 30 días — la API de BingX no ofrece operaciones más antiguas, así que sincroniza con frecuencia; lo anterior no se puede recuperar.",
-      "BITMART": "Solo historial reciente — la API de BitMart ofrece una ventana limitada de operaciones, así que sincroniza con frecuencia; lo anterior no se puede recuperar. Solo se necesita la API key (solo lectura).",
+      "BITMART": "Solo historial reciente — la API de BitMart ofrece una ventana limitada de operaciones, así que sincroniza con frecuencia; lo anterior no se puede recuperar. Solo se necesita la API key (solo lectura). BitMart cierra el 2026-08-26.",
+      "BINANCE_FUTURES": "Unos 3 meses. Binance guarda las operaciones 6 meses, pero el endpoint que revela qué símbolos operaste solo llega a 3 — así que sincroniza al menos cada trimestre. El funding se importa, así que el PnL está completo.",
+      "BYBIT": "Hasta 2 años de operaciones, en ventanas de 7 días. El funding se importa junto con las operaciones, así que el PnL está completo.",
+      "OKX": "Los últimos 90 días de posiciones cerradas — OKX no ofrece nada anterior, así que sincroniza con frecuencia. PnL, comisiones y funding vienen directamente de OKX. Necesita la passphrase de API además de la clave y el secreto.",
+      "BITGET": "Los últimos 90 días de posiciones cerradas (Unified Trading Account). PnL, comisiones y funding vienen directamente de Bitget. Necesita la passphrase de API además de la clave y el secreto.",
+      "KRAKEN_FUTURES": "La plataforma de futuros independiente de Kraken — se mantiene separada de cualquier historial de Kraken spot, porque es otra cuenta con su propio saldo. Solo perpetuos lineales (PF_). Las comisiones NO se importan: Kraken indica que los valores de comisión que devuelve su API ya no reflejan lo realmente cobrado, así que el PnL neto aquí se ve algo mejor que la realidad.",
+      "GATEIO_FUTURES": "Posiciones cerradas con el PnL ya desglosado en resultado de la operación, funding y comisiones — la fuente más limpia de todas. La profundidad depende de lo que retenga Gate.io.",
+      "MEXC_FUTURES": "Posiciones cerradas con PnL y apalancamiento. Nota: MEXC restringe el acceso a la API de futuros, así que una clave nueva puede ser rechazada — si la sincronización falla con un error de permisos, ese límite es la causa, no tu configuración.",
+      "KUCOIN_FUTURES": "Los últimos 3 meses de posiciones cerradas, en ventanas de 7 días. PnL, comisiones y funding vienen directamente de KuCoin. Necesita la passphrase de API además de la clave y el secreto.",
       "QUANTFURY": "Todo tu historial — lo que contenga el PDF subido (sin API, no se sincroniza nada automáticamente).",
       "JOURNAL_CSV": "Lo que importes — un CSV manual de posiciones cerradas, p. ej. de exchanges que ya no existen. No se sincroniza nada automáticamente."
     }

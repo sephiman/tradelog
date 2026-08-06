@@ -108,11 +108,10 @@ app:
     # Base64-encoded AES key (16/24/32 bytes) for encrypting exchange API credentials at rest.
     key: ${TRADELOG_CRYPTO_KEY:}
   sync:
-    # Per-exchange request throttle for synchronisation calls.
+    # Sync RUNS allowed per minute per exchange. Not HTTP calls: one run makes many, and each
+    # connector paces those itself against its venue's documented quota.
     rate:
-      bitunix-per-minute: 30
-      bingx-per-minute: 30
-      bitmart-per-minute: 30
+      per-minute: ${SYNC_RATE_PER_MINUTE:30}
     # Bound the on-login async kickoff so a slow exchange can never exhaust threads.
     executor:
       core-pool-size: 2
@@ -167,3 +166,28 @@ app:
     bitmart:
       base-url: ${BITMART_BASE_URL:https://api-cloud-v2.bitmart.com}
       timeout-ms: ${BITMART_TIMEOUT_MS:10000}
+    binance:
+      base-url: ${BINANCE_BASE_URL:https://fapi.binance.com}
+      timeout-ms: ${BINANCE_TIMEOUT_MS:10000}
+    bybit:
+      base-url: ${BYBIT_BASE_URL:https://api.bybit.com}
+      timeout-ms: ${BYBIT_TIMEOUT_MS:10000}
+    okx:
+      base-url: ${OKX_BASE_URL:https://www.okx.com}
+      timeout-ms: ${OKX_TIMEOUT_MS:10000}
+    bitget:
+      base-url: ${BITGET_BASE_URL:https://api.bitget.com}
+      timeout-ms: ${BITGET_TIMEOUT_MS:10000}
+    # Kraken's futures platform: its own host, distinct from Kraken spot.
+    kraken:
+      base-url: ${KRAKEN_FUTURES_BASE_URL:https://futures.kraken.com}
+      timeout-ms: ${KRAKEN_FUTURES_TIMEOUT_MS:10000}
+    gateio:
+      base-url: ${GATEIO_BASE_URL:https://api.gateio.ws}
+      timeout-ms: ${GATEIO_TIMEOUT_MS:10000}
+    mexc:
+      base-url: ${MEXC_BASE_URL:https://contract.mexc.com}
+      timeout-ms: ${MEXC_TIMEOUT_MS:10000}
+    kucoin:
+      base-url: ${KUCOIN_FUTURES_BASE_URL:https://api-futures.kucoin.com}
+      timeout-ms: ${KUCOIN_FUTURES_TIMEOUT_MS:10000}

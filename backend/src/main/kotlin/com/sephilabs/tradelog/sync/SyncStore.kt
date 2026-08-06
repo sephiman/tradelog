@@ -64,6 +64,18 @@ class SyncStore(
         return finish(runId, RunStatus.ERROR, 0, 0, code)
     }
 
+    /**
+     * Freeze a shut-down venue's source ([SourceKind.retiredAt]): DISABLED, not ERROR — nothing failed
+     * and nothing is deleted. Every position, snapshot and adjustment it wrote stays and keeps counting.
+     */
+    @Transactional
+    fun freezeRetired(dataSourceId: UUID) {
+        dataSources.findById(dataSourceId).orElse(null)?.let {
+            it.status = DataSourceStatus.DISABLED
+            it.statusDetail = RETIRED_CODE
+        }
+    }
+
     private fun finish(runId: UUID, status: RunStatus, inserted: Int, updated: Int, code: String?): SyncRun {
         val run = runs.findById(runId).orElseThrow()
         run.status = status
@@ -74,7 +86,10 @@ class SyncStore(
         return run
     }
 
-    private companion object {
+    companion object {
         const val STATUS_DETAIL_MAX = 64 // matches the data_sources.status_detail column width
+
+        /** Why a frozen source is DISABLED: the venue closed, the user did not turn it off. */
+        const val RETIRED_CODE = "DATA_SOURCE_EXCHANGE_CLOSED"
     }
 }
