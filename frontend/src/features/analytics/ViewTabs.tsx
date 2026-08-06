@@ -20,7 +20,7 @@ export function ViewTabs({ value, onChange }: { value: ViewKey; onChange: (v: Vi
             "inline-flex items-center rounded-full border px-3 py-1 text-sm transition-colors",
             value === k
               ? "border-violet-500 bg-violet-500 text-white shadow-sm hover:bg-violet-600 dark:border-violet-500 dark:bg-violet-600 dark:hover:bg-violet-500"
-              : "border-border bg-white text-gray-700 hover:bg-violet-50 hover:text-violet-700 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600",
+              : "border-border-strong bg-white text-gray-700 hover:bg-violet-50 hover:text-violet-700 dark:bg-surface-raised dark:text-gray-200 dark:hover:bg-surface-hover",
           )}
         >
           {t(`analytics.tab.${k}`)}

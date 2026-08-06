@@ -71,7 +71,7 @@ export function TradeDirectionCard({ rows }: { rows: ClosedPosition[] }) {
           />
         </div>
 
-        <hr className="my-4 border-border dark:border-gray-700" />
+        <hr className="my-4 border-border" />
 
         <div className="grid grid-cols-2 gap-6">
           <FooterCol
@@ -155,7 +155,7 @@ export function TraderStyleCard({ rows }: { rows: ClosedPosition[] }) {
           />
         </div>
 
-        <hr className="my-4 border-border dark:border-gray-700" />
+        <hr className="my-4 border-border" />
 
         <div className="grid grid-cols-2 gap-6">
           <FooterCol

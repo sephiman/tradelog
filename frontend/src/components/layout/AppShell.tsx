@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-border bg-white dark:border-gray-700 dark:bg-gray-800">
+      <header className="border-b border-border bg-white dark:bg-surface">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
           <div className="flex items-center gap-3 sm:contents">
             <Logo to="/dashboard" onClick={() => setNavOpen(false)} className="h-7 w-auto shrink-0" />
@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav
             id="main-nav"
             className={cn(
-              "order-last flex-col gap-0.5 border-t border-border pt-2 sm:order-2 sm:flex sm:flex-row sm:flex-nowrap sm:items-center sm:gap-1 sm:border-t-0 sm:pt-0 dark:border-gray-700",
+              "order-last flex-col gap-0.5 border-t border-border pt-2 sm:order-2 sm:flex sm:flex-row sm:flex-nowrap sm:items-center sm:gap-1 sm:border-t-0 sm:pt-0",
               navOpen ? "flex" : "hidden",
             )}
           >
@@ -59,7 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-cyan-50 text-primary dark:bg-cyan-900/40 dark:text-cyan-300"
-                      : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700",
+                      : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-surface-raised",
                   )
                 }
               >

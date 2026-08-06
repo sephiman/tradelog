@@ -6,9 +6,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBut
   ({ className, variant = "primary", ...props }, ref) => {
     const variants = {
       primary: "bg-primary text-primary-foreground hover:bg-cyan-600",
-      secondary: "bg-white border border-border text-gray-900 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-600",
+      secondary: "bg-white border border-border-strong text-gray-900 hover:bg-gray-50 dark:bg-surface-raised dark:text-gray-100 dark:hover:bg-surface-hover",
       danger: "bg-red-600 text-white hover:bg-red-700",
-      ghost: "bg-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700",
+      ghost: "bg-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-surface-raised",
     };
     return (
       <button
@@ -33,7 +33,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
       ref={ref}
       aria-invalid={invalid || undefined}
       className={cn(
-        "block w-full rounded-md border border-border bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder:text-gray-500 dark:disabled:bg-gray-700",
+        "block w-full rounded-md border border-border-strong bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 dark:bg-surface dark:text-gray-100 dark:placeholder:text-gray-500 dark:disabled:bg-surface-raised",
         invalid && invalidRing,
         className,
       )}
@@ -49,7 +49,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
       ref={ref}
       aria-invalid={invalid || undefined}
       className={cn(
-        "block w-full rounded-md border border-border bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600",
+        "block w-full rounded-md border border-border-strong bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:bg-surface dark:text-gray-100",
         invalid && invalidRing,
         className,
       )}
@@ -65,7 +65,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
       ref={ref}
       aria-invalid={invalid || undefined}
       className={cn(
-        "block w-full rounded-md border border-border bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600",
+        "block w-full rounded-md border border-border-strong bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:bg-surface dark:text-gray-100",
         invalid && invalidRing,
         className,
       )}
@@ -76,11 +76,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
 Select.displayName = "Select";
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-lg border border-border bg-white shadow-sm dark:bg-gray-800 dark:border-gray-700", className)} {...props} />;
+  return <div className={cn("rounded-lg border border-border bg-white shadow-sm dark:bg-surface", className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("border-b border-border p-4 dark:border-gray-700", className)} {...props} />;
+  return <div className={cn("border-b border-border p-4", className)} {...props} />;
 }
 
 export function CardBody({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -105,7 +105,7 @@ export function Chip({ children, onClick, active }: { children: React.ReactNode;
         "inline-flex items-center rounded-full border px-3 py-1 text-sm transition-colors",
         active
           ? "border-primary bg-cyan-50 text-primary dark:bg-cyan-900/40 dark:text-cyan-300"
-          : "border-border bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600",
+          : "border-border-strong bg-white text-gray-700 hover:bg-gray-50 dark:bg-surface-raised dark:text-gray-200 dark:hover:bg-surface-hover",
       )}
     >
       {children}
@@ -147,19 +147,19 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "w-full max-w-lg rounded-lg border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800",
+          "w-full max-w-lg rounded-lg border border-border bg-white shadow-xl dark:bg-surface",
           className,
         )}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {title && (
-          <div className="flex items-center justify-between border-b border-border p-4 dark:border-gray-700">
+          <div className="flex items-center justify-between border-b border-border p-4">
             <h2 className="font-semibold">{title}</h2>
             <button
               type="button"
               aria-label={t("common.close")}
               onClick={onClose}
-              className="rounded-md p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+              className="rounded-md p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-surface-raised"
             >
               ✕
             </button>
@@ -173,7 +173,7 @@ export function Modal({
 
 export function Badge({ children, tone = "gray" }: { children: React.ReactNode; tone?: "gray" | "green" | "red" | "amber" | "sky" }) {
   const tones = {
-    gray: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200",
+    gray: "bg-gray-100 text-gray-700 dark:bg-surface-raised dark:text-gray-200",
     green: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
     red: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
     amber: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",

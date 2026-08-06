@@ -17,7 +17,7 @@ export function InfoTooltip({ text }: { text: string }) {
       </button>
       <span
         role="tooltip"
-        className="pointer-events-none absolute right-0 top-6 z-20 hidden w-60 rounded-md border border-border bg-white p-2 text-xs font-normal leading-snug text-gray-600 shadow-lg group-hover:block group-focus-within:block dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
+        className="pointer-events-none absolute right-0 top-6 z-20 hidden w-60 rounded-md border border-border-strong bg-white p-2 text-xs font-normal leading-snug text-gray-600 shadow-lg group-hover:block group-focus-within:block dark:bg-surface-inset dark:text-gray-300"
       >
         {text}
       </span>

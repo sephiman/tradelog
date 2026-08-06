@@ -24,7 +24,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <p>{i18n.t("common.errorTitle")}</p>
         <button
           type="button"
-          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
+          className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-surface-raised"
           onClick={() => window.location.reload()}
         >
           {i18n.t("common.reload")}

@@ -32,7 +32,7 @@ export function TradeCsvFormatHelp() {
       <summary className="cursor-pointer select-none text-sky-600 dark:text-sky-400">
         {t("import.format.toggle")}
       </summary>
-      <div className="mt-2 space-y-3 rounded border border-border bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/40">
+      <div className="mt-2 space-y-3 rounded border border-border bg-gray-50 p-3 dark:bg-surface-inset">
         <p className="rounded border border-sky-300 bg-sky-50 p-2 text-xs text-sky-900 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-100">
           {t("import.format.ai_hint")}
         </p>
@@ -82,7 +82,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function CodeBlock({ children }: { children: string }) {
   return (
-    <pre className="overflow-x-auto rounded bg-gray-100 p-2 font-mono text-xs text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+    <pre className="overflow-x-auto rounded bg-gray-100 p-2 font-mono text-xs text-gray-800 dark:bg-surface-inset dark:text-gray-200">
       {children}
     </pre>
   );

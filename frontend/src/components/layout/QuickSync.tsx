@@ -88,7 +88,7 @@ export function QuickSync() {
       </div>
 
       {menuOpen && (
-        <div className="absolute right-0 z-20 mt-1 w-60 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div className="absolute right-0 z-20 mt-1 w-60 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-white py-1 shadow-lg dark:bg-surface">
           <MenuItem onClick={onSyncExchanges} disabled={!hasApi}>
             {t("quickSync.syncExchanges")}
           </MenuItem>
@@ -122,7 +122,7 @@ function MenuItem({ children, onClick, disabled }: { children: React.ReactNode; 
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700"
+      className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-gray-200 dark:hover:bg-surface-raised"
     >
       {children}
     </button>

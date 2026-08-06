@@ -38,6 +38,7 @@
     "theme": "Theme",
     "themeLight": "Light",
     "themeDark": "Dark",
+    "themeOled": "OLED",
     "themeSystem": "System"
   },
   "profiles": {

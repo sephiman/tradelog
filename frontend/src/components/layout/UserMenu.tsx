@@ -25,19 +25,19 @@ export function UserMenu() {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-border bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+          <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-border bg-white p-3 shadow-lg dark:bg-surface">
             <p className="mb-2 truncate text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
 
             {/* Account-level destination, kept out of the main nav so that list stays short. */}
             <Link
               to="/settings"
               onClick={() => setOpen(false)}
-              className="-mx-3 block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+              className="-mx-3 block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-surface-raised"
             >
               {t("nav.settings")}
             </Link>
 
-            <div className="-mx-3 my-2 border-t border-border dark:border-gray-700" />
+            <div className="-mx-3 my-2 border-t border-border" />
 
             <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">{t("auth.language")}</label>
             <Select
@@ -53,6 +53,7 @@ export function UserMenu() {
             <Select className="mb-3" value={theme} onChange={(e) => setTheme(e.target.value as ThemePreference)}>
               <option value="light">{t("auth.themeLight")}</option>
               <option value="dark">{t("auth.themeDark")}</option>
+              <option value="oled">{t("auth.themeOled")}</option>
               <option value="system">{t("auth.themeSystem")}</option>
             </Select>
 

@@ -3,10 +3,17 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/cn";
 
+const LOGO_SRC = {
+  light: "/logo-light.png",
+  dark: "/logo-dark.png",
+  oled: "/logo-oled.png",
+} as const;
+
 /**
- * Renders the Trade Log wordmark, picking the light or dark artwork to match
- * the currently resolved theme (the dark logo has white text for dark
- * backgrounds, the light logo has dark text for light backgrounds).
+ * Renders the Trade Log wordmark, picking the artwork that matches the currently
+ * resolved theme (the dark logo has white text for dark backgrounds, the light
+ * logo has dark text for light backgrounds). All three are opaque, so OLED needs
+ * its own copy: the dark one's #1e2939 canvas would show as a box on pure black.
  *
  * Pass [to] to make the wordmark a link — used by the app shell to send the
  * logo home. Left off on the auth screens, whose logo must stay inert rather
@@ -23,7 +30,7 @@ export function Logo({
 }) {
   const { resolvedTheme } = useTheme();
   const { t } = useTranslation();
-  const src = resolvedTheme === "dark" ? "/logo-dark.png" : "/logo-light.png";
+  const src = LOGO_SRC[resolvedTheme];
 
   // Linked, the anchor's aria-label names the destination, so the image itself
   // drops out of the accessibility tree instead of being announced twice.

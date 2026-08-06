@@ -88,7 +88,7 @@ export function ExchangeSetupHelp({ kind, className }: { kind: SourceKind; class
       {open && (
         <div
           id={panelId}
-          className="mt-2 space-y-3 rounded-md border border-border bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-900/40"
+          className="mt-2 space-y-3 rounded-md border border-border bg-gray-50 p-3 text-sm dark:bg-surface-inset"
         >
           <p className="font-semibold text-gray-900 dark:text-gray-100">
             {t(keyed ? "dataSources.setupHelp.title" : "dataSources.setupHelp.titleFile", { venue })}
@@ -117,7 +117,7 @@ export function ExchangeSetupHelp({ kind, className }: { kind: SourceKind; class
           {keyed && <Fact label={t("dataSources.setupHelp.secretLabel")} text={t(`${base}.secret`)} />}
           {has("note") && <Fact label={t("dataSources.setupHelp.noteLabel")} text={t(`${base}.note`)} />}
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-3 dark:border-gray-700">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-3">
             {links.console && (
               <a className="text-primary" href={links.console} target="_blank" rel="noreferrer">
                 {t(keyed ? "dataSources.setupHelp.openConsole" : "dataSources.setupHelp.openConsoleFile", { venue })}

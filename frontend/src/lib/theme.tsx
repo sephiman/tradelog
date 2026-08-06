@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-export type ThemePreference = "light" | "dark" | "system";
-export type ResolvedTheme = "light" | "dark";
+export type ThemePreference = "light" | "dark" | "oled" | "system";
+export type ResolvedTheme = "light" | "dark" | "oled";
 
 const STORAGE_KEY = "theme";
 
@@ -16,7 +16,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 function readStored(): ThemePreference {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "light" || v === "dark" || v === "system") return v;
+    if (v === "light" || v === "dark" || v === "oled" || v === "system") return v;
   } catch {}
   return "system";
 }
@@ -25,13 +25,17 @@ function systemPrefersDark(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
+/** "system" only ever resolves to plain dark — OLED is opt-in, never inferred from the OS. */
 function resolve(theme: ThemePreference): ResolvedTheme {
   if (theme === "system") return systemPrefersDark() ? "dark" : "light";
   return theme;
 }
 
+// OLED is a variant of dark: it keeps every dark: utility and only re-points the surface tokens.
 function applyToDocument(resolved: ResolvedTheme) {
-  document.documentElement.classList.toggle("dark", resolved === "dark");
+  const root = document.documentElement;
+  root.classList.toggle("dark", resolved !== "light");
+  root.classList.toggle("oled", resolved === "oled");
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

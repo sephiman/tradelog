@@ -9,7 +9,7 @@ import { InfoTooltip } from "./InfoTooltip";
 
 function Tile({ label, info, value }: { label: string; info?: string; value: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md border border-border p-3 dark:border-gray-700 md:block">
+    <div className="flex items-center justify-between gap-2 rounded-md border border-border p-3 md:block">
       <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
         <span>{label}</span>
         {info && <InfoTooltip text={info} />}
@@ -90,7 +90,7 @@ export function CapitalRiskView({ profileId, exchange }: { profileId: string | n
             <div className="overflow-x-auto">
               <table className="w-full min-w-[28rem] text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                  <tr className="border-b border-border text-left text-xs text-gray-500 dark:text-gray-400">
                     <th className="py-2 pr-3 font-medium">{t("analytics.exchangeLabel")}</th>
                     <th className="py-2 pr-3 text-right font-medium">{t("analytics.capital.capital")}</th>
                     <th className="py-2 pr-3 text-right font-medium">{t("analytics.capital.maxLossAt", { pct: pct1Label })}</th>
@@ -101,7 +101,7 @@ export function CapitalRiskView({ profileId, exchange }: { profileId: string | n
                   {entries.map((e) => {
                     const cap = toDecimal(e.amount);
                     return (
-                      <tr key={e.exchange} className="border-b border-border last:border-0 dark:border-gray-700">
+                      <tr key={e.exchange} className="border-b border-border last:border-0">
                         <td className="py-2 pr-3">{e.exchange}</td>
                         <td className="py-2 pr-3 text-right tabular-nums">{fmtUsd(cap.toString())}</td>
                         <td className="py-2 pr-3 text-right tabular-nums">{fmtUsd(risk(cap, p1).toString())}</td>

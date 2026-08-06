@@ -97,7 +97,7 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
           {sources.length === 0 && <li className="text-sm text-gray-500 dark:text-gray-400">{t("common.noData")}</li>}
         </ul>
 
-        <form onSubmit={onCreate} className="space-y-3 border-t border-border pt-4 dark:border-gray-700">
+        <form onSubmit={onCreate} className="space-y-3 border-t border-border pt-4">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t("dataSources.kind")}</span>
@@ -174,7 +174,7 @@ function SourceRow({ profileId, source, onDelete }: { profileId: string; source:
     });
 
   return (
-    <li className="rounded-md border border-border p-3 dark:border-gray-700">
+    <li className="rounded-md border border-border p-3">
       <div className="flex flex-wrap items-center gap-3">
         <Badge tone="sky">{SOURCE_LABELS[source.kind]}</Badge>
         <span className="font-medium">{source.label}</span>
@@ -242,7 +242,7 @@ function RetirementNotice({ kind, retirement }: { kind: SourceKind; retirement: 
   // Plain calendar date: a zone shift would show the wrong day either side of the closing date.
   const args = { venue: SOURCE_LABELS[kind], date: retirement.date };
   return retirement.closed ? (
-    <p className="mt-3 rounded-md bg-gray-100 p-2 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+    <p className="mt-3 rounded-md bg-gray-100 p-2 text-xs text-gray-600 dark:bg-surface-inset dark:text-gray-300">
       {t("dataSources.retirement.closed", args)}
     </p>
   ) : (
@@ -293,7 +293,7 @@ function CredentialsEditor({ profileId, source, onDone }: { profileId: string; s
   };
 
   return (
-    <div className="mt-3 rounded-md border border-dashed border-border p-3 dark:border-gray-600">
+    <div className="mt-3 rounded-md border border-dashed border-border-strong p-3">
       <p className="mb-2 text-xs text-amber-700 dark:text-amber-400">{t("dataSources.readOnlyHint")}</p>
       <div className="flex flex-wrap gap-3">
         <Input className="flex-1" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t("dataSources.apiKey")} autoComplete="off" />

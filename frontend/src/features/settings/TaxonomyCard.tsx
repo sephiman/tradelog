@@ -32,7 +32,7 @@ function GroupEditor({ group }: { group: TagGroup }) {
   const [newTag, setNewTag] = useState("");
 
   return (
-    <div className="rounded-md border border-border p-3 dark:border-gray-700">
+    <div className="rounded-md border border-border p-3">
       <p className="mb-2 text-sm font-medium">{group.name}</p>
       <ul className="space-y-2">
         {group.tags.map((tag) => (

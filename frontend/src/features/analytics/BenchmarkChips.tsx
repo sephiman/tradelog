@@ -44,10 +44,10 @@ export function BenchmarkChips({
             className={[
               "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
               !item.usable
-                ? "cursor-not-allowed border-border bg-gray-50 text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500"
+                ? "cursor-not-allowed border-border bg-gray-50 text-gray-400 dark:bg-surface dark:text-gray-500"
                 : active
-                  ? "border-gray-400 bg-gray-100 font-medium text-gray-900 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-100"
-                  : "border-border bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700",
+                  ? "border-gray-400 bg-gray-100 font-medium text-gray-900 dark:border-gray-500 dark:bg-surface-raised dark:text-gray-100"
+                  : "border-border-strong bg-white text-gray-600 hover:bg-gray-50 dark:bg-surface dark:text-gray-300 dark:hover:bg-surface-raised",
             ].join(" ")}
           >
             <span

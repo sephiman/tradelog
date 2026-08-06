@@ -14,7 +14,6 @@ import {
 import { useBenchmarkDaily, useBenchmarks } from "@/api/benchmarks";
 import { useCapitalSnapshots } from "@/api/capital";
 import { fmtUsd, isoToDateInput } from "@/lib/format";
-import { useTheme } from "@/lib/theme";
 import { BenchmarkChips, type BenchmarkChipItem } from "./BenchmarkChips";
 import { benchmarkColors, benchKey } from "./benchmarkOverlay";
 import { benchmarkSeriesByKey, projectLumpSum } from "./capitalBenchmark";
@@ -52,8 +51,7 @@ export function CapitalEvolutionCard({
 }) {
   const { t } = useTranslation();
   const theme = useChartTheme();
-  const { resolvedTheme } = useTheme();
-  const dark = resolvedTheme === "dark";
+  const dark = theme.dark;
   const palette = dark ? EXCHANGE_SERIES_DARK : EXCHANGE_SERIES_LIGHT;
   const otherColor = dark ? EXCHANGE_OTHER_DARK : EXCHANGE_OTHER_LIGHT;
 
@@ -186,7 +184,7 @@ export function CapitalEvolutionCard({
                   name={t("analytics.capitalEvolutionAnchors")}
                   stroke="none"
                   isAnimationActive={false}
-                  dot={{ r: 4, fill: ANCHOR_MARKER, stroke: dark ? "#1f2937" : "#ffffff", strokeWidth: 2 }}
+                  dot={{ r: 4, fill: ANCHOR_MARKER, stroke: theme.surface, strokeWidth: 2 }}
                   legendType="circle"
                 />
                 {/* One aggregated line per benchmark, unstacked so it reads against the capital total

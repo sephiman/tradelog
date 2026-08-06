@@ -17,7 +17,7 @@ export function useMonthNavState(): MonthNavState {
 
 function NavButtons({ label, onPrev, onNext }: { label: string; onPrev: () => void; onNext: () => void }) {
   const { t } = useTranslation();
-  const btn = "rounded-md border border-border px-2 py-1 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700";
+  const btn = "rounded-md border border-border-strong px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-surface-raised";
   return (
     <div className="flex items-center gap-2">
       <button type="button" className={btn} onClick={onPrev} aria-label={t("analytics.prev")}>

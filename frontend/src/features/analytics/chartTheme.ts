@@ -51,8 +51,10 @@ export function barColor(n: number): string {
 }
 
 export interface ChartTheme {
-  /** Exposed so a chart can pick a light/dark variant of a categorical palette. */
+  /** Exposed so a chart can pick a light/dark variant of a categorical palette. OLED counts as dark. */
   dark: boolean;
+  /** The card colour behind the chart — markers that punch out of a series stroke themselves with it. */
+  surface: string;
   axisColor: string;
   gridColor: string;
   seriesNeutral: string;
@@ -60,13 +62,19 @@ export interface ChartTheme {
   tooltipStyle: CSSProperties;
 }
 
-/** Shared recharts colors derived from the active theme (extracted from the old dashboard chart). */
+/**
+ * Shared recharts colors derived from the active theme (extracted from the old dashboard chart).
+ * OLED reuses every dark series colour and only retunes the chrome: on pure black the dark grid
+ * (gray-700) reads as a glare, and the tooltip needs a border to be told apart from the card.
+ */
 export function useChartTheme(): ChartTheme {
   const { resolvedTheme } = useTheme();
-  const dark = resolvedTheme === "dark";
-  const gridColor = dark ? "#374151" : "#e5e7eb";
+  const oled = resolvedTheme === "oled";
+  const dark = resolvedTheme === "dark" || oled;
+  const gridColor = oled ? "#2b2b2b" : dark ? "#374151" : "#e5e7eb";
   return {
     dark,
+    surface: oled ? "#000000" : dark ? "#1f2937" : "#ffffff",
     axisColor: dark ? "#9ca3af" : "#6b7280",
     gridColor,
     seriesNeutral: dark ? "#f3f4f6" : "#111827",
@@ -74,8 +82,8 @@ export function useChartTheme(): ChartTheme {
       fill: dark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)",
     },
     tooltipStyle: {
-      backgroundColor: dark ? "#1f2937" : "#fff",
-      border: `1px solid ${gridColor}`,
+      backgroundColor: oled ? "#0d0d0d" : dark ? "#1f2937" : "#fff",
+      border: `1px solid ${oled ? "#4a4a4a" : gridColor}`,
       borderRadius: 8,
       fontSize: 12,
       color: dark ? "#f3f4f6" : "#111827",

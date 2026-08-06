@@ -231,7 +231,7 @@ export function PositionsPage() {
 
       <Card>
         {selectionCount > 0 && (
-          <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3 text-sm dark:border-gray-700">
+          <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3 text-sm">
             <span className="font-medium">
               {allMatching
                 ? t("positions.allMatchingSelected", { total })
@@ -272,7 +272,7 @@ export function PositionsPage() {
           </div>
         )}
         {allVisibleSelected && !allMatching && total > visibleIds.length && (
-          <div className="flex flex-wrap items-center justify-center gap-2 border-b border-border bg-primary/5 px-4 py-2 text-sm dark:border-gray-700">
+          <div className="flex flex-wrap items-center justify-center gap-2 border-b border-border bg-highlight px-4 py-2 text-sm">
             <span className="text-gray-600 dark:text-gray-300">
               {t("positions.pageSelected", { count: visibleIds.length })}
             </span>
@@ -283,7 +283,7 @@ export function PositionsPage() {
         )}
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-sm">
-            <thead className="border-b border-border text-left text-xs uppercase text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            <thead className="border-b border-border text-left text-xs uppercase text-gray-500 dark:text-gray-400">
               <tr>
                 <th className="w-8 py-2">
                   <SelectAllCheckbox
@@ -339,7 +339,7 @@ export function PositionsPage() {
             <div className="py-8 text-center text-gray-500 dark:text-gray-400">{t("positions.noPositions")}</div>
           ) : (
             <>
-              <label className="flex items-center gap-2 border-b border-border px-4 py-2 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+              <label className="flex items-center gap-2 border-b border-border px-4 py-2 text-sm text-gray-600 dark:text-gray-300">
                 <SelectAllCheckbox
                   checked={allMatching || allVisibleSelected}
                   indeterminate={!allMatching && someVisibleSelected && !allVisibleSelected}
@@ -348,7 +348,7 @@ export function PositionsPage() {
                 />
                 {t("positions.selectAll")}
               </label>
-              <div className="divide-y divide-border dark:divide-gray-700">
+              <div className="divide-y divide-border">
                 {items.map((p) => (
                   <PositionCard
                     key={p.id}
@@ -365,7 +365,7 @@ export function PositionsPage() {
           )}
         </div>
         {total > 0 && (
-          <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+          <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
             <span className="tabular-nums">
               {t("positions.showing", {
                 from: page * size + 1,
@@ -478,7 +478,7 @@ function PositionRow({ profileId, position, origen, selected, selectDisabled, on
 
   return (
     <>
-      <tr className={cn("border-b border-border last:border-0 dark:border-gray-700", selected && "bg-primary/5")}>
+      <tr className={cn("border-b border-border last:border-0", selected && "bg-highlight")}>
         <td className="py-2 text-center">
           <input
             type="checkbox"
@@ -520,7 +520,7 @@ function PositionRow({ profileId, position, origen, selected, selectDisabled, on
         </td>
       </tr>
       {expanded && (
-        <tr className="bg-gray-50 dark:bg-gray-900/40">
+        <tr className="bg-gray-50 dark:bg-surface-inset">
           <td colSpan={12} className="p-4">
             <ExpandedPanel profileId={profileId} position={position} />
           </td>
@@ -536,7 +536,7 @@ function PositionCard({ profileId, position, origen, selected, selectDisabled, o
   const { currentTagId, onTagChange } = useOrigenTag(profileId, position, origen);
 
   return (
-    <div className={cn("px-4 py-3", selected && "bg-primary/5")}>
+    <div className={cn("px-4 py-3", selected && "bg-highlight")}>
       <div className="flex items-start gap-3">
         <input
           type="checkbox"
@@ -585,7 +585,7 @@ function PositionCard({ profileId, position, origen, selected, selectDisabled, o
         </div>
       </div>
       {expanded && (
-        <div className="mt-3 rounded-md bg-gray-50 p-3 dark:bg-gray-900/40">
+        <div className="mt-3 rounded-md bg-gray-50 p-3 dark:bg-surface-inset">
           <ExpandedPanel profileId={profileId} position={position} />
         </div>
       )}
@@ -623,7 +623,7 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
             </thead>
             <tbody>
               {detail!.fills.map((f) => (
-                <tr key={f.seq} className="border-t border-border dark:border-gray-700">
+                <tr key={f.seq} className="border-t border-border">
                   <td><Badge tone={f.side === "BUY" ? "green" : "red"}>{f.action}</Badge></td>
                   <td className="whitespace-nowrap text-gray-600 dark:text-gray-300">{fmtDateTime(f.ts)}</td>
                   <td className="text-right tabular-nums">{fmtNum(f.price)}</td>
@@ -657,7 +657,7 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
         </Button>
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-border pt-3 md:col-span-2 md:flex-row md:items-center md:justify-end dark:border-gray-700">
+      <div className="flex flex-col gap-2 border-t border-border pt-3 md:col-span-2 md:flex-row md:items-center md:justify-end">
         {confirmingDelete ? (
           <>
             <span className="text-sm text-gray-600 dark:text-gray-300">{t("positions.confirmDelete")}</span>

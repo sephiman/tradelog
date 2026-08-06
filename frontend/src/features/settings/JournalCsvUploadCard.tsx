@@ -45,7 +45,7 @@ export function JournalCsvUploadCard({ profileId, dataSourceId }: { profileId: s
   };
 
   return (
-    <div className="rounded-md border border-dashed border-border p-3 dark:border-gray-600">
+    <div className="rounded-md border border-dashed border-border-strong p-3">
       <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">{t("journalCsv.hint")}</p>
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -53,7 +53,7 @@ export function JournalCsvUploadCard({ profileId, dataSourceId }: { profileId: s
           type="file"
           accept="text/csv,.csv"
           onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); }}
-          className="w-full min-w-0 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm sm:w-auto dark:file:bg-gray-700 dark:file:text-gray-200"
+          className="w-full min-w-0 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm sm:w-auto dark:file:bg-surface-raised dark:file:text-gray-200"
         />
         <Button variant="secondary" disabled={!file || previewMut.isPending} onClick={onPreview}>
           {t("journalCsv.preview")}
@@ -65,7 +65,7 @@ export function JournalCsvUploadCard({ profileId, dataSourceId }: { profileId: s
       <FieldError message={error} />
 
       {preview && (
-        <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm dark:bg-gray-900/40">
+        <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm dark:bg-surface-inset">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <Stat label={t("journalCsv.totalPositions")} value={String(preview.totalPositions)} />
             <Stat

@@ -55,7 +55,7 @@ export function MetricCard({
                 onClick={() => setExpanded(true)}
                 title={t("analytics.maximize")}
                 aria-label={t("analytics.maximize")}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors"
+                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-surface-raised dark:hover:text-gray-200 transition-colors"
               >
                 <MaximizeIcon />
               </button>
@@ -73,10 +73,10 @@ export function MetricCard({
           <div
             role="dialog"
             aria-modal="true"
-            className="flex flex-col w-full max-w-6xl h-[85vh] rounded-xl border border-border bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800 overflow-hidden"
+            className="flex flex-col w-full max-w-6xl h-[85vh] rounded-xl border border-border bg-white shadow-2xl dark:bg-surface overflow-hidden"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-border p-4 dark:border-gray-700">
+            <div className="flex items-center justify-between border-b border-border p-4">
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-semibold">{title}</h3>
                 {info && <InfoTooltip text={info} />}
@@ -88,7 +88,7 @@ export function MetricCard({
                   onClick={() => setExpanded(false)}
                   title={t("common.close")}
                   aria-label={t("common.close")}
-                  className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                  className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-surface-raised transition-colors"
                 >
                   ✕
                 </button>

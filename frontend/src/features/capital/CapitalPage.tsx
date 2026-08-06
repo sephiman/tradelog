@@ -88,7 +88,7 @@ function EstimatedCard({ profileId }: { profileId: string }) {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[28rem] text-sm">
                 <thead>
-                  <tr className="border-b border-border dark:border-gray-700">
+                  <tr className="border-b border-border">
                     <th className={thClass}>{t("capital.estimated.exchange")}</th>
                     <th className={thRight}>{t("capital.estimated.estimate")}</th>
                     <th className={cn(thRight, "pr-0")}>{t("capital.estimated.anchor")}</th>
@@ -96,7 +96,7 @@ function EstimatedCard({ profileId }: { profileId: string }) {
                 </thead>
                 <tbody>
                   {anchored.map((e) => (
-                    <tr key={e.exchange} className="border-b border-border last:border-0 dark:border-gray-700">
+                    <tr key={e.exchange} className="border-b border-border last:border-0">
                       <td className="py-2 pr-3">{e.exchange}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{fmtUsd(e.amount!)}</td>
                       <td className="py-2 text-right text-xs tabular-nums text-gray-500 dark:text-gray-400">
@@ -161,7 +161,7 @@ function AdjustmentsCard({ profileId }: { profileId: string }) {
           </p>
         )}
 
-        <div className="space-y-3 rounded-md border border-border p-3 dark:border-gray-700">
+        <div className="space-y-3 rounded-md border border-border p-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
             <div>
               <Label htmlFor="adj-date">{t("capital.adjustments.date")}</Label>
@@ -195,7 +195,7 @@ function AdjustmentsCard({ profileId }: { profileId: string }) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[28rem] text-sm">
               <thead>
-                <tr className="border-b border-border dark:border-gray-700">
+                <tr className="border-b border-border">
                   <th className={thClass}>{t("capital.adjustments.date")}</th>
                   <th className={thClass}>{t("capital.adjustments.exchange")}</th>
                   <th className={thRight}>{t("capital.adjustments.amount")}</th>
@@ -205,7 +205,7 @@ function AdjustmentsCard({ profileId }: { profileId: string }) {
               <tbody>
                 {adjustments.map((a) =>
                   editing?.id === a.id ? (
-                    <tr key={a.id} className="border-b border-border last:border-0 dark:border-gray-700">
+                    <tr key={a.id} className="border-b border-border last:border-0">
                       <td className="py-2 pr-3">
                         <Input
                           type="date"
@@ -239,7 +239,7 @@ function AdjustmentsCard({ profileId }: { profileId: string }) {
                       </td>
                     </tr>
                   ) : (
-                    <tr key={a.id} className="border-b border-border last:border-0 dark:border-gray-700">
+                    <tr key={a.id} className="border-b border-border last:border-0">
                       <td className="py-2 pr-3 tabular-nums">{a.date}</td>
                       <td className="py-2 pr-3">{a.exchange}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{fmtUsd(a.amount)}</td>
@@ -336,7 +336,7 @@ function SnapshotsCard({ profileId }: { profileId: string }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border dark:border-gray-700">
+                <tr className="border-b border-border">
                   <th className={thClass}>{t("capital.snapshots.date")}</th>
                   {exchanges.map((ex) => (
                     <th key={ex} className={thRight}>
@@ -351,7 +351,7 @@ function SnapshotsCard({ profileId }: { profileId: string }) {
                 {days.map((day) => {
                   const total = day.values.reduce((acc, v) => acc + Number(v.amount), 0);
                   return (
-                    <tr key={day.date} className="border-b border-border last:border-0 dark:border-gray-700">
+                    <tr key={day.date} className="border-b border-border last:border-0">
                       <td className="py-1.5 pr-3 tabular-nums">{day.date}</td>
                       {exchanges.map((ex) => {
                         const value = day.values.find((v) => v.exchange === ex);

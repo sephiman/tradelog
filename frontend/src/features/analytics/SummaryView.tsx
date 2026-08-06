@@ -14,7 +14,7 @@ import type { DateRange } from "./useAnalyticsFilters";
 
 function Stat({ label, info, value, tone }: { label: string; info: string; value: ReactNode; tone?: string }) {
   return (
-    <div className="rounded-md border border-border p-3 dark:border-gray-700">
+    <div className="rounded-md border border-border p-3">
       <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
         <span>{label}</span>
         <InfoTooltip text={info} />

@@ -59,7 +59,7 @@ function PairBars({ rows, metric, color, t }: { rows: PairStat[]; metric: "count
                 <span className={cn("tabular-nums font-medium", pnlTone(String(p.totalPnl)))}>{fmtUsd(p.totalPnl, { sign: true })}</span>
               )}
             </div>
-            <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+            <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-surface-raised">
               <div className="h-full rounded-full" style={{ width, backgroundColor: color }} />
             </div>
           </li>

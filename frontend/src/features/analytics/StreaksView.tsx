@@ -92,9 +92,9 @@ function Calendar({ year, month, pnlByDay, lang }: { year: number; month: number
           if (day === null) return <div key={idx} />;
           const pnl = pnlByDay[day];
           const has = pnl !== undefined;
-          const tone = !has ? "bg-gray-50 dark:bg-gray-800" : pnl > 0 ? "bg-green-100 dark:bg-green-900/40" : pnl < 0 ? "bg-red-100 dark:bg-red-900/40" : "bg-gray-100 dark:bg-gray-700";
+          const tone = !has ? "bg-gray-50 dark:bg-surface" : pnl > 0 ? "bg-green-100 dark:bg-green-900/40" : pnl < 0 ? "bg-red-100 dark:bg-red-900/40" : "bg-gray-100 dark:bg-surface-raised";
           return (
-            <div key={idx} className={cn("min-h-14 rounded-md border border-border p-1 dark:border-gray-700", tone)}>
+            <div key={idx} className={cn("min-h-14 rounded-md border border-border p-1", tone)}>
               <div className="text-xs text-gray-500 dark:text-gray-400">{day}</div>
               {has && <div className={cn("mt-1 text-xs font-semibold tabular-nums", pnlTone(String(pnl)))}>{fmtUsd(pnl, { sign: true })}</div>}
             </div>

@@ -21,7 +21,7 @@ export function FilterBar({
     <div
       ref={ref}
       className={cn(
-        "sticky top-0 z-10 space-y-3 rounded-lg border border-border bg-white/95 p-3 shadow-sm backdrop-blur transition-transform duration-300 dark:border-gray-700 dark:bg-gray-800/95",
+        "sticky top-0 z-10 space-y-3 rounded-lg border border-border bg-white/95 p-3 shadow-sm backdrop-blur transition-transform duration-300 dark:bg-surface/95",
         hidden && "-translate-y-full",
       )}
     >
