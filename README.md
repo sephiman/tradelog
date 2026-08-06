@@ -238,6 +238,14 @@ BingX, BitMart, Kraken Futures, Kraken spot, Gate.io, MEXC and KuCoin Futures:
    [How far back each source goes](#how-far-back-each-source-goes). If the credentials are rejected or
    lack read permission, the source moves to an **Error** state with an actionable message.
 
+Step 1 is the fiddly one, and every exchange words it differently, so the form carries the answer:
+the **How do I get these credentials?** link under it expands into that exchange's own click-path —
+where its API page is, what to name the key, the exact permission labels to tick (and to leave
+alone), whether a passphrase is involved, what to do about IP restriction on a self-hosted setup, and
+the reminder that the secret is shown only once. It follows the **Source** dropdown, and the same link
+sits inside **Replace credentials** for when a key is rotated. For Quantfury it explains the PDF export
+instead, since there is no key to create.
+
 Per-exchange notes worth knowing before you connect:
 
 - **Bitget** comes in two flavours because the keys are not interchangeable: pick **Bitget** if your

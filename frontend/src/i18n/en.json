@@ -159,6 +159,195 @@
       "KUCOIN_FUTURES": "The last 3 months of closed positions, pulled in 7-day windows. PnL, fees and funding come from KuCoin directly. Needs the API passphrase as well as key and secret.",
       "QUANTFURY": "Your entire history — whatever is in the uploaded PDF (no API, so nothing syncs automatically).",
       "JOURNAL_CSV": "Whatever you import — a manual CSV of closed positions, e.g. from exchanges that no longer exist. Nothing syncs automatically."
+    },
+    "setupHelp": {
+      "show": "How do I get these credentials?",
+      "hide": "Hide instructions",
+      "title": "Creating a read-only {{venue}} API key",
+      "titleFile": "Exporting your {{venue}} history",
+      "readOnly": "READ-ONLY KEY: enable only read/query permissions. Never enable trading. Never enable withdrawal.",
+      "permissionsLabel": "Permissions",
+      "passphraseLabel": "Passphrase",
+      "ipLabel": "IP restriction",
+      "secretLabel": "The secret",
+      "noteLabel": "Good to know",
+      "openConsole": "Open {{venue}} API management",
+      "openConsoleFile": "Open your {{venue}} trading history",
+      "openDocs": "{{venue}}'s own instructions",
+      "venues": {
+        "BITUNIX": {
+          "steps": [
+            "Sign in at bitunix.com, hover the profile icon (top right) and click **API** to open API Management.",
+            "Click **Create API**.",
+            "In **Note**, type a name you will recognise later — the label you gave this source is a good choice.",
+            "Under **Purpose**, choose **Bind third-party app**.",
+            "Confirm with the email verification code Bitunix sends.",
+            "Copy the **API Key** and **Secret Key** into the fields above."
+          ],
+          "permissions": "Set **Permission** to **Read-only**, and nothing else — no trading, no withdrawal.",
+          "ip": "Optional; Bitunix accepts up to 20 addresses per key. Leave it empty if you self-host on a connection whose IP changes, or bind your server's address if it is fixed.",
+          "secret": "The **Secret Key** is shown only once, right after creation. Copy it before closing the dialog."
+        },
+        "BINGX": {
+          "steps": [
+            "Turn on 2FA first — BingX refuses to create API keys without it.",
+            "Open **API Management** from the profile icon, select **Main account**, then click **Create API**.",
+            "Name the key and pass the 2FA check.",
+            "Copy the **API Key** and **Secret Key** into the fields above."
+          ],
+          "permissions": "Tick **Read** and nothing else. Leave **Spot Trading** and **Perpetual Futures Trading** off, and never grant withdrawal.",
+          "ip": "Optional. A key that only has **Read** never expires on BingX even with no IP bound, so leaving it blank is fine for a self-hosted setup.",
+          "secret": "The **Secret Key** appears once, on the confirmation screen. Copy it immediately.",
+          "note": "BingX's API only serves about the last 30 days of fills, so sync regularly — older trades cannot be recovered later."
+        },
+        "BITMART": {
+          "steps": [
+            "Sign in, open the profile menu and go to **API Management**.",
+            "Create a new key and type any phrase as the **Memo** — BitMart requires one for its signature. tradelog does not use it, but save it anyway.",
+            "Complete the email and 2FA verification.",
+            "Copy the **Access Key** and **Secret Key** into the fields above."
+          ],
+          "permissions": "**Read-only** is on by default and is the only authority to leave enabled. Never **Trade**, never **Withdraw**.",
+          "ip": "Optional, and recommended by BitMart. Leave it blank if your address changes.",
+          "secret": "Copy both keys before pressing **Confirm** — the **Secret Key** cannot be viewed again afterwards.",
+          "note": "Reading BitMart only ever sends the API key (its private reads are keyed, not signed), but the form still stores a secret. BitMart closes on 2026-08-26, so import what you have before then."
+        },
+        "BINANCE_FUTURES": {
+          "steps": [
+            "Open your Futures account first if you have not already: a key created before Futures existed cannot read Futures data.",
+            "Profile icon → **Account** → **API Management** → **Create API**.",
+            "Choose **System-generated**, so Binance hands you an API key and a secret.",
+            "Label the key, then confirm with your 2FA device or passkey.",
+            "Copy the **API Key** and **Secret Key** into the fields above."
+          ],
+          "permissions": "Leave only **Enable Reading** ticked — it is on by default and covers everything tradelog reads, futures history included. Do not tick **Enable Futures**, **Enable Spot & Margin Trading** or **Enable Withdrawals**.",
+          "ip": "Pick the unrestricted option if you self-host on a changing address. Binance grants nothing beyond reading on an unrestricted key, which is exactly the scope wanted here.",
+          "secret": "The **Secret Key** is shown only once, immediately after creation. Copy it before leaving the page.",
+          "note": "If futures reads fail with a permission error, the key predates your Futures account — delete it and create a new one."
+        },
+        "BYBIT": {
+          "steps": [
+            "Profile → **Account & Security** → **API Management**, then **Create New Key**.",
+            "Choose **System-generated API Keys**.",
+            "For **API Key Usage** pick **API Transaction**, and name the key.",
+            "Copy the **API Key** and **API Secret** into the fields above."
+          ],
+          "permissions": "Select **Read-Only**, then tick the boxes under **Unified Trading** (Positions, Orders, Trade). Never **Read-Write**, and never a withdrawal or transfer box.",
+          "ip": "Bybit expires keys with no IP bound after 3 months. Bind your server's address if it is fixed; otherwise plan on replacing the key every 90 days with **Replace credentials**, which keeps the history already imported.",
+          "secret": "The **API Secret** appears once, at creation, and never again.",
+          "note": "A brand-new Bybit account has to wait 48 hours after registering before it can create API keys."
+        },
+        "OKX": {
+          "steps": [
+            "Profile → **API** to open API management, then **Create API key**.",
+            "Name the key and link it to the account whose history you want.",
+            "Invent a **Passphrase** — see below.",
+            "Copy the **API key**, **Secret key** and passphrase into the fields above."
+          ],
+          "permissions": "Select **Read** only. Never **Trade**, never **Withdraw**.",
+          "passphrase": "OKX asks you to invent a passphrase while creating the key; it is not your account password. OKX keeps only a hash of it and can never show it again, so write it down and paste it into **API passphrase** above.",
+          "ip": "Optional, up to 20 addresses. Only keys with **Trade** or **Withdraw** and no IP bound expire (after 14 idle days), so a read-only key is safe to leave unbound.",
+          "secret": "The **Secret key** and the passphrase are both shown only at creation. Lose either one and the key has to be recreated."
+        },
+        "BITGET": {
+          "steps": [
+            "Profile icon → **API Management**, then **Create API key**.",
+            "Choose **System-generated API key**.",
+            "Add a note (the key's name) and set an **API passphrase** — see below.",
+            "Complete the email, SMS or 2FA verification Bitget asks for.",
+            "Copy the **API Key** and **Secret Key** into the fields above."
+          ],
+          "permissions": "Set every permission group to **Read-only** — on a Unified Trading Account that means **Trade → Read-only** (plus **Management → Read-only** if shown). Never read-write, never withdrawal.",
+          "passphrase": "You choose the API passphrase during creation, and Bitget can neither show nor reset it afterwards: a forgotten passphrase means recreating the key. Paste it into **API passphrase** above.",
+          "ip": "Bitget recommends binding an address. Leave it empty if your self-hosted IP is dynamic.",
+          "secret": "The **Secret Key** is displayed once, at creation. Copy it along with the passphrase you chose.",
+          "note": "Use this source only if your account is on the **Unified Trading Account**. If it is not, use **Bitget Classic** instead — Bitget itself rejects the wrong generation of key."
+        },
+        "BITGET_CLASSIC": {
+          "steps": [
+            "Profile icon → **API Management**, then **Create API key**.",
+            "Choose **System-generated API key**.",
+            "Add a note (the key's name) and set an **API passphrase** — see below.",
+            "Complete the email, SMS or 2FA verification Bitget asks for.",
+            "Copy the **API Key** and **Secret Key** into the fields above."
+          ],
+          "permissions": "Set every permission group to **Read-only**, **Futures** included — that is where your closed positions come from. Never read-write, never withdrawal.",
+          "passphrase": "You choose the API passphrase during creation, and Bitget can neither show nor reset it afterwards: a forgotten passphrase means recreating the key. Paste it into **API passphrase** above.",
+          "ip": "Bitget recommends binding an address. Leave it empty if your self-hosted IP is dynamic.",
+          "secret": "The **Secret Key** is displayed once, at creation. Copy it along with the passphrase you chose.",
+          "note": "Use this source only if your account has **not** been upgraded to a Unified Trading Account. If it has, use plain **Bitget** — a UTA key is rejected here."
+        },
+        "KRAKEN_FUTURES": {
+          "steps": [
+            "Sign in at futures.kraken.com — Kraken's futures platform is a separate account from Kraken spot, with its own keys.",
+            "Click your name (top right) → **Settings**, then the **Create Key** tab of the API panel.",
+            "Press **Create Key**, then copy the **Public key** into the API key field above and the **Private key** into the API secret field."
+          ],
+          "permissions": "Set the general API permission to **Read Only** — not **Full Access**. Leave the withdrawal permission at **No Access**.",
+          "ip": "Kraken Futures does not ask for an IP whitelist, so there is nothing to choose for a self-hosted setup.",
+          "secret": "Kraken says it plainly: the private key is displayed only once. Copy it before leaving the page.",
+          "note": "A Kraken Futures key does not work for Kraken Spot, or the other way round. Fees are not imported here — Kraken documents that the fee values its futures API returns no longer match what was charged."
+        },
+        "KRAKEN_SPOT": {
+          "steps": [
+            "Sign in to Kraken Pro, open the menu (top right) → **Settings** → the **API** tab, then **Create API key**.",
+            "Give the key a unique **Key description**.",
+            "Leave **Nonce window** and the optional **Key expiry** at their defaults.",
+            "Generate the key, then copy the **API key** into the API key field above and the **Private key** into the API secret field."
+          ],
+          "permissions": "Tick only **Query closed orders & trades** — that single query is all tradelog reads. Leave **Create & modify orders**, **Cancel/close orders**, **Deposit funds** and **Withdraw funds** off.",
+          "ip": "Optional. Leave the IP restriction empty unless your server has a fixed address.",
+          "secret": "The **Private key** is shown once, at creation. Store it like a password.",
+          "note": "This is Kraken's spot platform — a different account and balance from Kraken Futures. Its first sync walks back years in small windows and paces itself against Kraken's rate limit, so expect it to take a while."
+        },
+        "GATEIO_FUTURES": {
+          "steps": [
+            "Sign in to Gate, hover the profile icon and open **API Management** (also reachable as Personal Center → **Sub account and API** → **APIv4 Keys**).",
+            "Click **Create API Key** and pick **API v4 Key** as the type.",
+            "Enter an **API Key Remark** — the key's name — and select the account the history belongs to.",
+            "Confirm with your fund password and 2FA, then copy the **Key** and **Secret** into the fields above."
+          ],
+          "permissions": "In the permission list set **Perpetual Futures** to **Read Only** and leave every other row off — **Withdraw** above all. Never **Read and Write**.",
+          "ip": "Optional. Leave **Bind IP** blank if your self-hosted address is dynamic.",
+          "secret": "The **Secret** is shown only at creation. Copy it before closing the dialog."
+        },
+        "MEXC_FUTURES": {
+          "steps": [
+            "Complete KYC verification first — MEXC only grants futures API permission to verified accounts.",
+            "Profile icon → **API Management** to open the API page, then create a new key.",
+            "Add a note (the key's name) and set the permissions below.",
+            "Pass the security verification, then copy the **Access Key** and **Secret Key** into the fields above."
+          ],
+          "permissions": "Enable only the read/query permission for **Futures**. No order placement, no transfers, no withdrawal.",
+          "ip": "MEXC expires keys with no IP bound after 90 days, renewable from 5 days before expiry. Bind your server's address if it is fixed; otherwise plan on replacing the key quarterly with **Replace credentials**.",
+          "secret": "MEXC shows the **Secret Key** only once and says so — store it immediately.",
+          "note": "MEXC restricts futures API access, so even a correctly configured new key can be refused outright. A permissions error on the first sync is that restriction rather than a mistake in your setup."
+        },
+        "KUCOIN_FUTURES": {
+          "steps": [
+            "Profile avatar → **API Management**, then **Create API**.",
+            "Choose **Link Third-Party Applications**: that type cannot withdraw and needs no IP address. (**API Trading** works too if you would rather bind one.)",
+            "Enter an **API Name** and an **API Passphrase** you invent — see below.",
+            "Confirm with your trading password, the email code and your 2FA code.",
+            "Copy the **API Key** and **API Secret** into the fields above."
+          ],
+          "permissions": "Tick **General** only — that is KuCoin's read-only scope. Leave **Spot Trading**, **Futures Trading**, **Margin Trading**, **Transfer** and **Withdrawal** unticked.",
+          "passphrase": "You invent the API passphrase while creating the key, and KuCoin never shows it again. Paste it into **API passphrase** above.",
+          "ip": "Not required for a third-party-app key. On an **API Trading** key, add your server's address if it is fixed.",
+          "secret": "Key, secret and passphrase cannot be recovered once lost — copy all three the moment they appear.",
+          "note": "One KuCoin key covers the futures API host as well; tradelog reads only your closed futures positions."
+        },
+        "QUANTFURY": {
+          "steps": [
+            "Open Quantfury and go to **Trading History** — in the side menu of the mobile app, or the main menu of the web platform.",
+            "Open the **Closed Positions** tab.",
+            "Optionally tap the filter icon (top right) to narrow the report; importing is idempotent, so the filter you pick does not matter.",
+            "At the bottom of the page, tap the **PDF** icon to download the **Trading History Report**.",
+            "Back here, choose that PDF in the upload card, press **Preview** to check what was found, then **Import**."
+          ],
+          "note": "Quantfury has no API, so nothing syncs on its own — export again whenever you want to catch up, and re-importing skips duplicates. Download the **PDF** report: Quantfury's Excel export is a different layout that tradelog does not parse."
+        }
+      }
     }
   },
   "journalCsv": {

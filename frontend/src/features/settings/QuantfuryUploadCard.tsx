@@ -6,6 +6,7 @@ import { Button, FieldError } from "@/components/ui/primitives";
 import { showToast } from "@/lib/toastBus";
 import { fmtDate, fmtUsd, pnlTone } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { ExchangeSetupHelp } from "./ExchangeSetupHelp";
 
 export function QuantfuryUploadCard({ profileId, dataSourceId }: { profileId: string; dataSourceId: string }) {
   const { t } = useTranslation();
@@ -46,6 +47,8 @@ export function QuantfuryUploadCard({ profileId, dataSourceId }: { profileId: st
   return (
     <div className="rounded-md border border-dashed border-border p-3 dark:border-gray-600">
       <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">{t("quantfury.hint")}</p>
+      {/* Where the report comes from, next to the picker that wants it — the add-source form is long gone by now. */}
+      <ExchangeSetupHelp kind="QUANTFURY" className="mb-3" />
       <div className="flex flex-wrap items-center gap-2">
         <input
           ref={fileRef}

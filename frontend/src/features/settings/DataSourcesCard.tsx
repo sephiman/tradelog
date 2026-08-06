@@ -20,6 +20,7 @@ import {
   SOURCE_LABELS,
   type Retirement,
 } from "@/lib/sourceKinds";
+import { ExchangeSetupHelp } from "./ExchangeSetupHelp";
 import { QuantfuryUploadCard } from "./QuantfuryUploadCard";
 import { JournalCsvUploadCard } from "./JournalCsvUploadCard";
 
@@ -137,6 +138,8 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
               <p className="text-xs text-gray-500 dark:text-gray-400">{t("dataSources.syncFromHint")}</p>
             </div>
           )}
+          {/* Outside the API block on purpose: Quantfury has no key to paste but still needs its export steps. */}
+          <ExchangeSetupHelp kind={kind} />
         </form>
       </CardBody>
     </Card>
@@ -302,6 +305,8 @@ function CredentialsEditor({ profileId, source, onDone }: { profileId: string; s
       {wantsPassphrase && (
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t("dataSources.passphraseHint")}</p>
       )}
+      {/* Rotating a key means going back to the exchange, so the same instructions belong here too. */}
+      <ExchangeSetupHelp kind={source.kind} className="mt-2" />
       <div className="mt-2 flex justify-end gap-2">
         <Button variant="ghost" onClick={onDone}>{t("common.cancel")}</Button>
         <Button disabled={updateMut.isPending || !complete} onClick={onSave}>

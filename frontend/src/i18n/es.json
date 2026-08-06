@@ -159,6 +159,195 @@
       "KUCOIN_FUTURES": "Los últimos 3 meses de posiciones cerradas, en ventanas de 7 días. PnL, comisiones y funding vienen directamente de KuCoin. Necesita la passphrase de API además de la clave y el secreto.",
       "QUANTFURY": "Todo tu historial — lo que contenga el PDF subido (sin API, no se sincroniza nada automáticamente).",
       "JOURNAL_CSV": "Lo que importes — un CSV manual de posiciones cerradas, p. ej. de exchanges que ya no existen. No se sincroniza nada automáticamente."
+    },
+    "setupHelp": {
+      "show": "¿Cómo consigo estas credenciales?",
+      "hide": "Ocultar instrucciones",
+      "title": "Crear una clave de API de solo lectura en {{venue}}",
+      "titleFile": "Exportar tu historial de {{venue}}",
+      "readOnly": "CLAVE DE SOLO LECTURA: activa únicamente permisos de lectura o consulta. Nunca actives trading. Nunca actives retiradas.",
+      "permissionsLabel": "Permisos",
+      "passphraseLabel": "Passphrase",
+      "ipLabel": "Restricción por IP",
+      "secretLabel": "El secreto",
+      "noteLabel": "Conviene saber",
+      "openConsole": "Abrir la gestión de API de {{venue}}",
+      "openConsoleFile": "Abrir tu historial de operaciones en {{venue}}",
+      "openDocs": "Instrucciones oficiales de {{venue}}",
+      "venues": {
+        "BITUNIX": {
+          "steps": [
+            "Entra en bitunix.com, pasa el ratón por el icono de perfil (arriba a la derecha) y pulsa **API** para abrir API Management.",
+            "Pulsa **Create API**.",
+            "En **Note**, escribe un nombre que reconozcas después — la etiqueta que le has dado a esta fuente vale.",
+            "En **Purpose**, elige **Bind third-party app**.",
+            "Confirma con el código de verificación que Bitunix envía por email.",
+            "Copia la **API Key** y la **Secret Key** en los campos de arriba."
+          ],
+          "permissions": "Pon **Permission** en **Read-only** y nada más: sin trading y sin retiradas.",
+          "ip": "Opcional; Bitunix admite hasta 20 direcciones por clave. Déjalo vacío si te autoalojas en una conexión con IP cambiante, o vincula la IP de tu servidor si es fija.",
+          "secret": "La **Secret Key** se muestra una sola vez, justo al crearla. Cópiala antes de cerrar el diálogo."
+        },
+        "BINGX": {
+          "steps": [
+            "Activa primero el 2FA — BingX no crea claves de API sin él.",
+            "Abre **API Management** desde el icono de perfil, selecciona **Main account** y pulsa **Create API**.",
+            "Ponle nombre a la clave y pasa la verificación 2FA.",
+            "Copia la **API Key** y la **Secret Key** en los campos de arriba."
+          ],
+          "permissions": "Marca **Read** y nada más. Deja **Spot Trading** y **Perpetual Futures Trading** sin marcar, y nunca concedas retiradas.",
+          "ip": "Opcional. En BingX una clave que solo tiene **Read** no caduca aunque no tenga IP vinculada, así que dejarlo en blanco es válido para una instalación propia.",
+          "secret": "La **Secret Key** aparece una sola vez, en la pantalla de confirmación. Cópiala en ese momento.",
+          "note": "La API de BingX solo sirve unos 30 días de ejecuciones, así que sincroniza con regularidad — lo más antiguo no se puede recuperar después."
+        },
+        "BITMART": {
+          "steps": [
+            "Entra en tu cuenta, abre el menú de perfil y ve a **API Management**.",
+            "Crea una clave nueva y escribe cualquier frase como **Memo** — BitMart exige una para su firma. tradelog no la usa, pero guárdala igualmente.",
+            "Completa la verificación por email y 2FA.",
+            "Copia la **Access Key** y la **Secret Key** en los campos de arriba."
+          ],
+          "permissions": "**Read-only** viene activado por defecto y es el único permiso que debes dejar puesto. Nunca **Trade**, nunca **Withdraw**.",
+          "ip": "Opcional, y recomendada por BitMart. Déjala en blanco si tu dirección cambia.",
+          "secret": "Copia las dos claves antes de pulsar **Confirm** — la **Secret Key** ya no se puede volver a ver.",
+          "note": "Al leer BitMart solo se envía la clave de API (sus lecturas privadas van por clave, no firmadas), pero el formulario guarda igualmente un secreto. BitMart cierra el 2026-08-26: importa lo que tengas antes de esa fecha."
+        },
+        "BINANCE_FUTURES": {
+          "steps": [
+            "Abre primero tu cuenta de Futures si aún no la tienes: una clave creada antes de que existiera Futures no puede leer datos de Futures.",
+            "Icono de perfil → **Account** → **API Management** → **Create API**.",
+            "Elige **System-generated**, para que Binance te dé una clave de API y un secreto.",
+            "Ponle una etiqueta y confirma con tu dispositivo 2FA o passkey.",
+            "Copia la **API Key** y la **Secret Key** en los campos de arriba."
+          ],
+          "permissions": "Deja marcado solo **Enable Reading** — viene activado por defecto y cubre todo lo que lee tradelog, incluido el historial de futuros. No marques **Enable Futures**, **Enable Spot & Margin Trading** ni **Enable Withdrawals**.",
+          "ip": "Elige la opción sin restricción si te autoalojas con una dirección cambiante. En una clave sin restricción Binance no concede nada más que lectura, que es justo el alcance que buscamos.",
+          "secret": "La **Secret Key** se muestra una sola vez, justo después de crearla. Cópiala antes de salir de la página.",
+          "note": "Si las lecturas de futuros fallan con un error de permisos, la clave es anterior a tu cuenta de Futures: bórrala y crea otra."
+        },
+        "BYBIT": {
+          "steps": [
+            "Perfil → **Account & Security** → **API Management** y pulsa **Create New Key**.",
+            "Elige **System-generated API Keys**.",
+            "En **API Key Usage** elige **API Transaction** y ponle nombre a la clave.",
+            "Copia la **API Key** y la **API Secret** en los campos de arriba."
+          ],
+          "permissions": "Selecciona **Read-Only** y marca las casillas de **Unified Trading** (Positions, Orders, Trade). Nunca **Read-Write**, y nunca una casilla de retirada o transferencia.",
+          "ip": "Bybit caduca las claves sin IP vinculada a los 3 meses. Vincula la dirección de tu servidor si es fija; si no, cuenta con reemplazar la clave cada 90 días con **Reemplazar credenciales**, que conserva el historial ya importado.",
+          "secret": "La **API Secret** aparece una sola vez, al crearla, y nunca más.",
+          "note": "Una cuenta de Bybit recién registrada debe esperar 48 horas antes de poder crear claves de API."
+        },
+        "OKX": {
+          "steps": [
+            "Perfil → **API** para abrir la gestión de API y pulsa **Create API key**.",
+            "Ponle nombre a la clave y vincúlala a la cuenta cuyo historial quieres.",
+            "Inventa una **Passphrase** — mira más abajo.",
+            "Copia la **API key**, la **Secret key** y la passphrase en los campos de arriba."
+          ],
+          "permissions": "Selecciona solo **Read**. Nunca **Trade**, nunca **Withdraw**.",
+          "passphrase": "OKX te pide inventar una passphrase al crear la clave; no es la contraseña de tu cuenta. OKX solo guarda un hash y no puede volver a mostrarla, así que apúntala y pégala en **Passphrase de API** arriba.",
+          "ip": "Opcional, hasta 20 direcciones. Solo caducan (a los 14 días sin uso) las claves con **Trade** o **Withdraw** y sin IP vinculada, así que una clave de solo lectura puede quedarse sin vincular.",
+          "secret": "La **Secret key** y la passphrase solo se muestran al crear la clave. Si pierdes cualquiera de las dos, hay que crearla de nuevo."
+        },
+        "BITGET": {
+          "steps": [
+            "Icono de perfil → **API Management** y pulsa **Create API key**.",
+            "Elige **System-generated API key**.",
+            "Añade una nota (el nombre de la clave) y define una **API passphrase** — mira más abajo.",
+            "Completa la verificación por email, SMS o 2FA que pida Bitget.",
+            "Copia la **API Key** y la **Secret Key** en los campos de arriba."
+          ],
+          "permissions": "Pon todos los grupos de permisos en **Read-only** — en una Unified Trading Account eso es **Trade → Read-only** (y **Management → Read-only** si aparece). Nunca lectura y escritura, nunca retiradas.",
+          "passphrase": "La API passphrase la eliges tú al crear la clave, y Bitget no puede mostrarla ni restablecerla después: si se te olvida, hay que crear otra clave. Pégala en **Passphrase de API** arriba.",
+          "ip": "Bitget recomienda vincular una dirección. Déjalo vacío si tu IP es dinámica.",
+          "secret": "La **Secret Key** se muestra una sola vez, al crearla. Cópiala junto con la passphrase que elegiste.",
+          "note": "Usa esta fuente solo si tu cuenta está en la **Unified Trading Account**. Si no lo está, usa **Bitget Classic** — Bitget rechaza por sí solo la generación de clave equivocada."
+        },
+        "BITGET_CLASSIC": {
+          "steps": [
+            "Icono de perfil → **API Management** y pulsa **Create API key**.",
+            "Elige **System-generated API key**.",
+            "Añade una nota (el nombre de la clave) y define una **API passphrase** — mira más abajo.",
+            "Completa la verificación por email, SMS o 2FA que pida Bitget.",
+            "Copia la **API Key** y la **Secret Key** en los campos de arriba."
+          ],
+          "permissions": "Pon todos los grupos de permisos en **Read-only**, incluido **Futures** — de ahí salen tus posiciones cerradas. Nunca lectura y escritura, nunca retiradas.",
+          "passphrase": "La API passphrase la eliges tú al crear la clave, y Bitget no puede mostrarla ni restablecerla después: si se te olvida, hay que crear otra clave. Pégala en **Passphrase de API** arriba.",
+          "ip": "Bitget recomienda vincular una dirección. Déjalo vacío si tu IP es dinámica.",
+          "secret": "La **Secret Key** se muestra una sola vez, al crearla. Cópiala junto con la passphrase que elegiste.",
+          "note": "Usa esta fuente solo si tu cuenta **no** se ha migrado a la Unified Trading Account. Si sí lo está, usa **Bitget** normal — aquí una clave de UTA es rechazada."
+        },
+        "KRAKEN_FUTURES": {
+          "steps": [
+            "Entra en futures.kraken.com — la plataforma de futuros de Kraken es una cuenta aparte de Kraken spot, con sus propias claves.",
+            "Pulsa tu nombre (arriba a la derecha) → **Settings** y luego la pestaña **Create Key** del panel de API.",
+            "Pulsa **Create Key** y copia la **Public key** en el campo de clave de API de arriba y la **Private key** en el de secreto."
+          ],
+          "permissions": "Pon el permiso general de API en **Read Only**, no en **Full Access**. Deja el permiso de retirada en **No Access**.",
+          "ip": "Kraken Futures no pide lista blanca de IP, así que no hay nada que elegir en una instalación propia.",
+          "secret": "Kraken lo dice sin rodeos: la clave privada se muestra una sola vez. Cópiala antes de salir de la página.",
+          "note": "Una clave de Kraken Futures no sirve para Kraken Spot, ni al contrario. Aquí las comisiones no se importan: Kraken documenta que los valores de comisión que devuelve su API de futuros ya no coinciden con lo que se cobró."
+        },
+        "KRAKEN_SPOT": {
+          "steps": [
+            "Entra en Kraken Pro, abre el menú (arriba a la derecha) → **Settings** → pestaña **API** y pulsa **Create API key**.",
+            "Dale a la clave una **Key description** única.",
+            "Deja **Nonce window** y la caducidad opcional (**Key expiry**) con sus valores por defecto.",
+            "Genera la clave y copia la **API key** en el campo de clave de API de arriba y la **Private key** en el de secreto."
+          ],
+          "permissions": "Marca solo **Query closed orders & trades** — esa única consulta es todo lo que lee tradelog. Deja sin marcar **Create & modify orders**, **Cancel/close orders**, **Deposit funds** y **Withdraw funds**.",
+          "ip": "Opcional. Deja la restricción por IP vacía salvo que tu servidor tenga dirección fija.",
+          "secret": "La **Private key** se muestra una sola vez, al crearla. Guárdala como una contraseña.",
+          "note": "Esta es la plataforma spot de Kraken — una cuenta y un saldo distintos de Kraken Futures. Su primera sincronización recorre años en ventanas pequeñas y se autolimita según el contador de Kraken, así que tardará un rato."
+        },
+        "GATEIO_FUTURES": {
+          "steps": [
+            "Entra en Gate, pasa el ratón por el icono de perfil y abre **API Management** (también está en Personal Center → **Sub account and API** → **APIv4 Keys**).",
+            "Pulsa **Create API Key** y elige el tipo **API v4 Key**.",
+            "Escribe un **API Key Remark** — el nombre de la clave — y elige la cuenta a la que pertenece el historial.",
+            "Confirma con tu contraseña de fondos y el 2FA, y copia la **Key** y el **Secret** en los campos de arriba."
+          ],
+          "permissions": "En la lista de permisos pon **Perpetual Futures** en **Read Only** y deja todas las demás filas desactivadas — sobre todo **Withdraw**. Nunca **Read and Write**.",
+          "ip": "Opcional. Deja **Bind IP** en blanco si tu dirección es dinámica.",
+          "secret": "El **Secret** solo se muestra al crear la clave. Cópialo antes de cerrar el diálogo."
+        },
+        "MEXC_FUTURES": {
+          "steps": [
+            "Completa primero la verificación KYC — MEXC solo concede permiso de API de futuros a cuentas verificadas.",
+            "Icono de perfil → **API Management** para abrir la página de API y crea una clave nueva.",
+            "Añade una nota (el nombre de la clave) y define los permisos de abajo.",
+            "Pasa la verificación de seguridad y copia la **Access Key** y la **Secret Key** en los campos de arriba."
+          ],
+          "permissions": "Activa solo el permiso de lectura o consulta de **Futures**. Sin envío de órdenes, sin transferencias y sin retiradas.",
+          "ip": "MEXC caduca las claves sin IP vinculada a los 90 días, renovables desde 5 días antes. Vincula la dirección de tu servidor si es fija; si no, cuenta con reemplazar la clave cada trimestre con **Reemplazar credenciales**.",
+          "secret": "MEXC muestra la **Secret Key** una sola vez y lo advierte — guárdala en el momento.",
+          "note": "MEXC restringe el acceso a la API de futuros, así que incluso una clave nueva bien configurada puede ser rechazada. Un error de permisos en la primera sincronización es esa restricción, no un fallo de tu configuración."
+        },
+        "KUCOIN_FUTURES": {
+          "steps": [
+            "Avatar de perfil → **API Management** y pulsa **Create API**.",
+            "Elige **Link Third-Party Applications**: ese tipo no puede retirar y no necesita dirección IP. (**API Trading** también sirve si prefieres vincular una.)",
+            "Escribe un **API Name** y una **API Passphrase** que inventes — mira más abajo.",
+            "Confirma con tu contraseña de trading, el código por email y el del 2FA.",
+            "Copia la **API Key** y la **API Secret** en los campos de arriba."
+          ],
+          "permissions": "Marca solo **General** — ese es el alcance de solo lectura de KuCoin. Deja sin marcar **Spot Trading**, **Futures Trading**, **Margin Trading**, **Transfer** y **Withdrawal**.",
+          "passphrase": "La API passphrase la inventas al crear la clave y KuCoin no la vuelve a mostrar. Pégala en **Passphrase de API** arriba.",
+          "ip": "No hace falta en una clave de app de terceros. En una clave de **API Trading**, añade la dirección de tu servidor si es fija.",
+          "secret": "Clave, secreto y passphrase no se pueden recuperar si se pierden — copia los tres en cuanto aparezcan.",
+          "note": "Una misma clave de KuCoin sirve también para el host de la API de futuros; tradelog solo lee tus posiciones de futuros cerradas."
+        },
+        "QUANTFURY": {
+          "steps": [
+            "Abre Quantfury y ve a **Trading History** — en el menú lateral de la app móvil, o en el menú principal de la plataforma web.",
+            "Abre la pestaña **Closed Positions**.",
+            "Si quieres, pulsa el icono de filtro (arriba a la derecha) para acotar el informe; la importación es idempotente, así que el filtro que elijas no importa.",
+            "Al final de la página, pulsa el icono **PDF** para descargar el **Trading History Report**.",
+            "Vuelve aquí, elige ese PDF en la tarjeta de subida, pulsa **Previsualizar** para ver lo que se ha encontrado y luego **Importar**."
+          ],
+          "note": "Quantfury no tiene API, así que nada se sincroniza solo — vuelve a exportar cuando quieras ponerte al día; al reimportar se omiten los duplicados. Descarga el informe en **PDF**: la exportación a Excel de Quantfury tiene otro formato que tradelog no interpreta."
+        }
+      }
     }
   },
   "journalCsv": {
