@@ -2,11 +2,16 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/cn";
+import logoLight from "@/assets/logo-light.png";
+import logoDark from "@/assets/logo-dark.png";
+import logoOled from "@/assets/logo-oled.png";
 
+// Imported rather than referenced by public/ path so the build fingerprints them into
+// /assets/, where nginx serves them immutable for a year.
 const LOGO_SRC = {
-  light: "/logo-light.png",
-  dark: "/logo-dark.png",
-  oled: "/logo-oled.png",
+  light: logoLight,
+  dark: logoDark,
+  oled: logoOled,
 } as const;
 
 /**
