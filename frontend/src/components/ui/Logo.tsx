@@ -12,8 +12,8 @@ const LOGO_SRC = {
 /**
  * Renders the Trade Log wordmark, picking the artwork that matches the currently
  * resolved theme (the dark logo has white text for dark backgrounds, the light
- * logo has dark text for light backgrounds). All three are opaque, so OLED needs
- * its own copy: the dark one's #1e2939 canvas would show as a box on pure black.
+ * logo has dark text for light backgrounds). All three have a real alpha channel,
+ * so OLED's copy now differs only in the artwork's own tones, not its canvas.
  *
  * Pass [to] to make the wordmark a link — used by the app shell to send the
  * logo home. Left off on the auth screens, whose logo must stay inert rather
