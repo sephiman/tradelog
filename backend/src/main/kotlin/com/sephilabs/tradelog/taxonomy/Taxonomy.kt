@@ -7,6 +7,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
+import java.time.Instant
 import java.util.UUID
 
 @Entity
@@ -47,6 +48,10 @@ class Tag(
 
     @Column(name = "sort_order", nullable = false)
     var sortOrder: Int = 1000,
+
+    /** Set when the tag is retired: it can no longer be assigned, but existing links are untouched. */
+    @Column(name = "archived_at")
+    var archivedAt: Instant? = null,
 ) : TimestampedEntity()
 
 interface TagGroupRepository : JpaRepository<TagGroup, UUID> {

@@ -3,6 +3,7 @@ package com.sephilabs.tradelog.position
 
 import com.sephilabs.tradelog.common.PageResponse
 import com.sephilabs.tradelog.common.errors.AppException
+import com.sephilabs.tradelog.taxonomy.Tag
 import com.sephilabs.tradelog.taxonomy.TagGroupRepository
 import com.sephilabs.tradelog.taxonomy.TagRepository
 import com.sephilabs.tradelog.taxonomy.TaxonomyService
@@ -109,10 +110,11 @@ class PositionService(
     @Transactional
     fun setTag(userId: UUID, profileId: UUID, positionId: UUID, groupId: UUID, tagId: UUID) {
         loadOwn(profileId, positionId)
-        val owningGroup = taxonomy.groupIdOfOwnedTag(userId, tagId)
-            ?: throw AppException.notFound("TAG_NOT_FOUND")
-        if (owningGroup != groupId) throw AppException.badRequest("TAG_GROUP_MISMATCH")
+        val tag = resolveAssignable(userId, groupId, tagId)
         val existing = positionTags.findByIdPositionIdAndIdGroupId(positionId, groupId)
+        // An archived tag may only be re-submitted for a position that already carries it (a no-op
+        // save from an editor that still shows it); assigning it anywhere new is refused.
+        if (tag.archivedAt != null && existing?.tagId != tagId) throw AppException.badRequest("TAG_ARCHIVED")
         if (existing != null) {
             existing.tagId = tagId
         } else {
@@ -130,9 +132,10 @@ class PositionService(
     @Transactional
     fun bulkSetTag(userId: UUID, profileId: UUID, groupId: UUID, req: BulkSetTagRequest): Int {
         if (req.tagId != null) {
-            val owningGroup = taxonomy.groupIdOfOwnedTag(userId, req.tagId)
-                ?: throw AppException.notFound("TAG_NOT_FOUND")
-            if (owningGroup != groupId) throw AppException.badRequest("TAG_GROUP_MISMATCH")
+            // Bulk is always a fresh assignment across the selection, so an archived tag is refused
+            // outright — unlike setTag, there is no "already carries it" case to preserve.
+            val tag = resolveAssignable(userId, groupId, req.tagId)
+            if (tag.archivedAt != null) throw AppException.badRequest("TAG_ARCHIVED")
         }
         val ids = resolveBulkTargetIds(profileId, req)
         if (ids.isEmpty()) return 0
@@ -141,6 +144,13 @@ class PositionService(
             positionTags.saveAll(ids.map { PositionTag(PositionTagId(it, groupId), req.tagId) })
         }
         return ids.size
+    }
+
+    /** The user's own tag [tagId], asserted to live in [groupId]. Archived-ness is the caller's call. */
+    private fun resolveAssignable(userId: UUID, groupId: UUID, tagId: UUID): Tag {
+        val tag = taxonomy.ownedTag(userId, tagId) ?: throw AppException.notFound("TAG_NOT_FOUND")
+        if (tag.groupId != groupId) throw AppException.badRequest("TAG_GROUP_MISMATCH")
+        return tag
     }
 
     private fun resolveBulkTargetIds(profileId: UUID, req: BulkSetTagRequest): List<UUID> =

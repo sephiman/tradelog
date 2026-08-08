@@ -197,4 +197,39 @@ class PositionSearchAndAnnotationTest @Autowired constructor(
         assertThatThrownBy { service.setTag(userId, profileId, positionId, otherOrigen.id, foreignTag) }
             .isInstanceOf(AppException::class.java)
     }
+
+    @Test
+    fun `an archived tag cannot be newly assigned but survives on the positions that carry it`() {
+        setup()
+        upsert.upsert(
+            dsId, profileId, SourceKind.BITUNIX, "Bitunix",
+            listOf(rec("e", "ETH", PositionSide.LONG), rec("b", "BTC", PositionSide.SHORT)),
+        )
+        val origen = taxonomy.listGroups(userId).first { it.code == "origen" }
+        val retired = origen.tags[0]
+        val eth = service.search(PositionSearchCriteria(profileId, symbolBase = "ETH")).items.first().id
+        val btc = service.search(PositionSearchCriteria(profileId, symbolBase = "BTC")).items.first().id
+
+        service.setTag(userId, profileId, eth, origen.id, retired.id)
+        taxonomy.setTagArchived(userId, origen.id, retired.id, true)
+
+        // The already-tagged position keeps the annotation, and stays reachable by that filter.
+        assertThat(service.get(profileId, eth).position.tags.single().tagId).isEqualTo(retired.id)
+        assertThat(service.search(PositionSearchCriteria(profileId, tagId = retired.id)).total).isEqualTo(1)
+        // Re-submitting the same tag for that position is still a no-op, not an error.
+        service.setTag(userId, profileId, eth, origen.id, retired.id)
+
+        // Assigning it anywhere new is refused, one position at a time or in bulk.
+        assertThatThrownBy { service.setTag(userId, profileId, btc, origen.id, retired.id) }
+            .isInstanceOf(AppException::class.java)
+        assertThatThrownBy {
+            service.bulkSetTag(userId, profileId, origen.id, BulkSetTagRequest(tagId = retired.id, positionIds = listOf(btc)))
+        }.isInstanceOf(AppException::class.java)
+        assertThat(service.get(profileId, btc).position.tags).isEmpty()
+
+        // Unarchiving restores normal assignment.
+        taxonomy.setTagArchived(userId, origen.id, retired.id, false)
+        service.setTag(userId, profileId, btc, origen.id, retired.id)
+        assertThat(service.search(PositionSearchCriteria(profileId, tagId = retired.id)).total).isEqualTo(2)
+    }
 }

@@ -15,11 +15,12 @@ import {
   type Position,
   type PositionFilters,
 } from "@/api/positions";
-import { useTaxonomy, type TagGroup } from "@/api/taxonomy";
+import { isArchived, useTaxonomy, type TagGroup } from "@/api/taxonomy";
 import { Badge, Button, Card, CardBody, Input, Select, Textarea } from "@/components/ui/primitives";
 import { QueryError } from "@/components/ui/QueryError";
 import { cn } from "@/lib/cn";
 import { dateInputToIso, fmtDateTime, fmtNum, fmtUsd, isoToDateInput, pnlTone, toDecimal } from "@/lib/format";
+import { useTagLabel } from "@/lib/tagLabel";
 import { showToast } from "@/lib/toastBus";
 
 /** Sentinel option value for the origen filter that selects positions with no origen tag. */
@@ -33,6 +34,10 @@ export function PositionsPage() {
   const { data: exchanges = [] } = usePositionExchanges(activeProfileId);
   const { data: taxonomy = [] } = useTaxonomy();
   const origen = useMemo(() => taxonomy.find((g) => g.code === "origen") ?? taxonomy[0], [taxonomy]);
+  // Bulk assignment is always new, so archived tags are never offered here — unlike the filter above,
+  // which keeps them so historical positions stay reachable.
+  const assignableTags = useMemo(() => (origen?.tags ?? []).filter((tag) => !isArchived(tag)), [origen]);
+  const tagLabel = useTagLabel();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [allMatching, setAllMatching] = useState(false);
@@ -201,7 +206,7 @@ export function PositionsPage() {
                   <option value="">{t("common.all")}</option>
                   <option value={ORIGEN_UNSET}>{t("positions.origenUnset")}</option>
                   {origen.tags.map((tag) => (
-                    <option key={tag.id} value={tag.id}>{tag.name}</option>
+                    <option key={tag.id} value={tag.id}>{tagLabel(tag)}</option>
                   ))}
                 </Select>
               </FilterField>
@@ -242,7 +247,7 @@ export function PositionsPage() {
                 <span className="text-gray-500 dark:text-gray-400">{t("positions.bulkSetOrigen")}</span>
                 <Select className="w-36" value={bulkTagId} onChange={(e) => setBulkTagId(e.target.value)}>
                   <option value="">{t("common.none")}</option>
-                  {origen.tags.map((tag) => (
+                  {assignableTags.map((tag) => (
                     <option key={tag.id} value={tag.id}>{tag.name}</option>
                   ))}
                 </Select>
@@ -461,11 +466,15 @@ function OrigenSelect({
   className?: string;
 }) {
   const { t } = useTranslation();
+  const tagLabel = useTagLabel();
+  // An archived tag is dropped from the list unless this position already carries it, in which case
+  // it stays selected (and re-selectable) so the annotation is never silently lost on edit.
+  const options = origen.tags.filter((tag) => !isArchived(tag) || tag.id === value);
   return (
     <Select className={className} value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{t("common.none")}</option>
-      {origen.tags.map((tag) => (
-        <option key={tag.id} value={tag.id}>{tag.name}</option>
+      {options.map((tag) => (
+        <option key={tag.id} value={tag.id}>{tagLabel(tag)}</option>
       ))}
     </Select>
   );

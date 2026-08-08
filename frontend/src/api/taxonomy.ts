@@ -6,7 +6,11 @@ export interface Tag {
   code: string;
   name: string;
   sortOrder: number;
+  /** Set once the tag is retired: still filterable and still shown on positions, but not assignable. */
+  archivedAt: string | null;
 }
+
+export const isArchived = (tag: Tag) => tag.archivedAt !== null;
 
 export interface TagGroup {
   id: string;
@@ -53,6 +57,15 @@ export function useUpdateTag() {
   return useMutation({
     mutationFn: async ({ groupId, tagId, name }: { groupId: string; tagId: string; name: string }) =>
       (await apiClient.put<Tag>(`/taxonomy/groups/${groupId}/tags/${tagId}`, { name })).data,
+    onSuccess: inv,
+  });
+}
+
+export function useSetTagArchived() {
+  const inv = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ groupId, tagId, archived }: { groupId: string; tagId: string; archived: boolean }) =>
+      (await apiClient.put<Tag>(`/taxonomy/groups/${groupId}/tags/${tagId}/archived`, { archived })).data,
     onSuccess: inv,
   });
 }

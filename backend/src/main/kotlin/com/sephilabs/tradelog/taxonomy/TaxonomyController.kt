@@ -40,6 +40,13 @@ class TaxonomyController(
     fun updateTag(@PathVariable groupId: UUID, @PathVariable tagId: UUID, @Valid @RequestBody body: TagRequest): TagDto =
         service.updateTag(currentUser.requireUser().id, groupId, tagId, body)
 
+    @PutMapping("/groups/{groupId}/tags/{tagId}/archived")
+    fun setTagArchived(
+        @PathVariable groupId: UUID,
+        @PathVariable tagId: UUID,
+        @Valid @RequestBody body: ArchiveTagRequest,
+    ): TagDto = service.setTagArchived(currentUser.requireUser().id, groupId, tagId, body.archived)
+
     @DeleteMapping("/groups/{groupId}/tags/{tagId}")
     fun deleteTag(@PathVariable groupId: UUID, @PathVariable tagId: UUID): ResponseEntity<Void> {
         service.deleteTag(currentUser.requireUser().id, groupId, tagId)

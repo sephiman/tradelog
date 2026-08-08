@@ -19,7 +19,7 @@ import java.time.LocalDate
  * mis-read. [BackupMeta.schemaVersion] is informational (the latest applied Flyway migration at
  * export time, read from Flyway so it can't go stale).
  */
-const val BACKUP_EXPORT_VERSION = 2
+const val BACKUP_EXPORT_VERSION = 3
 
 /**
  * A portable, self-contained snapshot of everything one user owns: their taxonomy, profiles, data
@@ -65,6 +65,8 @@ data class BackupTag(
     val code: String,
     val name: String,
     val sortOrder: Int,
+    /** Retirement marker; null (and absent in pre-v3 exports) = active. */
+    val archivedAt: Instant? = null,
 )
 
 data class BackupProfile(

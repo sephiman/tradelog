@@ -411,7 +411,12 @@
     "title": "Tags (Origen)",
     "hint": "Customize the tags you can assign to positions. Each group is single-select per position.",
     "newTag": "New tag",
-    "tagName": "Tag name"
+    "tagName": "Tag name",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "archivedSection": "Archived",
+    "archivedHint": "Archived tags can't be assigned to new positions, but the positions that already carry them keep them.",
+    "archivedOption": "{{name}} (archived)"
   },
   "settings": {
     "account": "Account",

@@ -54,7 +54,7 @@ class ExportService(
                     code = g.code,
                     name = g.name,
                     sortOrder = g.sortOrder,
-                    tags = (tagsByGroup[g.id] ?: emptyList()).map { BackupTag(it.code, it.name, it.sortOrder) },
+                    tags = (tagsByGroup[g.id] ?: emptyList()).map { BackupTag(it.code, it.name, it.sortOrder, it.archivedAt) },
                 )
             },
         )

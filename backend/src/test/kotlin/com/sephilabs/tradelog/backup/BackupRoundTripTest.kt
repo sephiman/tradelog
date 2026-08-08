@@ -47,9 +47,11 @@ class BackupRoundTripTest @Autowired constructor(
         val user = users.save(User(email = "backup${System.nanoTime()}@example.com", passwordHash = "x", timeZone = "Europe/Madrid"))
         val profile = profiles.save(Profile(userId = user.id, kind = ProfileKind.PERSONAL, name = "Main"))
 
-        // Taxonomy: one group with one tag, which a position will reference.
+        // Taxonomy: one group with one tag, which a position will reference, plus a retired one.
         val group = tagGroups.save(TagGroup(userId = user.id, code = "origen", name = "Origen", sortOrder = 10))
         val signalTag = tags.save(Tag(groupId = group.id, code = "senal", name = "Señal", sortOrder = 10))
+        val archivedAt = Instant.parse("2026-04-01T00:00:00Z")
+        tags.save(Tag(groupId = group.id, code = "copy", name = "Copy", sortOrder = 20, archivedAt = archivedAt))
 
         // An API source WITH encrypted credentials and a sync cursor + watermark.
         val apiDto = dataSourceService.create(profile.id, CreateDataSourceRequest(SourceKind.BITUNIX, "main", "key-abc", "secret-xyz"))
@@ -113,6 +115,8 @@ class BackupRoundTripTest @Autowired constructor(
         assertThat(apiBackup.cursor).contains("ext-2")
         assertThat(apiBackup.positions).hasSize(1)
         assertThat(apiBackup.positions[0].tags).containsExactly(BackupTagRef("origen", "senal"))
+        assertThat(envelope.taxonomy.groups.single().tags)
+            .containsExactly(BackupTag("senal", "Señal", 10, null), BackupTag("copy", "Copy", 20, archivedAt))
 
         val summary = importService.replaceAll(user, envelope)
         assertThat(summary).isEqualTo(ImportSummary(profiles = 1, dataSources = 2, positions = 1, fills = 1, tags = 1))
@@ -162,6 +166,10 @@ class BackupRoundTripTest @Autowired constructor(
         val link = positionTags.findAllByIdPositionIdIn(listOf(rp.id))
         assertThat(link).hasSize(1)
         assertThat(tags.findById(link[0].tagId).orElseThrow().code).isEqualTo("senal")
+        // The retired tag comes back retired, not silently reactivated.
+        val restoredTags = tags.findAllByGroupIdInOrderBySortOrderAscNameAsc(listOf(restoredGroups[0].id))
+        assertThat(restoredTags.first { it.code == "senal" }.archivedAt).isNull()
+        assertThat(restoredTags.first { it.code == "copy" }.archivedAt).isEqualTo(archivedAt)
     }
 
     @Test

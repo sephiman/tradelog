@@ -63,7 +63,7 @@ anyone running a modified version as a network service must publish the source.
   automatic **on login** (async, rate-limited per exchange), a **nightly scheduled sweep** of every
   active API source (default 04:00, `SYNC_SCHEDULE_CRON`), **manual** (per source or all), and the
   **Quantfury PDF upload**.
-- **Annotations & management**: a customizable per-user **tag taxonomy** (seeded with an *Origen* group you edit), free-text notes per position, and full position leg operations viewable. Supports **bulk tagging** (apply Origen tags to selected trades or all matching search filters) and **soft-deletion** (single or bulk delete/hide trades).
+- **Annotations & management**: a customizable per-user **tag taxonomy** (seeded with an *Origen* group you edit), free-text notes per position, and full position leg operations viewable. Supports **bulk tagging** (apply Origen tags to selected trades or all matching search filters), **tag archiving** (retire a tag from new assignments while every position that already carries it keeps it, and it stays available as a filter), and **soft-deletion** (single or bulk delete/hide trades).
 - **Capital history & real ROI**: a dedicated **Capital** page tracks your trading capital as a
   dated history of **adjustments** (anchors: your real balance per exchange on a date) plus
   **automatic snapshots** carried forward from the latest anchor with the net PnL of trades closed

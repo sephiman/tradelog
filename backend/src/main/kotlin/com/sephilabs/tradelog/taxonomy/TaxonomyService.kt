@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 @Service
@@ -86,12 +87,24 @@ class TaxonomyService(
         tags.delete(tag)
     }
 
-    /** Returns the group id of [tagId] if it belongs to a group owned by [userId], else null. */
+    /**
+     * Archives or unarchives a tag. Purely a flag flip: the tag keeps its identity and every
+     * position that already carries it is untouched — only future assignment is affected.
+     */
+    @Transactional
+    fun setTagArchived(userId: UUID, groupId: UUID, tagId: UUID, archived: Boolean): TagDto {
+        ownGroup(userId, groupId)
+        val tag = tags.findByIdAndGroupId(tagId, groupId) ?: throw AppException.notFound("TAG_NOT_FOUND")
+        tag.archivedAt = if (archived) Instant.now() else null
+        return tag.toDto()
+    }
+
+    /** Returns [tagId] if it belongs to a group owned by [userId], else null. */
     @Transactional(readOnly = true)
-    fun groupIdOfOwnedTag(userId: UUID, tagId: UUID): UUID? {
+    fun ownedTag(userId: UUID, tagId: UUID): Tag? {
         val tag = tags.findById(tagId).orElse(null) ?: return null
-        val group = groups.findByIdAndUserId(tag.groupId, userId) ?: return null
-        return group.id
+        groups.findByIdAndUserId(tag.groupId, userId) ?: return null
+        return tag
     }
 
     private fun ownGroup(userId: UUID, groupId: UUID): TagGroup =
@@ -142,7 +155,7 @@ class TaxonomySeeder(
     }
 }
 
-private fun Tag.toDto() = TagDto(id, code, name, sortOrder)
+private fun Tag.toDto() = TagDto(id, code, name, sortOrder, archivedAt)
 
 /** Lowercase ASCII slug: keeps a–z/0–9, turns runs of anything else into single hyphens. */
 internal fun slug(input: String): String =

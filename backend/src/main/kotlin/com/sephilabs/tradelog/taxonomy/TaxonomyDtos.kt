@@ -3,6 +3,7 @@ package com.sephilabs.tradelog.taxonomy
 
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
+import java.time.Instant
 import java.util.UUID
 
 data class TagDto(
@@ -10,6 +11,8 @@ data class TagDto(
     val code: String,
     val name: String,
     val sortOrder: Int,
+    /** Non-null once retired: still shown and still filterable, but no longer assignable. */
+    val archivedAt: Instant? = null,
 )
 
 data class TagGroupDto(
@@ -30,4 +33,9 @@ data class TagRequest(
     @field:NotBlank(message = "validation.required")
     @field:Size(max = 80, message = "validation.too.long")
     val name: String,
+)
+
+/** Retire a tag from new assignments (true) or bring it back (false). Reversible either way. */
+data class ArchiveTagRequest(
+    val archived: Boolean,
 )

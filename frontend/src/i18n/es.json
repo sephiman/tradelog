@@ -411,7 +411,12 @@
     "title": "Etiquetas (Origen)",
     "hint": "Personaliza las etiquetas que puedes asignar a las posiciones. Cada grupo es de selección única por posición.",
     "newTag": "Nueva etiqueta",
-    "tagName": "Nombre de etiqueta"
+    "tagName": "Nombre de etiqueta",
+    "archive": "Archivar",
+    "unarchive": "Desarchivar",
+    "archivedSection": "Archivadas",
+    "archivedHint": "Las etiquetas archivadas no se pueden asignar a nuevas posiciones, pero las posiciones que ya las tienen las conservan.",
+    "archivedOption": "{{name}} (archivada)"
   },
   "settings": {
     "account": "Cuenta",

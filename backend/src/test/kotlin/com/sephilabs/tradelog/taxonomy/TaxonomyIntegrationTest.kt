@@ -47,13 +47,30 @@ class TaxonomyIntegrationTest @Autowired constructor(
     }
 
     @Test
-    fun `groupIdOfOwnedTag enforces ownership`() {
+    fun `ownedTag enforces ownership`() {
         val owner = newUser()
         val other = newUser()
         val origen = service.listGroups(owner).first { it.code == "origen" }
         val tagId = origen.tags.first().id
 
-        assertThat(service.groupIdOfOwnedTag(owner, tagId)).isEqualTo(origen.id)
-        assertThat(service.groupIdOfOwnedTag(other, tagId)).isNull()
+        assertThat(service.ownedTag(owner, tagId)?.groupId).isEqualTo(origen.id)
+        assertThat(service.ownedTag(other, tagId)).isNull()
+    }
+
+    @Test
+    fun `archiving a tag is reversible and keeps it listed`() {
+        val u = newUser()
+        val origen = service.listGroups(u).first { it.code == "origen" }
+        val tag = origen.tags.first()
+
+        val archived = service.setTagArchived(u, origen.id, tag.id, true)
+        assertThat(archived.archivedAt).isNotNull()
+        // Still part of the taxonomy — archiving retires it, it does not remove it.
+        val listedArchived = service.listGroups(u).first { it.id == origen.id }.tags.first { it.id == tag.id }
+        assertThat(listedArchived.archivedAt).isNotNull()
+        assertThat(listedArchived.name).isEqualTo(tag.name)
+
+        assertThat(service.setTagArchived(u, origen.id, tag.id, false).archivedAt).isNull()
+        assertThat(service.listGroups(u).first { it.id == origen.id }.tags.first { it.id == tag.id }.archivedAt).isNull()
     }
 }

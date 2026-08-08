@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import type { Tag } from "@/api/taxonomy";
 import { Chip, Input, Label, Select } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
+import { useTagLabel } from "@/lib/tagLabel";
 import { useHideOnScroll } from "@/lib/useHideOnScroll";
 import { PERIOD_PRESETS, type AnalyticsFilters } from "./useAnalyticsFilters";
 
@@ -16,6 +17,8 @@ export function FilterBar({
 }) {
   const { t } = useTranslation();
   const { ref, hidden } = useHideOnScroll();
+  // Archived origens stay in this list: their positions are still in the history being analysed.
+  const tagLabel = useTagLabel();
 
   return (
     <div
@@ -91,7 +94,7 @@ export function FilterBar({
               <option value="ALL">{t("analytics.allOrigens")}</option>
               {origenTags.map((tag) => (
                 <option key={tag.id} value={tag.id}>
-                  {tag.name}
+                  {tagLabel(tag)}
                 </option>
               ))}
             </Select>
