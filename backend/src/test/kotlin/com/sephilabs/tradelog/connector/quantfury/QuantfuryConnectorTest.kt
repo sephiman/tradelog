@@ -68,6 +68,36 @@ class QuantfuryConnectorTest {
     }
 
     @Test
+    fun `parses stock rows with shares quantities and leftmost ticker`() {
+        val bytes = pdf(
+            listOf(
+                "NFLX 31/07/2026 1:57:08 PM UTC BUY (open) $72.10 17.7531 shares $1,280.00",
+                "NFLX 11/08/2026 1:42:30 PM UTC SELL (close) $76.31 17.7531 shares $1,280.00 +$74.74",
+            ),
+        )
+        val p = connector.parse(ByteArrayInputStream(bytes)).single()
+        assertEquals("NFLX", p.symbol.base)
+        assertEquals("USDT", p.symbol.quote)
+        assertEquals(PositionSide.LONG, p.side)
+        assertEquals(0, p.qty.compareTo(BigDecimal("17.7531")))
+        // (76.31 - 72.10) * 17.7531 = 74.74
+        assertEquals(BigDecimal("74.74"), round2(p.realizedPnl))
+    }
+
+    @Test
+    fun `normalizes USD-printed pairs to the USDT account currency`() {
+        val bytes = pdf(
+            listOf(
+                "HBAR/USD 03/10/2025 5:41:53 PM UTC BUY (open) 0.22535 2,662.49125843 HBAR $600.00",
+                "HBAR/USD 07/10/2025 2:08:44 PM UTC SELL (close) 0.23091 2,662.49125843 HBAR $614.80 +$14.80",
+            ),
+        )
+        val p = connector.parse(ByteArrayInputStream(bytes)).single()
+        assertEquals("HBAR", p.symbol.base)
+        assertEquals("USDT", p.symbol.quote)
+    }
+
+    @Test
     fun `multi-leg position uses vwap and stays a single position`() {
         val bytes = pdf(
             listOf(
