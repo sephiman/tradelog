@@ -9,6 +9,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Transient
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -100,4 +101,13 @@ class Position(
      */
     @Column(name = "deleted_at")
     var deletedAt: Instant? = null,
-) : TimestampedEntity()
+) : TimestampedEntity() {
+
+    /** Hand-entered rows are the only ones no importer re-derives, so the only ones safe to edit in place. */
+    @get:Transient
+    val isManual: Boolean get() = externalId.startsWith(MANUAL_EXTERNAL_ID_PREFIX)
+
+    companion object {
+        const val MANUAL_EXTERNAL_ID_PREFIX = "manual-"
+    }
+}

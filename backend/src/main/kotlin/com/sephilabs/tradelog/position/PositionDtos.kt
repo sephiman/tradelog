@@ -51,6 +51,8 @@ data class PositionDto(
     val note: String?,
     val tags: List<PositionTagView>,
     val fillCount: Int,
+    /** Hand-entered trades can be edited; synced ones would be overwritten by the next sync. */
+    val editable: Boolean,
 )
 
 data class PositionDetailDto(

@@ -4,8 +4,11 @@ import {
   fmtDate,
   fmtDateTime,
   fmtNum,
+  fmtPrice,
   fmtUsd,
+  dateTimeInputToIso,
   isoToDateInput,
+  isoToDateTimeInput,
   pnlTone,
   setDisplayTimeZone,
   toDecimal,
@@ -26,6 +29,16 @@ describe("format", () => {
 
   it("trims trailing zeros for quantities", () => {
     expect(fmtNum("0.12300000")).toMatch(/^0[.,]123$/);
+  });
+
+  it("scales price precision to magnitude so one row cannot widen a column", () => {
+    // The reported case: a full-precision BTC exit price next to rounded ones.
+    expect(fmtPrice("77027.75197434")).toMatch(/^77[.,]027[.,]75$/);
+    expect(fmtPrice("541.3")).toMatch(/^541[.,]30$/);
+    expect(fmtPrice("1.23456789")).toMatch(/^1[.,]2346$/);
+    // Sub-unit prices keep the decimals they actually need.
+    expect(fmtPrice("0.00001234")).toMatch(/^0[.,]00001234$/);
+    expect(fmtPrice("-77027.75197434")).toMatch(/^-77[.,]027[.,]75$/);
   });
 
   it("parses decimals defensively", () => {
@@ -69,6 +82,25 @@ describe("dates in the account timezone", () => {
     expect(dateInputToIso("2026-03-29")).toBe("2026-03-28T23:00:00.000Z");
     // End of that day is CEST (+2).
     expect(dateInputToIso("2026-03-29", true)).toBe("2026-03-29T21:59:59.999Z");
+  });
+
+  it("reads a datetime input in the display zone, DST included", () => {
+    setDisplayTimeZone("Asia/Tokyo"); // UTC+9, no DST
+    expect(dateTimeInputToIso("2026-07-13T08:30")).toBe("2026-07-12T23:30:00.000Z");
+
+    setDisplayTimeZone("Europe/Madrid");
+    // 01:30 on 2026-03-29 is still CET (+1); 03:30 the same morning is already CEST (+2).
+    expect(dateTimeInputToIso("2026-03-29T01:30")).toBe("2026-03-29T00:30:00.000Z");
+    expect(dateTimeInputToIso("2026-03-29T03:30")).toBe("2026-03-29T01:30:00.000Z");
+
+    expect(dateTimeInputToIso("")).toBeUndefined();
+  });
+
+  it("round-trips a datetime through the display zone", () => {
+    setDisplayTimeZone("America/New_York");
+    const iso = "2026-11-02T14:45:00.000Z";
+    expect(dateTimeInputToIso(isoToDateTimeInput(iso))).toBe(iso);
+    expect(isoToDateTimeInput(undefined)).toBe("");
   });
 
   it("round-trips date input values through the display zone", () => {

@@ -24,6 +24,21 @@ export function fmtNum(value: string | number, maxFrac = 8): string {
   return d.toDecimalPlaces(maxFrac).toNumber().toLocaleString(undefined, { maximumFractionDigits: maxFrac });
 }
 
+/**
+ * Display precision for a price, chosen by magnitude: a BTC price needs 2 decimals where a PEPE
+ * price needs 8. Uniform full precision lets one long value (77,027.75197434) widen a whole
+ * table column. Stored values keep every digit — this is display only.
+ */
+export function fmtPrice(value: string | number): string {
+  const d = toDecimal(value);
+  const abs = d.abs();
+  const maxFrac = abs.gte(1000) ? 2 : abs.gte(1) ? 4 : 8;
+  return d.toDecimalPlaces(maxFrac).toNumber().toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: maxFrac,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Dates render in the account's timezone (the user's saved setting), not the browser's, so the
 // positions list and date filters attribute trades to the same day as the analytics dashboard.
@@ -86,6 +101,28 @@ export function dateInputToIso(dateStr: string, endOfDay = false): string | unde
   let ts = wall.getTime() - zoneOffsetMs(wall);
   ts = wall.getTime() - zoneOffsetMs(new Date(ts));
   return new Date(ts + (endOfDay ? 999 : 0)).toISOString();
+}
+
+/** A datetime-local input value ("YYYY-MM-DDTHH:mm") → ISO instant, read in the display zone. */
+export function dateTimeInputToIso(value: string): string | undefined {
+  if (!value) return undefined;
+  const [datePart, timePart = "00:00"] = value.split("T");
+  const wall = new Date(`${datePart}T${timePart.length === 5 ? `${timePart}:00` : timePart}Z`);
+  if (Number.isNaN(wall.getTime())) return undefined;
+  // Same two-step refinement as dateInputToIso: one pass lands near the instant, the second
+  // resolves it correctly when a DST transition falls on that day.
+  let ts = wall.getTime() - zoneOffsetMs(wall);
+  ts = wall.getTime() - zoneOffsetMs(new Date(ts));
+  return new Date(ts).toISOString();
+}
+
+/** ISO instant → "YYYY-MM-DDTHH:mm" in the display zone, for binding a datetime-local input. */
+export function isoToDateTimeInput(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = zonedParts(d);
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
 /** Today's calendar date in the display zone. */

@@ -49,6 +49,8 @@ export interface Position {
   note: string | null;
   tags: PositionTagView[];
   fillCount: number;
+  /** Hand-added trades can be edited; synced ones would be overwritten by the next sync. */
+  editable: boolean;
 }
 
 export interface PositionFill {
@@ -202,6 +204,60 @@ export function useBulkDeletePositions(profileId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["positions", profileId] });
       qc.invalidateQueries({ queryKey: ["analyticsClosed", profileId] });
+    },
+  });
+}
+
+export interface ManualPositionBody {
+  symbol: string;
+  side: PositionSide;
+  openedAt: string;
+  closedAt: string;
+  qty: string;
+  entryPrice: string;
+  exitPrice: string;
+  /** Omitted means "derive it from the leg prices", the same rule the CSV import follows. */
+  realizedPnl?: string;
+  fees: string;
+  funding: string;
+  exchange?: string;
+  note?: string;
+  /** A group with a null tag clears that group, which is how an edit removes the tag. */
+  tagId?: string | null;
+  tagGroupId?: string;
+}
+
+function invalidateTrades(qc: ReturnType<typeof useQueryClient>, profileId: string) {
+  qc.invalidateQueries({ queryKey: ["positions", profileId] });
+  qc.invalidateQueries({ queryKey: ["positionExchanges", profileId] });
+  qc.invalidateQueries({ queryKey: ["analyticsClosed", profileId] });
+  // A hand-added trade shifts the capital curve the moment it lands, exactly as an import does.
+  qc.invalidateQueries({ queryKey: ["capital", profileId] });
+}
+
+export function useCreatePosition(profileId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { silentSuccess: true },
+    mutationFn: async (body: ManualPositionBody) => {
+      const res = await apiClient.post<Position>(`/profiles/${profileId}/positions`, body);
+      return res.data;
+    },
+    onSuccess: () => invalidateTrades(qc, profileId),
+  });
+}
+
+export function useUpdatePosition(profileId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { silentSuccess: true },
+    mutationFn: async ({ positionId, body }: { positionId: string; body: ManualPositionBody }) => {
+      const res = await apiClient.put<Position>(`/profiles/${profileId}/positions/${positionId}`, body);
+      return res.data;
+    },
+    onSuccess: (_data, vars) => {
+      invalidateTrades(qc, profileId);
+      qc.invalidateQueries({ queryKey: ["position", profileId, vars.positionId] });
     },
   });
 }

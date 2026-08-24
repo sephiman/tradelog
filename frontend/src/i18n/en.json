@@ -108,6 +108,19 @@
     "bulkDeleted": "Deleted {{count}} positions",
     "toggleDetails": "Show details"
   },
+  "trades": {
+    "add": "Add trade",
+    "edit": "Edit",
+    "addTitle": "Add a trade by hand",
+    "editTitle": "Edit trade",
+    "openedAt": "Opened",
+    "closedAt": "Closed",
+    "realizedPnlOptional": "Realized PnL (optional)",
+    "exchangePlaceholder": "e.g. BingX Strategy",
+    "closedBeforeOpened": "The close date cannot be earlier than the open date",
+    "added": "Trade added",
+    "updated": "Trade updated"
+  },
   "dataSources": {
     "title": "Data sources",
     "label": "Label",

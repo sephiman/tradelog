@@ -16,10 +16,12 @@ import {
   type PositionFilters,
 } from "@/api/positions";
 import { isArchived, useTaxonomy, type TagGroup } from "@/api/taxonomy";
+import { TradeFormDialog } from "./TradeFormDialog";
+import { SOURCE_KINDS, SOURCE_LABELS } from "@/lib/sourceKinds";
 import { Badge, Button, Card, CardBody, Input, Select, Textarea } from "@/components/ui/primitives";
 import { QueryError } from "@/components/ui/QueryError";
 import { cn } from "@/lib/cn";
-import { dateInputToIso, fmtDateTime, fmtNum, fmtUsd, isoToDateInput, pnlTone, toDecimal } from "@/lib/format";
+import { dateInputToIso, fmtDateTime, fmtNum, fmtPrice, fmtUsd, isoToDateInput, pnlTone, toDecimal } from "@/lib/format";
 import { useTagLabel } from "@/lib/tagLabel";
 import { showToast } from "@/lib/toastBus";
 
@@ -43,6 +45,7 @@ export function PositionsPage() {
   const [allMatching, setAllMatching] = useState(false);
   const [bulkTagId, setBulkTagId] = useState("");
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
+  const [adding, setAdding] = useState(false);
   const bulkSetTag = useBulkSetTag(activeProfileId ?? "");
   const bulkDelete = useBulkDeletePositions(activeProfileId ?? "");
 
@@ -143,7 +146,12 @@ export function PositionsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">{t("positions.title")}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">{t("positions.title")}</h1>
+        <Button onClick={() => setAdding(true)}>{t("trades.add")}</Button>
+      </div>
+
+      <TradeFormDialog open={adding} onClose={() => setAdding(false)} profileId={activeProfileId} />
 
       <Card>
         <CardBody>
@@ -161,9 +169,9 @@ export function PositionsPage() {
             <FilterField label={t("positions.source")}>
               <Select className="w-full" value={filters.source ?? ""} onChange={(e) => set({ source: e.target.value as PositionFilters["source"] })}>
                 <option value="">{t("common.all")}</option>
-                <option value="BITUNIX">Bitunix</option>
-                <option value="BINGX">BingX</option>
-                <option value="QUANTFURY">Quantfury</option>
+                {SOURCE_KINDS.map((kind) => (
+                  <option key={kind} value={kind}>{SOURCE_LABELS[kind]}</option>
+                ))}
               </Select>
             </FilterField>
             {exchanges.length > 0 && (
@@ -286,8 +294,8 @@ export function PositionsPage() {
             </button>
           </div>
         )}
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full text-sm">
+        <div className="@container hidden overflow-x-auto md:block">
+          <table className="w-full text-sm [&>tbody>tr>td:first-child]:pl-3 [&>tbody>tr>td:last-child]:pr-3 [&>thead>tr>th:first-child]:pl-3 [&>thead>tr>th:last-child]:pr-3">
             <thead className="border-b border-border text-left text-xs uppercase text-gray-500 dark:text-gray-400">
               <tr>
                 <th className="w-8 py-2">
@@ -301,14 +309,14 @@ export function PositionsPage() {
                 <th className="py-2">{t("positions.closed")}</th>
                 <th>{t("positions.symbol")}</th>
                 <th>{t("positions.side")}</th>
-                <th>{t("positions.source")}</th>
-                <th>{t("positions.exchange")}</th>
-                <th className="text-right">{t("positions.qty")}</th>
-                <th className="text-right">{t("positions.entry")}</th>
-                <th className="text-right">{t("positions.exit")}</th>
+                <th className="hidden @min-[1200px]:table-cell">{t("positions.source")}</th>
+                <th className="hidden @min-[760px]:table-cell">{t("positions.exchange")}</th>
+                <th className="hidden text-right @min-[1010px]:table-cell">{t("positions.qty")}</th>
+                <th className="hidden text-right @min-[880px]:table-cell">{t("positions.entry")}</th>
+                <th className="hidden text-right @min-[880px]:table-cell">{t("positions.exit")}</th>
                 <th className="text-right">{t("positions.netPnl")}</th>
-                <th>{t("positions.origen")}</th>
-                <th></th>
+                <th className="w-[1%] whitespace-nowrap">{t("positions.origen")}</th>
+                <th className="sticky right-0 w-[1%] bg-white dark:bg-surface"></th>
               </tr>
             </thead>
             <tbody>
@@ -487,7 +495,8 @@ function PositionRow({ profileId, position, origen, selected, selectDisabled, on
 
   return (
     <>
-      <tr className={cn("border-b border-border last:border-0", selected && "bg-highlight")}>
+      {/* An explicit row background gives the pinned last cell something opaque to inherit. */}
+      <tr className={cn("border-b border-border bg-white last:border-0 dark:bg-surface", selected && "bg-highlight")}>
         <td className="py-2 text-center">
           <input
             type="checkbox"
@@ -505,26 +514,26 @@ function PositionRow({ profileId, position, origen, selected, selectDisabled, on
             {position.side === "LONG" ? t("positions.long") : t("positions.short")}
           </Badge>
         </td>
-        <td className="text-gray-500 dark:text-gray-400">{position.source}</td>
-        <td className="text-gray-600 dark:text-gray-300">{position.exchange ?? "—"}</td>
-        <td className="text-right tabular-nums">{fmtNum(position.qty)}</td>
-        <td className="text-right tabular-nums">{fmtNum(position.entryPrice)}</td>
-        <td className="text-right tabular-nums">{fmtNum(position.exitPrice)}</td>
+        <td className="hidden whitespace-nowrap text-xs text-gray-500 @min-[1200px]:table-cell dark:text-gray-400">{SOURCE_LABELS[position.source]}</td>
+        <td className="hidden whitespace-nowrap text-gray-600 @min-[760px]:table-cell dark:text-gray-300">{position.exchange ?? "—"}</td>
+        <td className="hidden text-right tabular-nums @min-[1010px]:table-cell">{fmtNum(position.qty)}</td>
+        <td className="hidden text-right tabular-nums @min-[880px]:table-cell" title={position.entryPrice}>{fmtPrice(position.entryPrice)}</td>
+        <td className="hidden text-right tabular-nums @min-[880px]:table-cell" title={position.exitPrice}>{fmtPrice(position.exitPrice)}</td>
         <td className={cn("text-right font-medium tabular-nums", pnlTone(position.netPnl))}>
           {fmtUsd(position.netPnl, { sign: true })}
         </td>
-        <td>
-          {origen && <OrigenSelect origen={origen} value={currentTagId} onChange={onTagChange} className="w-32" />}
+        <td className="w-[1%] whitespace-nowrap">
+          {origen && <OrigenSelect origen={origen} value={currentTagId} onChange={onTagChange} className="w-auto max-w-[9rem]" />}
         </td>
-        <td className="text-right">
+        <td className="sticky right-0 w-[1%] whitespace-nowrap bg-inherit text-right">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
             aria-label={t("positions.toggleDetails")}
             aria-expanded={expanded}
-            className="px-2 text-gray-500 hover:text-primary"
+            className="px-1 text-gray-500 hover:text-primary"
           >
-            {position.note ? "📝" : ""} {expanded ? "▲" : "▼"}
+            {position.note ? "📝" : ""}{expanded ? "▲" : "▼"}
           </button>
         </td>
       </tr>
@@ -568,12 +577,12 @@ function PositionCard({ profileId, position, origen, selected, selectDisabled, o
             </span>
           </div>
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {fmtDateTime(position.closedAt)} · {position.source}
+            {fmtDateTime(position.closedAt)} · {SOURCE_LABELS[position.source]}
             {position.exchange ? ` · ${position.exchange}` : ""}
           </div>
           <div className="mt-1 text-xs tabular-nums text-gray-500 dark:text-gray-400">
-            {t("positions.qty")}: {fmtNum(position.qty)} · {t("positions.entry")}: {fmtNum(position.entryPrice)} ·{" "}
-            {t("positions.exit")}: {fmtNum(position.exitPrice)}
+            {t("positions.qty")}: {fmtNum(position.qty)} · {t("positions.entry")}: {fmtPrice(position.entryPrice)} ·{" "}
+            {t("positions.exit")}: {fmtPrice(position.exitPrice)}
           </div>
           <div className="mt-2 flex items-center justify-between gap-2">
             {origen ? (
@@ -609,6 +618,7 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
   const deletePosition = useDeletePosition(profileId);
   const [note, setNote_] = useState(position.note ?? "");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -626,7 +636,7 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
                 <th>{t("positions.action")}</th>
                 <th>{t("positions.time")}</th>
                 <th className="text-right">{t("positions.price")}</th>
-                <th className="text-right">{t("positions.qty")}</th>
+                <th className="hidden text-right @min-[1010px]:table-cell">{t("positions.qty")}</th>
                 <th className="text-right">{t("positions.value")}</th>
               </tr>
             </thead>
@@ -635,7 +645,7 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
                 <tr key={f.seq} className="border-t border-border">
                   <td><Badge tone={f.side === "BUY" ? "green" : "red"}>{f.action}</Badge></td>
                   <td className="whitespace-nowrap text-gray-600 dark:text-gray-300">{fmtDateTime(f.ts)}</td>
-                  <td className="text-right tabular-nums">{fmtNum(f.price)}</td>
+                  <td className="text-right tabular-nums" title={f.price}>{fmtPrice(f.price)}</td>
                   <td className="text-right tabular-nums">{fmtNum(f.qty)}</td>
                   <td className="text-right tabular-nums">{f.value ? fmtUsd(f.value) : "—"}</td>
                 </tr>
@@ -688,11 +698,27 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
             </div>
           </>
         ) : (
-          <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
-            {t("positions.delete")}
-          </Button>
+          <div className="flex items-center gap-2 md:justify-end">
+            {position.editable && (
+              <Button variant="secondary" onClick={() => setEditing(true)}>
+                {t("trades.edit")}
+              </Button>
+            )}
+            <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
+              {t("positions.delete")}
+            </Button>
+          </div>
         )}
       </div>
+
+      {position.editable && (
+        <TradeFormDialog
+          open={editing}
+          onClose={() => setEditing(false)}
+          profileId={profileId}
+          position={position}
+        />
+      )}
     </div>
   );
 }
