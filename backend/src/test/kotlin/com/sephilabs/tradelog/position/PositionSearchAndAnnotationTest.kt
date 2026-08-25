@@ -69,6 +69,17 @@ class PositionSearchAndAnnotationTest @Autowired constructor(
     }
 
     @Test
+    fun `symbols lists each traded pair once, for the manual forms to suggest`() {
+        setup()
+        upsert.upsert(
+            dsId, profileId, SourceKind.BITUNIX, "Bitunix",
+            listOf(rec("e", "ETH", PositionSide.LONG), rec("e2", "ETH", PositionSide.SHORT), rec("b", "BTC", PositionSide.LONG)),
+        )
+
+        assertThat(service.symbols(profileId)).containsExactly("BTC-USDT", "ETH-USDT")
+    }
+
+    @Test
     fun `note and single-select tag annotate a position and are searchable`() {
         setup()
         upsert.upsert(dsId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(rec("e", "ETH", PositionSide.LONG)))

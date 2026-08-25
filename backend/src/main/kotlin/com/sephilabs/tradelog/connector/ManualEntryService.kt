@@ -7,6 +7,7 @@ import com.sephilabs.tradelog.datasource.DataSourceRepository
 import com.sephilabs.tradelog.datasource.SourceKind
 import com.sephilabs.tradelog.position.Position
 import com.sephilabs.tradelog.position.PositionDto
+import com.sephilabs.tradelog.position.PositionKind
 import com.sephilabs.tradelog.position.PositionRepository
 import com.sephilabs.tradelog.position.PositionService
 import com.sephilabs.tradelog.position.PositionSide
@@ -22,14 +23,31 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
-/** One hand-entered closed trade — the Journal CSV's columns as a form, for what no API serves (grid bots, dead venues). */
+/**
+ * What every hand-entered record carries, whatever kind it is. Both shapes map themselves to a
+ * canonical [PositionRecord], so the service below never branches on the kind.
+ */
+sealed interface ManualEntry {
+    val symbol: String
+    val openedAt: Instant
+    val closedAt: Instant
+    val exchange: String?
+    val note: String?
+    val tagId: UUID?
+    val tagGroupId: UUID?
+    val kind: PositionKind
+
+    fun toRecord(externalId: String): PositionRecord
+}
+
+/** One hand-entered closed trade — the Journal CSV's columns as a form, for what no API serves. */
 data class ManualPositionRequest(
     @field:NotBlank(message = "validation.required")
     @field:Size(max = 40, message = "validation.too.long")
-    val symbol: String,
+    override val symbol: String,
     val side: PositionSide,
-    val openedAt: Instant,
-    val closedAt: Instant,
+    override val openedAt: Instant,
+    override val closedAt: Instant,
     @field:Positive(message = "validation.invalid")
     val qty: BigDecimal = BigDecimal.ONE,
     @field:Positive(message = "validation.invalid")
@@ -42,13 +60,92 @@ data class ManualPositionRequest(
     val fees: BigDecimal = BigDecimal.ZERO,
     val funding: BigDecimal = BigDecimal.ZERO,
     @field:Size(max = 64, message = "validation.too.long")
-    val exchange: String? = null,
+    override val exchange: String? = null,
     @field:Size(max = 4000, message = "validation.too.long")
-    val note: String? = null,
-    /** Applied on insert, so a grid-bot run is marked as one without a second trip. */
-    val tagId: UUID? = null,
-    val tagGroupId: UUID? = null,
-)
+    override val note: String? = null,
+    /** Applied on insert, so a trade is marked with its origen without a second trip. */
+    override val tagId: UUID? = null,
+    override val tagGroupId: UUID? = null,
+) : ManualEntry {
+
+    override val kind get() = PositionKind.TRADE
+
+    override fun toRecord(externalId: String) = PositionRecord(
+        externalId = externalId,
+        symbol = Symbols.split(symbol),
+        side = side,
+        openedAt = openedAt,
+        closedAt = closedAt,
+        qty = qty,
+        entryPrice = entryPrice,
+        exitPrice = exitPrice,
+        realizedPnl = realizedPnl ?: PositionReconstructor.realizedFromPrices(side, entryPrice, exitPrice, qty),
+        fees = fees,
+        funding = funding,
+        exchange = exchange?.trim()?.takeIf { it.isNotEmpty() },
+        note = note,
+        raw = RAW_MANUAL,
+    )
+}
+
+/** Which figure of the exchange's closed-grid screen the user typed. */
+enum class GridPnlBasis { NET, GROSS }
+
+/**
+ * One hand-entered grid-bot run: hundreds of matched orders with no single entry price, exit price
+ * or quantity, so those stay null and the run reports its result directly — whichever of the two
+ * figures the venue showed ("Realized PnL" is gross, "Total profit" is already net).
+ */
+data class GridRunRequest(
+    @field:NotBlank(message = "validation.required")
+    @field:Size(max = 40, message = "validation.too.long")
+    override val symbol: String,
+    val side: PositionSide,
+    /** Required, unlike on a trade: with no leg prices the venue is all that anchors capital and ROI. */
+    @field:NotBlank(message = "validation.required")
+    @field:Size(max = 64, message = "validation.too.long")
+    override val exchange: String,
+    override val openedAt: Instant,
+    override val closedAt: Instant,
+    val pnl: BigDecimal,
+    val pnlBasis: GridPnlBasis = GridPnlBasis.NET,
+    val fees: BigDecimal = BigDecimal.ZERO,
+    val funding: BigDecimal = BigDecimal.ZERO,
+    /** Traded notional, both legs. Null when the volume calculator was left empty — no fake number. */
+    @field:PositiveOrZero(message = "validation.invalid")
+    val volume: BigDecimal? = null,
+    @field:Positive(message = "validation.invalid")
+    val leverage: BigDecimal? = null,
+    @field:Positive(message = "validation.invalid")
+    val investment: BigDecimal? = null,
+    @field:Size(max = 4000, message = "validation.too.long")
+    override val note: String? = null,
+    override val tagId: UUID? = null,
+    override val tagGroupId: UUID? = null,
+) : ManualEntry {
+
+    override val kind get() = PositionKind.GRID_BOT
+
+    override fun toRecord(externalId: String) = PositionRecord(
+        externalId = externalId,
+        symbol = Symbols.split(symbol),
+        side = side,
+        openedAt = openedAt,
+        closedAt = closedAt,
+        kind = PositionKind.GRID_BOT,
+        // Stored gross, always: the upsert takes the costs back off for net, so whichever figure the
+        // user typed, both readings of the run agree afterwards.
+        realizedPnl = if (pnlBasis == GridPnlBasis.GROSS) pnl else pnl.add(fees).add(funding),
+        fees = fees,
+        funding = funding,
+        volume = volume,
+        leverage = leverage,
+        investment = investment,
+        exchange = exchange.trim(),
+        note = note,
+        raw = RAW_GRID,
+    )
+}
 
 /** Manual-entry counterpart of [FileImportService]: user input in, canonical record out, same sync pipeline. */
 @Service
@@ -59,96 +156,78 @@ class ManualEntryService(
     private val positionService: PositionService,
 ) {
 
-    fun create(profileId: UUID, userId: UUID, req: ManualPositionRequest): PositionDto {
-        validate(req)
+    fun create(profileId: UUID, userId: UUID, entry: ManualEntry): PositionDto {
+        validate(entry)
         val ds = manualSource(profileId)
 
-        // Random id, never a natural key: two genuinely identical trades must both be kept, and a
+        // Random id, never a natural key: two genuinely identical entries must both be kept, and a
         // double-submitted form is visible in the list and deletable, unlike a silent update.
-        val record = toRecord(req, "${Position.MANUAL_EXTERNAL_ID_PREFIX}${UUID.randomUUID()}")
+        val record = entry.toRecord("${Position.MANUAL_EXTERNAL_ID_PREFIX}${UUID.randomUUID()}")
         store(ds, record)
         val saved = positions.findByDataSourceIdAndExternalId(ds.id, record.externalId)
             ?: throw AppException.badRequest("IMPORT_FAILED")
 
-        applyTag(userId, profileId, saved.id, req)
+        applyTag(userId, profileId, saved.id, entry)
         return positionService.get(profileId, saved.id).position
     }
 
     /**
-     * Rewrites a hand-entered trade in place. Only those: every other row is re-derived from its
+     * Rewrites a hand-entered record in place. Only those: every other row is re-derived from its
      * source, so an edit would be silently reverted by the next sync or re-import.
      */
-    fun update(profileId: UUID, userId: UUID, positionId: UUID, req: ManualPositionRequest): PositionDto {
+    fun update(profileId: UUID, userId: UUID, positionId: UUID, entry: ManualEntry): PositionDto {
         val existing = positions.findByIdAndProfileIdAndDeletedAtIsNull(positionId, profileId)
             ?: throw AppException.notFound("POSITION_NOT_FOUND")
         if (!existing.isManual) throw AppException.badRequest("POSITION_NOT_MANUAL")
+        // A trade and a grid run carry different fields; the wrong form would blank half of them.
+        if (existing.kind != entry.kind) throw AppException.badRequest("POSITION_KIND_MISMATCH")
         val ds = dataSources.findByIdAndProfileId(existing.dataSourceId, profileId)
             ?: throw AppException.notFound("DATA_SOURCE_NOT_FOUND")
-        validate(req)
+        validate(entry)
 
         // Keeping the external id makes this the upsert's update path, so the money math, the venue
         // resolution and the capital refresh are the same code that writes every other trade.
-        store(ds, toRecord(req, existing.externalId))
+        store(ds, entry.toRecord(existing.externalId))
         // The shared upsert deliberately never touches notes; on a hand-entered row it is editable.
-        positionService.updateNote(profileId, positionId, req.note)
-        applyTag(userId, profileId, positionId, req)
+        positionService.updateNote(profileId, positionId, entry.note)
+        applyTag(userId, profileId, positionId, entry)
         return positionService.get(profileId, positionId).position
     }
 
     /**
-     * Where hand-entered trades live: the profile's own Journal CSV source, created on first use.
-     * Never asked for — the venue that matters for capital and ROI is the trade's `exchange`, and a
+     * Where hand-entered records live: the profile's own Journal CSV source, created on first use.
+     * Never asked for — the venue that matters for capital and ROI is the entry's `exchange`, and a
      * Journal CSV source is the one lane no sync or re-import can overwrite.
      */
     private fun manualSource(profileId: UUID): DataSource =
         dataSources.findAllByProfileIdOrderByCreatedAtAsc(profileId).firstOrNull { it.kind == SourceKind.JOURNAL_CSV }
             ?: dataSources.save(DataSource(profileId = profileId, kind = SourceKind.JOURNAL_CSV, label = DEFAULT_LABEL))
 
-    /** Goes through the import pipeline so a hand-entered trade gets the same upsert, audit run and capital refresh a file import does. */
+    /** Goes through the import pipeline so a hand-entered record gets the same upsert, audit run and capital refresh a file import does. */
     private fun store(ds: DataSource, record: PositionRecord) {
         val run = syncService.importFile(ds, listOf(record), SyncTrigger.MANUAL)
         if (run.status != RunStatus.SUCCESS) throw AppException.badRequest(run.errorCode ?: "IMPORT_FAILED")
     }
 
-    private fun validate(req: ManualPositionRequest) {
-        if (req.closedAt.isBefore(req.openedAt)) throw AppException.badRequest("MANUAL_CLOSED_BEFORE_OPENED")
-        if (req.tagId != null && req.tagGroupId == null) throw AppException.badRequest("TAG_GROUP_MISMATCH")
+    private fun validate(entry: ManualEntry) {
+        if (entry.closedAt.isBefore(entry.openedAt)) throw AppException.badRequest("MANUAL_CLOSED_BEFORE_OPENED")
+        if (entry.tagId != null && entry.tagGroupId == null) throw AppException.badRequest("TAG_GROUP_MISMATCH")
     }
 
-    /** A null [ManualPositionRequest.tagId] with a group clears that group, which is how an edit removes a tag. */
-    private fun applyTag(userId: UUID, profileId: UUID, positionId: UUID, req: ManualPositionRequest) {
-        val groupId = req.tagGroupId ?: return
-        if (req.tagId != null) positionService.setTag(userId, profileId, positionId, groupId, req.tagId)
+    /** A null [ManualEntry.tagId] with a group clears that group, which is how an edit removes a tag. */
+    private fun applyTag(userId: UUID, profileId: UUID, positionId: UUID, entry: ManualEntry) {
+        val groupId = entry.tagGroupId ?: return
+        val tagId = entry.tagId
+        if (tagId != null) positionService.setTag(userId, profileId, positionId, groupId, tagId)
         else positionService.clearTag(profileId, positionId, groupId)
-    }
-
-    private fun toRecord(req: ManualPositionRequest, externalId: String): PositionRecord {
-        val symbol = Symbols.split(req.symbol)
-        val realized = req.realizedPnl
-            ?: PositionReconstructor.realizedFromPrices(req.side, req.entryPrice, req.exitPrice, req.qty)
-        return PositionRecord(
-            externalId = externalId,
-            symbol = symbol,
-            side = req.side,
-            openedAt = req.openedAt,
-            closedAt = req.closedAt,
-            qty = req.qty,
-            entryPrice = req.entryPrice,
-            exitPrice = req.exitPrice,
-            realizedPnl = realized,
-            fees = req.fees,
-            funding = req.funding,
-            exchange = req.exchange?.trim()?.takeIf { it.isNotEmpty() },
-            note = req.note,
-            raw = RAW_MANUAL,
-        )
     }
 
     private companion object {
         /** Label of the source created on first use; the user is free to rename it afterwards. */
         const val DEFAULT_LABEL = "Manual"
-
-        /** Keeps hand-entered rows distinguishable from the CSV rows sharing their data source. */
-        const val RAW_MANUAL = """{"entry":"manual"}"""
     }
 }
+
+/** Keeps hand-entered rows distinguishable from the CSV rows sharing their data source. */
+private const val RAW_MANUAL = """{"entry":"manual"}"""
+private const val RAW_GRID = """{"entry":"grid"}"""

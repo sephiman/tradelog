@@ -25,9 +25,9 @@ class PositionReconstructorTest {
         assertEquals(1, result.size)
         val p = result[0]
         assertEquals(PositionSide.LONG, p.side)
-        assertEquals(0, p.qty.compareTo(bd("1")))
-        assertEquals(0, p.entryPrice.compareTo(bd("100")))
-        assertEquals(0, p.exitPrice.compareTo(bd("110")))
+        assertEquals(0, p.qty!!.compareTo(bd("1")))
+        assertEquals(0, p.entryPrice!!.compareTo(bd("100")))
+        assertEquals(0, p.exitPrice!!.compareTo(bd("110")))
         assertEquals(Symbol("BTC", "USDT"), p.symbol)
         assertEquals(listOf(FillAction.OPEN, FillAction.CLOSE), p.fills.map { it.action })
     }
@@ -40,9 +40,9 @@ class PositionReconstructorTest {
         )
         val p = PositionReconstructor.reconstruct(fills, normalize).single()
         assertEquals(PositionSide.SHORT, p.side)
-        assertEquals(0, p.qty.compareTo(bd("2")))
-        assertEquals(0, p.entryPrice.compareTo(bd("50")))
-        assertEquals(0, p.exitPrice.compareTo(bd("45")))
+        assertEquals(0, p.qty!!.compareTo(bd("2")))
+        assertEquals(0, p.entryPrice!!.compareTo(bd("50")))
+        assertEquals(0, p.exitPrice!!.compareTo(bd("45")))
     }
 
     @Test
@@ -53,9 +53,9 @@ class PositionReconstructorTest {
             RawFill("SUIUSDT", t(9), buy = false, price = bd("120"), qty = bd("2")),
         )
         val p = PositionReconstructor.reconstruct(fills, normalize).single()
-        assertEquals(0, p.qty.compareTo(bd("2")))
-        assertEquals(0, p.entryPrice.compareTo(bd("105")))
-        assertEquals(0, p.exitPrice.compareTo(bd("120")))
+        assertEquals(0, p.qty!!.compareTo(bd("2")))
+        assertEquals(0, p.entryPrice!!.compareTo(bd("105")))
+        assertEquals(0, p.exitPrice!!.compareTo(bd("120")))
         assertEquals(listOf(FillAction.OPEN, FillAction.ADD, FillAction.CLOSE), p.fills.map { it.action })
     }
 
@@ -69,7 +69,7 @@ class PositionReconstructorTest {
         // Only the closed LONG (qty 1) is emitted; the remaining SHORT (qty 2) is still open.
         assertEquals(1, result.size)
         assertEquals(PositionSide.LONG, result[0].side)
-        assertEquals(0, result[0].qty.compareTo(bd("1")))
+        assertEquals(0, result[0].qty!!.compareTo(bd("1")))
     }
 
     @Test
@@ -83,7 +83,7 @@ class PositionReconstructorTest {
         val result = PositionReconstructor.reconstruct(fills, normalize)
         assertEquals(2, result.size)
         assertTrue(result.all { it.side == PositionSide.LONG })
-        assertEquals(0, result[1].entryPrice.compareTo(bd("200")))
+        assertEquals(0, result[1].entryPrice!!.compareTo(bd("200")))
     }
 
     @Test
@@ -101,8 +101,8 @@ class PositionReconstructorTest {
         val result = PositionReconstructor.reconstruct(fills, normalize)
         assertEquals(2, result.size)
         assertTrue(result.all { it.side == PositionSide.LONG })
-        assertEquals(0, result[0].qty.compareTo(bd("93")))
-        assertEquals(0, result[1].qty.compareTo(bd("50")))
+        assertEquals(0, result[0].qty!!.compareTo(bd("93")))
+        assertEquals(0, result[1].qty!!.compareTo(bd("50")))
     }
 
     @Test

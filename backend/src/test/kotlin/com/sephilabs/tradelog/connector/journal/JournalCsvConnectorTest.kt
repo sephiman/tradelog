@@ -30,7 +30,7 @@ class JournalCsvConnectorTest {
         assertEquals("BTC", p.symbol.base)
         assertEquals("USDT", p.symbol.quote)
         assertEquals(PositionSide.LONG, p.side)
-        assertEquals(0, p.qty.compareTo(BigDecimal.ONE))
+        assertEquals(0, p.qty!!.compareTo(BigDecimal.ONE))
         assertEquals(BigDecimal("1366.52"), round2(p.realizedPnl))
         assertEquals(BigDecimal("171.76"), round2(p.fees))
         assertEquals(2024, p.openedAt.atZone(ZoneOffset.UTC).year)
@@ -49,14 +49,14 @@ class JournalCsvConnectorTest {
     @Test
     fun `european decimals and thousands separators parse`() {
         val p = parse("ETH;long;2024-11-29;2024-11-29;1;\"6.866,25\";\"7.047,17\";\"154,20\";\"26,72\";0;").single()
-        assertEquals(BigDecimal("6866.25"), round2(p.entryPrice))
+        assertEquals(BigDecimal("6866.25"), round2(p.entryPrice!!))
         assertEquals(BigDecimal("154.20"), round2(p.realizedPnl))
     }
 
     @Test
     fun `quantity defaults to one and optional columns default to zero`() {
         val p = parse("SUI;long;2024-11-08;2024-11-08;;100;110;;;;").single()
-        assertEquals(0, p.qty.compareTo(BigDecimal.ONE))
+        assertEquals(0, p.qty!!.compareTo(BigDecimal.ONE))
         assertEquals(BigDecimal("10.00"), round2(p.realizedPnl))
         assertEquals(0, p.fees.compareTo(BigDecimal.ZERO))
         assertEquals(0, p.funding.compareTo(BigDecimal.ZERO))

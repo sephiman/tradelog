@@ -20,6 +20,8 @@ export type SourceKind =
   | "QUANTFURY"
   | "JOURNAL_CSV";
 export type FillAction = "OPEN" | "ADD" | "REDUCE" | "CLOSE";
+/** What the row records. A grid-bot run has no single size or leg price, so those come back null. */
+export type PositionKind = "TRADE" | "GRID_BOT";
 
 export interface PositionTagView {
   groupId: string;
@@ -38,14 +40,19 @@ export interface Position {
   side: PositionSide;
   openedAt: string;
   closedAt: string;
-  qty: string;
-  entryPrice: string;
-  exitPrice: string;
+  kind: PositionKind;
+  qty: string | null;
+  entryPrice: string | null;
+  exitPrice: string | null;
   realizedPnl: string;
   netPnl: string;
   fees: string;
   funding: string;
   pnlCurrency: string;
+  /** Traded notional, both legs. Null = derive it from the legs. */
+  volume: string | null;
+  leverage: string | null;
+  investment: string | null;
   note: string | null;
   tags: PositionTagView[];
   fillCount: number;
@@ -120,6 +127,16 @@ export function usePositionExchanges(profileId: string | null) {
     queryKey: ["positionExchanges", profileId],
     queryFn: async () =>
       (await apiClient.get<string[]>(`/profiles/${profileId}/positions/exchanges`)).data,
+  });
+}
+
+/** Pairs already traded in the profile, spelled "BASE-QUOTE" — the manual forms' suggestions. */
+export function usePositionSymbols(profileId: string | null) {
+  return useQuery({
+    enabled: !!profileId,
+    queryKey: ["positionSymbols", profileId],
+    queryFn: async () =>
+      (await apiClient.get<string[]>(`/profiles/${profileId}/positions/symbols`)).data,
   });
 }
 
@@ -227,9 +244,33 @@ export interface ManualPositionBody {
   tagGroupId?: string;
 }
 
+/** Which figure of the exchange's closed-grid screen the user typed. */
+export type GridPnlBasis = "NET" | "GROSS";
+
+export interface GridRunBody {
+  symbol: string;
+  side: PositionSide;
+  /** Required on a grid run: with no leg prices, the venue is all that anchors capital and ROI. */
+  exchange: string;
+  openedAt: string;
+  closedAt: string;
+  pnl: string;
+  pnlBasis: GridPnlBasis;
+  fees: string;
+  funding: string;
+  /** Omitted when the volume calculator was left empty — the run then has no volume at all. */
+  volume?: string;
+  leverage?: string;
+  investment?: string;
+  note?: string;
+  tagId?: string | null;
+  tagGroupId?: string;
+}
+
 function invalidateTrades(qc: ReturnType<typeof useQueryClient>, profileId: string) {
   qc.invalidateQueries({ queryKey: ["positions", profileId] });
   qc.invalidateQueries({ queryKey: ["positionExchanges", profileId] });
+  qc.invalidateQueries({ queryKey: ["positionSymbols", profileId] });
   qc.invalidateQueries({ queryKey: ["analyticsClosed", profileId] });
   // A hand-added trade shifts the capital curve the moment it lands, exactly as an import does.
   qc.invalidateQueries({ queryKey: ["capital", profileId] });
@@ -253,6 +294,33 @@ export function useUpdatePosition(profileId: string) {
     meta: { silentSuccess: true },
     mutationFn: async ({ positionId, body }: { positionId: string; body: ManualPositionBody }) => {
       const res = await apiClient.put<Position>(`/profiles/${profileId}/positions/${positionId}`, body);
+      return res.data;
+    },
+    onSuccess: (_data, vars) => {
+      invalidateTrades(qc, profileId);
+      qc.invalidateQueries({ queryKey: ["position", profileId, vars.positionId] });
+    },
+  });
+}
+
+export function useCreateGridRun(profileId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { silentSuccess: true },
+    mutationFn: async (body: GridRunBody) => {
+      const res = await apiClient.post<Position>(`/profiles/${profileId}/positions/grid-runs`, body);
+      return res.data;
+    },
+    onSuccess: () => invalidateTrades(qc, profileId),
+  });
+}
+
+export function useUpdateGridRun(profileId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { silentSuccess: true },
+    mutationFn: async ({ positionId, body }: { positionId: string; body: GridRunBody }) => {
+      const res = await apiClient.put<Position>(`/profiles/${profileId}/positions/grid-runs/${positionId}`, body);
       return res.data;
     },
     onSuccess: (_data, vars) => {

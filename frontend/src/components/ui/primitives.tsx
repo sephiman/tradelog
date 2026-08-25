@@ -96,16 +96,22 @@ export function FieldError({ message }: { message?: string | null }) {
   return <p className="mt-1 text-sm text-red-600">{message}</p>;
 }
 
-export function Chip({ children, onClick, active }: { children: React.ReactNode; onClick?: () => void; active?: boolean }) {
+export function Chip({
+  children,
+  active,
+  className,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      {...props}
       className={cn(
         "inline-flex items-center rounded-full border px-3 py-1 text-sm transition-colors",
         active
           ? "border-primary bg-cyan-50 text-primary dark:bg-cyan-900/40 dark:text-cyan-300"
           : "border-border-strong bg-white text-gray-700 hover:bg-gray-50 dark:bg-surface-raised dark:text-gray-200 dark:hover:bg-surface-hover",
+        className,
       )}
     >
       {children}

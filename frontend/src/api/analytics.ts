@@ -16,13 +16,16 @@ export interface ClosedPosition {
   side: PositionSide;
   openedAt: string;
   closedAt: string;
-  qty: string;
-  entryPrice: string;
-  exitPrice: string;
+  /** Null on a grid-bot run, which has no single size or leg price. */
+  qty: string | null;
+  entryPrice: string | null;
+  exitPrice: string | null;
   realizedPnl: string;
   netPnl: string;
   fees: string;
   funding: string;
+  /** Traded notional as recorded, when the legs cannot produce it; null = derive from the legs. */
+  volume: string | null;
   tags: PositionTagView[];
 }
 

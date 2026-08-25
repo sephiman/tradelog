@@ -10,29 +10,51 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
-/** Neither path names a data source: hand-entered trades resolve to the profile's own journal lane. */
+/**
+ * No path names a data source: hand-entered records resolve to the profile's own journal lane. A
+ * grid-bot run gets its own paths rather than a flag, because the two shapes barely overlap — a
+ * grid has no leg prices and its PnL may arrive net.
+ */
 @RestController
+@RequestMapping("/api/profiles/{profileId}/positions")
 class ManualEntryController(
     private val service: ManualEntryService,
     private val currentUser: CurrentUser,
 ) {
 
-    @PostMapping("/api/profiles/{profileId}/positions")
+    @PostMapping
     fun create(
         @PathVariable profileId: UUID,
         @Valid @RequestBody body: ManualPositionRequest,
-    ): ResponseEntity<PositionDto> =
-        ResponseEntity.status(HttpStatus.CREATED)
-            .body(service.create(profileId, currentUser.requireUser().id, body))
+    ): ResponseEntity<PositionDto> = created(profileId, body)
 
-    @PutMapping("/api/profiles/{profileId}/positions/{positionId}")
+    @PutMapping("/{positionId}")
     fun update(
         @PathVariable profileId: UUID,
         @PathVariable positionId: UUID,
         @Valid @RequestBody body: ManualPositionRequest,
     ): PositionDto =
         service.update(profileId, currentUser.requireUser().id, positionId, body)
+
+    @PostMapping("/grid-runs")
+    fun createGridRun(
+        @PathVariable profileId: UUID,
+        @Valid @RequestBody body: GridRunRequest,
+    ): ResponseEntity<PositionDto> = created(profileId, body)
+
+    @PutMapping("/grid-runs/{positionId}")
+    fun updateGridRun(
+        @PathVariable profileId: UUID,
+        @PathVariable positionId: UUID,
+        @Valid @RequestBody body: GridRunRequest,
+    ): PositionDto =
+        service.update(profileId, currentUser.requireUser().id, positionId, body)
+
+    private fun created(profileId: UUID, entry: ManualEntry): ResponseEntity<PositionDto> =
+        ResponseEntity.status(HttpStatus.CREATED)
+            .body(service.create(profileId, currentUser.requireUser().id, entry))
 }

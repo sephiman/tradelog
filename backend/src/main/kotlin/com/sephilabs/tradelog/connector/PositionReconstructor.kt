@@ -47,8 +47,13 @@ object PositionReconstructor {
      * `(exit − entry) × qty` for a long, negated for a short. Used by sources whose fills don't
      * carry a PnL field (Quantfury's spread-inclusive prices; BingX's fill endpoint omits PnL).
      */
-    fun realizedFromPrices(r: PositionRecord): BigDecimal =
-        realizedFromPrices(r.side, r.entryPrice, r.exitPrice, r.qty)
+    /** Zero for a record with no legs — a grid-bot run reports its PnL instead of deriving it. */
+    fun realizedFromPrices(r: PositionRecord): BigDecimal {
+        val entry = r.entryPrice ?: return BigDecimal.ZERO
+        val exit = r.exitPrice ?: return BigDecimal.ZERO
+        val qty = r.qty ?: return BigDecimal.ZERO
+        return realizedFromPrices(r.side, entry, exit, qty)
+    }
 
     fun realizedFromPrices(side: PositionSide, entry: BigDecimal, exit: BigDecimal, qty: BigDecimal): BigDecimal {
         val diff = if (side == PositionSide.LONG) exit.subtract(entry) else entry.subtract(exit)

@@ -58,6 +58,7 @@ class PositionUpsertService(
                     side = r.side,
                     openedAt = r.openedAt,
                     closedAt = r.closedAt,
+                    kind = r.kind,
                     qty = r.qty,
                     entryPrice = r.entryPrice,
                     exitPrice = r.exitPrice,
@@ -66,6 +67,9 @@ class PositionUpsertService(
                     fees = Usdt.normalize(r.fees),
                     funding = Usdt.normalize(r.funding),
                     pnlCurrency = r.pnlCurrency,
+                    volume = r.volume?.let { Usdt.normalize(it) },
+                    leverage = r.leverage,
+                    investment = r.investment?.let { Usdt.normalize(it) },
                     raw = r.raw,
                     note = r.note?.trim()?.takeIf { it.isNotEmpty() },
                     exchange = exchange,
@@ -102,6 +106,7 @@ class PositionUpsertService(
         p.side = r.side
         p.openedAt = r.openedAt
         p.closedAt = r.closedAt
+        p.kind = r.kind
         p.qty = r.qty
         p.entryPrice = r.entryPrice
         p.exitPrice = r.exitPrice
@@ -110,6 +115,9 @@ class PositionUpsertService(
         p.fees = Usdt.normalize(r.fees)
         p.funding = Usdt.normalize(r.funding)
         p.pnlCurrency = r.pnlCurrency
+        p.volume = r.volume?.let { Usdt.normalize(it) }
+        p.leverage = r.leverage
+        p.investment = r.investment?.let { Usdt.normalize(it) }
         p.raw = r.raw
         // note + tags are intentionally left untouched.
     }

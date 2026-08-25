@@ -7,6 +7,7 @@ import com.sephilabs.tradelog.datasource.DataSourceStatus
 import com.sephilabs.tradelog.datasource.SourceKind
 import com.sephilabs.tradelog.position.FillAction
 import com.sephilabs.tradelog.position.FillSide
+import com.sephilabs.tradelog.position.PositionKind
 import com.sephilabs.tradelog.position.PositionSide
 import com.sephilabs.tradelog.profile.ProfileKind
 import java.math.BigDecimal
@@ -114,14 +115,20 @@ data class BackupPosition(
     val side: PositionSide,
     val openedAt: Instant,
     val closedAt: Instant,
-    val qty: BigDecimal,
-    val entryPrice: BigDecimal,
-    val exitPrice: BigDecimal,
+    /** Absent on a grid-bot run, and on nothing else; a backup written before them has values. */
+    val qty: BigDecimal? = null,
+    val entryPrice: BigDecimal? = null,
+    val exitPrice: BigDecimal? = null,
     val realizedPnl: BigDecimal,
     val netPnl: BigDecimal,
     val fees: BigDecimal,
     val funding: BigDecimal,
     val pnlCurrency: String,
+    /** Defaulted so a backup taken before grid runs existed restores as the trades it holds. */
+    val kind: PositionKind = PositionKind.TRADE,
+    val volume: BigDecimal? = null,
+    val leverage: BigDecimal? = null,
+    val investment: BigDecimal? = null,
     val note: String?,
     val raw: String?,
     /** Soft-delete marker; carried so a deletion survives a backup → restore round-trip. Null = live. */

@@ -63,7 +63,26 @@ anyone running a modified version as a network service must publish the source.
   automatic **on login** (async, rate-limited per exchange), a **nightly scheduled sweep** of every
   active API source (default 04:00, `SYNC_SCHEDULE_CRON`), **manual** (per source or all), and the
   **Quantfury PDF upload**.
-- **Manual trades**: **Add trade** on the Positions page records a closed trade by hand — for what no API serves, such as a **futures grid bot** (BingX runs those in a separate Strategy account its API does not expose) or a venue that is gone. It is the Journal CSV's columns as a form — no data source to pick, it lands on the profile's Journal CSV source (created on first use) — and can be **edited afterwards**; only hand-added trades can be, since every synced row is rewritten by its next sync. Tag it (*Grid bot*) to keep it filterable.
+- **Manual entry**: **Add by hand** on the Positions page records what no API serves — a venue that is
+  gone, or a **futures grid bot** (BingX runs those in a separate Strategy account its API does not
+  expose). Two forms behind one button:
+  - **Trade** — the Journal CSV's columns as a form. Position size can be typed as a **notional value**
+    instead of a quantity (the toggle beside the field); the quantity is derived from it and the entry
+    price, and remains what is stored. Leave *Realized PnL* blank and it comes from the leg prices.
+  - **Grid bot** — six fields (symbol, side, exchange, opened, closed, one PnL figure) plus a collapsed
+    section for the rest. The **Net ⇄ Gross** switch takes whichever figure the exchange showed
+    (*Total profit* is net, *Realized PnL* is gross) and derives the other from the fees and funding.
+    A **volume calculator** turns matched orders × size per grid × reference price into traded volume
+    (×2, since each matched order is a buy and a sell — the convention the Volume statistic already
+    uses); left empty, the run simply adds nothing to that statistic instead of a made-up number.
+    Entry price, exit price and quantity are **null** on such a run and read as `—`: hundreds of matched
+    orders have no single one, and inventing them would pollute every price-based view. Leverage,
+    investment and the grid's own ROI are kept as informative detail and never fed into analytics.
+
+  Neither form asks for a data source: both land on the profile's Journal CSV source (created on first
+  use), and both suggest **symbols you have already traded** as you type. Hand-entered rows — and only
+  those — stay **editable afterwards**, since every synced row is rewritten by its next sync. Every
+  other statistic (PnL, win rate, streaks, calendar, trader style, pairs, fees) works unchanged.
 - **Annotations & management**: a customizable per-user **tag taxonomy** (seeded with an *Origen* group you edit), free-text notes per position, and full position leg operations viewable. Supports **bulk tagging** (apply Origen tags to selected trades or all matching search filters), **tag archiving** (retire a tag from new assignments while every position that already carries it keeps it, and it stays available as a filter), and **soft-deletion** (single or bulk delete/hide trades).
 - **Capital history & real ROI**: a dedicated **Capital** page tracks your trading capital as a
   dated history of **adjustments** (anchors: your real balance per exchange on a date) plus
@@ -313,16 +332,18 @@ position, so no reconstruction is needed.
    open date; rows that look like positions already imported from another source — which would
    double-count PnL). Then **Import**.
 
-A single trade is faster to type than to convert: **Positions → Add trade** writes the same row through
+A single trade is faster to type than to convert: **Positions → Add by hand** writes the same row through
 a form. It asks for no data source — it reuses the profile's Journal CSV source, creating one labelled
 *Manual* if there is none, because what decides the venue (and so the capital and ROI grouping) is the
 trade's own **Exchange** field, not which source holds the row. Leave *Realized PnL* blank and it is
 derived from the leg prices, exactly as the CSV does. Those rows — and only those — stay editable
 afterwards.
 
-For a **closed grid bot**, encode the run as one position: quantity `1`, entry price = the capital you
-put in, exit price = what came back, so the PnL is the bot's result; put the venue on its own
-(e.g. `BingX Strategy`, since that account holds separate money) and tag it *Grid bot*.
+A **closed grid bot** has its own tab in that dialog rather than being encoded as a trade: it reports the
+PnL figure the venue showed and leaves entry price, exit price and quantity empty, because a run of
+hundreds of matched orders has no single one. Put the venue on its own (e.g. `BingX Strategy`, since that
+account holds separate money) and tag it *Grid bot* to keep it filterable. The Journal CSV has no columns
+for a grid run — use the form.
 
 The canonical header is:
 

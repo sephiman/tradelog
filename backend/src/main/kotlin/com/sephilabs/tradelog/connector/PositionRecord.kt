@@ -3,6 +3,7 @@ package com.sephilabs.tradelog.connector
 
 import com.sephilabs.tradelog.position.FillAction
 import com.sephilabs.tradelog.position.FillSide
+import com.sephilabs.tradelog.position.PositionKind
 import com.sephilabs.tradelog.position.PositionSide
 import java.math.BigDecimal
 import java.time.Instant
@@ -35,13 +36,19 @@ data class PositionRecord(
     val side: PositionSide,
     val openedAt: Instant,
     val closedAt: Instant,
-    val qty: BigDecimal,
-    val entryPrice: BigDecimal,
-    val exitPrice: BigDecimal,
+    /** All three are null on a grid-bot run, which has no single price or size to report. */
+    val qty: BigDecimal? = null,
+    val entryPrice: BigDecimal? = null,
+    val exitPrice: BigDecimal? = null,
     val realizedPnl: BigDecimal,
     val fees: BigDecimal = BigDecimal.ZERO,
     val funding: BigDecimal = BigDecimal.ZERO,
     val pnlCurrency: String = "USDT",
+    val kind: PositionKind = PositionKind.TRADE,
+    /** Traded notional, both legs. Null = derive it from the legs. */
+    val volume: BigDecimal? = null,
+    val leverage: BigDecimal? = null,
+    val investment: BigDecimal? = null,
     val fills: List<FillRecord> = emptyList(),
     val raw: String? = null,
     /** Optional note seeded on first insert only; never overwrites a user-edited note on re-import. */

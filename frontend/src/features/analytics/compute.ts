@@ -29,8 +29,14 @@ export function netOf(p: ClosedPosition): Decimal {
  * Notional volume of a round-trip trade, exchange-standard: both legs count, so
  * volume = qty × (entryPrice + exitPrice). This matches how venues tally traded volume for fee
  * tiers — opening and closing each contribute their notional.
+ *
+ * A recorded `volume` wins: a grid-bot run has no legs to multiply, so it reports its own figure.
+ * Null when it has neither — a run whose volume was never entered contributes nothing to the total
+ * rather than a made-up number.
  */
-export function volumeOf(p: ClosedPosition): Decimal {
+export function volumeOf(p: ClosedPosition): Decimal | null {
+  if (p.volume !== null) return toDecimal(p.volume);
+  if (p.qty === null || p.entryPrice === null || p.exitPrice === null) return null;
   return toDecimal(p.qty).times(toDecimal(p.entryPrice).plus(toDecimal(p.exitPrice)));
 }
 
@@ -94,7 +100,7 @@ export interface Stats {
   wins: number;
   losses: number;
   totalPnl: Decimal;
-  volume: Decimal; // total notional traded, both legs (qty × (entry + exit))
+  volume: Decimal; // total notional traded, both legs; a position with none is left out
   winRate: number | null; // fraction 0–1 over decided trades
   lossRate: number | null;
   avgWin: Decimal | null;
@@ -129,7 +135,7 @@ export function computeStats(rows: ClosedPosition[]): Stats {
     wins: wins.length,
     losses: losses.length,
     totalPnl: sum(nets),
-    volume: sum(rows.map(volumeOf)),
+    volume: sum(rows.map((p) => volumeOf(p) ?? ZERO)),
     winRate,
     lossRate,
     avgWin,

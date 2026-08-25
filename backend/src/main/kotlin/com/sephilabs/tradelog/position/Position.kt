@@ -17,6 +17,12 @@ import java.util.UUID
 enum class PositionSide { LONG, SHORT }
 
 /**
+ * What the row records. A [GRID_BOT] run is hundreds of matched orders with no single entry price,
+ * exit price or quantity, so those are null on it and its PnL is supplied directly.
+ */
+enum class PositionKind { TRADE, GRID_BOT }
+
+/**
  * A canonical, flat-to-flat closed position: from net exposure leaving zero until it returns to
  * zero. Scaling in/out within that lifecycle is a single position. Realized PnL, fees and funding
  * are kept separate and summable (USDT for now).
@@ -57,14 +63,19 @@ class Position(
     @Column(name = "closed_at", nullable = false)
     var closedAt: Instant,
 
-    @Column(name = "qty", nullable = false, precision = 38, scale = 18)
-    var qty: BigDecimal,
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kind", nullable = false, length = 16)
+    var kind: PositionKind = PositionKind.TRADE,
 
-    @Column(name = "entry_price", nullable = false, precision = 38, scale = 18)
-    var entryPrice: BigDecimal,
+    /** Null on a grid-bot run: no single quantity exists, and a synthesised one would be a lie. */
+    @Column(name = "qty", precision = 38, scale = 18)
+    var qty: BigDecimal? = null,
 
-    @Column(name = "exit_price", nullable = false, precision = 38, scale = 18)
-    var exitPrice: BigDecimal,
+    @Column(name = "entry_price", precision = 38, scale = 18)
+    var entryPrice: BigDecimal? = null,
+
+    @Column(name = "exit_price", precision = 38, scale = 18)
+    var exitPrice: BigDecimal? = null,
 
     /** GROSS realized PnL — price movement only, before fees and funding. */
     @Column(name = "realized_pnl", nullable = false, precision = 38, scale = 8)
@@ -82,6 +93,17 @@ class Position(
 
     @Column(name = "pnl_currency", nullable = false, length = 8)
     var pnlCurrency: String = "USDT",
+
+    /** Traded notional, both legs. Null = derive it from [qty] × ([entryPrice] + [exitPrice]). */
+    @Column(name = "volume", precision = 38, scale = 8)
+    var volume: BigDecimal? = null,
+
+    /** Informative only, as the venue showed it on the closed grid; never feeds analytics. */
+    @Column(name = "leverage", precision = 10, scale = 2)
+    var leverage: BigDecimal? = null,
+
+    @Column(name = "investment", precision = 38, scale = 8)
+    var investment: BigDecimal? = null,
 
     /** Trading venue (e.g. Bitunix, BingX, Quantfury, or a CSV-supplied dead exchange like FTX). */
     @Column(name = "exchange", length = 64)

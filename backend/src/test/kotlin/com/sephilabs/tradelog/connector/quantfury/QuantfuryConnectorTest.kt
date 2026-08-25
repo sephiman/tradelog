@@ -79,7 +79,7 @@ class QuantfuryConnectorTest {
         assertEquals("NFLX", p.symbol.base)
         assertEquals("USDT", p.symbol.quote)
         assertEquals(PositionSide.LONG, p.side)
-        assertEquals(0, p.qty.compareTo(BigDecimal("17.7531")))
+        assertEquals(0, p.qty!!.compareTo(BigDecimal("17.7531")))
         // (76.31 - 72.10) * 17.7531 = 74.74
         assertEquals(BigDecimal("74.74"), round2(p.realizedPnl))
     }
@@ -108,8 +108,8 @@ class QuantfuryConnectorTest {
         )
         val p = connector.parse(ByteArrayInputStream(bytes)).single()
         assertEquals(PositionSide.LONG, p.side)
-        assertEquals(0, p.qty.compareTo(BigDecimal("2")))
-        assertEquals(0, p.entryPrice.compareTo(BigDecimal("105")))
+        assertEquals(0, p.qty!!.compareTo(BigDecimal("2")))
+        assertEquals(0, p.entryPrice!!.compareTo(BigDecimal("105")))
         // (120 - 105) * 2 = 30
         assertEquals(BigDecimal("30.00"), round2(p.realizedPnl))
         assertEquals(3, p.fills.size)

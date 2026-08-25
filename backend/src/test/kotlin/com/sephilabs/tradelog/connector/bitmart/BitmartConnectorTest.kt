@@ -51,9 +51,9 @@ class BitmartConnectorTest {
         val p = PositionReconstructor.reconstruct(fills, normalize).single()
         assertEquals(Symbol("BTC", "USDT"), p.symbol)
         assertEquals(PositionSide.LONG, p.side)
-        assertEquals(0, p.qty.compareTo(BigDecimal("0.01")))
-        assertEquals(0, p.entryPrice.compareTo(BigDecimal("100")))
-        assertEquals(0, p.exitPrice.compareTo(BigDecimal("110")))
+        assertEquals(0, p.qty!!.compareTo(BigDecimal("0.01")))
+        assertEquals(0, p.entryPrice!!.compareTo(BigDecimal("100")))
+        assertEquals(0, p.exitPrice!!.compareTo(BigDecimal("110")))
         // PnL/fees come straight from the payload (summed), not derived from prices.
         assertEquals(0, p.realizedPnl.compareTo(BigDecimal("10")))
         assertEquals(0, p.fees.compareTo(BigDecimal("1.0")))
@@ -74,9 +74,9 @@ class BitmartConnectorTest {
         val p = PositionReconstructor.reconstruct(connector.mapTrades(parse(body), sizes), normalize).single()
         assertEquals(PositionSide.SHORT, p.side)
         // vol 5 * 0.01 = 0.05 ETH
-        assertEquals(0, p.qty.compareTo(BigDecimal("0.05")))
-        assertEquals(0, p.entryPrice.compareTo(BigDecimal("50")))
-        assertEquals(0, p.exitPrice.compareTo(BigDecimal("45")))
+        assertEquals(0, p.qty!!.compareTo(BigDecimal("0.05")))
+        assertEquals(0, p.entryPrice!!.compareTo(BigDecimal("50")))
+        assertEquals(0, p.exitPrice!!.compareTo(BigDecimal("45")))
         assertEquals(0, p.realizedPnl.compareTo(BigDecimal("2.5")))
     }
 
@@ -93,7 +93,7 @@ class BitmartConnectorTest {
 
         val p = PositionReconstructor.reconstruct(connector.mapTrades(parse(body), ContractSizes.NONE), normalize).single()
         // No contract size known => vol used as-is.
-        assertEquals(0, p.qty.compareTo(BigDecimal("3")))
+        assertEquals(0, p.qty!!.compareTo(BigDecimal("3")))
         assertEquals(PositionSide.LONG, p.side)
     }
 }

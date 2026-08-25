@@ -9,6 +9,7 @@ import com.sephilabs.tradelog.datasource.SourceKind
 import com.sephilabs.tradelog.identity.user.User
 import com.sephilabs.tradelog.identity.user.UserRepository
 import com.sephilabs.tradelog.position.Position
+import com.sephilabs.tradelog.position.PositionKind
 import com.sephilabs.tradelog.position.PositionRepository
 import com.sephilabs.tradelog.position.PositionSide
 import com.sephilabs.tradelog.profile.Profile
@@ -63,6 +64,129 @@ class ManualEntryIntegrationTest @Autowired constructor(
         symbol, side, openedAt, closedAt, qty, entryPrice, exitPrice,
         realizedPnl, fees, funding, exchange, note, tagId, tagGroupId,
     )
+
+    private fun gridRequest(
+        symbol: String = "TAO-USDT",
+        side: PositionSide = PositionSide.LONG,
+        exchange: String = "BingX Strategy",
+        openedAt: Instant = Instant.parse("2026-07-14T09:20:00Z"),
+        closedAt: Instant = Instant.parse("2026-08-02T18:05:00Z"),
+        pnl: BigDecimal = BigDecimal("23.16"),
+        pnlBasis: GridPnlBasis = GridPnlBasis.NET,
+        fees: BigDecimal = BigDecimal("3.56"),
+        funding: BigDecimal = BigDecimal("0.15"),
+        volume: BigDecimal? = null,
+        leverage: BigDecimal? = null,
+        investment: BigDecimal? = null,
+        note: String? = null,
+        tagId: UUID? = null,
+        tagGroupId: UUID? = null,
+    ) = GridRunRequest(
+        symbol, side, exchange, openedAt, closedAt, pnl, pnlBasis, fees, funding,
+        volume, leverage, investment, note, tagId, tagGroupId,
+    )
+
+    @Test
+    fun `a grid run carries no prices and its gross is the net figure with the costs added back`() {
+        val f = fixture()
+
+        val dto = service.create(f.profileId, f.userId, gridRequest())
+
+        assertThat(dto.kind).isEqualTo(PositionKind.GRID_BOT)
+        assertThat(dto.qty).isNull()
+        assertThat(dto.entryPrice).isNull()
+        assertThat(dto.exitPrice).isNull()
+        // The venue showed "Total Profit" 23.16; its "Realized PnL" was 26.87 = 23.16 + 3.56 + 0.15.
+        assertThat(dto.realizedPnl.setScale(2, RoundingMode.HALF_EVEN)).isEqualByComparingTo("26.87")
+        assertThat(dto.netPnl.setScale(2, RoundingMode.HALF_EVEN)).isEqualByComparingTo("23.16")
+        assertThat(dto.exchange).isEqualTo("BingX Strategy")
+        assertThat(dto.editable).isTrue()
+    }
+
+    @Test
+    fun `the gross figure is stored as given and the net derived from it`() {
+        val f = fixture()
+
+        val dto = service.create(f.profileId, f.userId, gridRequest(pnl = BigDecimal("26.87"), pnlBasis = GridPnlBasis.GROSS))
+
+        assertThat(dto.realizedPnl.setScale(2, RoundingMode.HALF_EVEN)).isEqualByComparingTo("26.87")
+        assertThat(dto.netPnl.setScale(2, RoundingMode.HALF_EVEN)).isEqualByComparingTo("23.16")
+    }
+
+    @Test
+    fun `an empty volume calculator leaves the run without a volume rather than inventing one`() {
+        val f = fixture()
+
+        val dto = service.create(f.profileId, f.userId, gridRequest())
+
+        assertThat(dto.volume).isNull()
+    }
+
+    @Test
+    fun `a computed volume and the informative leverage and investment are kept`() {
+        val f = fixture()
+
+        val dto = service.create(
+            f.profileId, f.userId,
+            gridRequest(volume = BigDecimal("25500"), leverage = BigDecimal("10"), investment = BigDecimal("250")),
+        )
+
+        assertThat(dto.volume).isEqualByComparingTo("25500")
+        assertThat(dto.leverage).isEqualByComparingTo("10")
+        assertThat(dto.investment).isEqualByComparingTo("250")
+    }
+
+    @Test
+    fun `editing a grid run rewrites it in place`() {
+        val f = fixture()
+        val created = service.create(f.profileId, f.userId, gridRequest())
+
+        val edited = service.update(
+            f.profileId, f.userId, created.id,
+            gridRequest(
+                symbol = "ETH-USDT",
+                side = PositionSide.SHORT,
+                pnl = BigDecimal("40"),
+                pnlBasis = GridPnlBasis.GROSS,
+                fees = BigDecimal("5"),
+                funding = BigDecimal.ZERO,
+                volume = BigDecimal("12000"),
+                note = "range broke out",
+            ),
+        )
+
+        assertThat(edited.id).isEqualTo(created.id)
+        assertThat(edited.symbolBase).isEqualTo("ETH")
+        assertThat(edited.side).isEqualTo(PositionSide.SHORT)
+        assertThat(edited.netPnl.setScale(2, RoundingMode.HALF_EVEN)).isEqualByComparingTo("35.00")
+        assertThat(edited.volume).isEqualByComparingTo("12000")
+        assertThat(edited.note).isEqualTo("range broke out")
+        assertThat(positions.countByDataSourceIdAndDeletedAtIsNull(f.dataSourceId!!)).isEqualTo(1)
+    }
+
+    @Test
+    fun `a grid run cannot be rewritten as a trade, nor a trade as a grid run`() {
+        val f = fixture()
+        val grid = service.create(f.profileId, f.userId, gridRequest())
+        val trade = service.create(f.profileId, f.userId, request())
+
+        assertThatThrownBy { service.update(f.profileId, f.userId, grid.id, request()) }
+            .isInstanceOf(AppException::class.java)
+            .hasFieldOrPropertyWithValue("code", "POSITION_KIND_MISMATCH")
+        assertThatThrownBy { service.update(f.profileId, f.userId, trade.id, gridRequest()) }
+            .isInstanceOf(AppException::class.java)
+            .hasFieldOrPropertyWithValue("code", "POSITION_KIND_MISMATCH")
+    }
+
+    @Test
+    fun `a hand-entered trade stays a trade`() {
+        val f = fixture()
+
+        val dto = service.create(f.profileId, f.userId, request())
+
+        assertThat(dto.kind).isEqualTo(PositionKind.TRADE)
+        assertThat(dto.volume).isNull()
+    }
 
     @Test
     fun `adds a hand-entered trade, derives pnl from prices and marks it editable`() {

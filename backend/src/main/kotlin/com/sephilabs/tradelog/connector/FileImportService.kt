@@ -21,7 +21,8 @@ data class PreviewPositionDto(
     val side: String,
     val openedAt: Instant,
     val closedAt: Instant,
-    @JsonFormat(shape = JsonFormat.Shape.STRING) val qty: BigDecimal,
+    /** Absent only for a row with no single size to report; every file format supplies one. */
+    @JsonFormat(shape = JsonFormat.Shape.STRING) val qty: BigDecimal?,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val realizedPnl: BigDecimal,
 )
 

@@ -34,13 +34,20 @@ interface ClosedPositionSummary {
     val side: PositionSide
     val openedAt: Instant
     val closedAt: Instant
-    val qty: BigDecimal
-    val entryPrice: BigDecimal
-    val exitPrice: BigDecimal
+    val qty: BigDecimal?
+    val entryPrice: BigDecimal?
+    val exitPrice: BigDecimal?
     val realizedPnl: BigDecimal
     val netPnl: BigDecimal
     val fees: BigDecimal
     val funding: BigDecimal
+    val volume: BigDecimal?
+}
+
+/** A pair the profile has already traded, for the manual forms' symbol suggestions. */
+interface SymbolView {
+    val symbolBase: String
+    val symbolQuote: String
 }
 
 /** Minimal projection for capital carry-forward math: when a trade closed, where, and its net result. */
@@ -75,6 +82,16 @@ interface PositionRepository : JpaRepository<Position, UUID>, JpaSpecificationEx
 
     @Query("SELECT DISTINCT p.exchange FROM Position p WHERE p.profileId = :profileId AND p.exchange IS NOT NULL AND p.deletedAt IS NULL ORDER BY p.exchange")
     fun findDistinctExchanges(@Param("profileId") profileId: UUID): List<String>
+
+    @Query(
+        """
+        SELECT DISTINCT p.symbolBase AS symbolBase, p.symbolQuote AS symbolQuote
+        FROM Position p
+        WHERE p.profileId = :profileId AND p.deletedAt IS NULL
+        ORDER BY p.symbolBase ASC, p.symbolQuote ASC
+        """
+    )
+    fun findDistinctSymbols(@Param("profileId") profileId: UUID): List<SymbolView>
 
     /** Live trades closed at/after [from], for capital carry-forward and ROI aggregation. */
     fun findAllByProfileIdAndClosedAtGreaterThanEqualAndDeletedAtIsNull(profileId: UUID, from: Instant): List<ClosedPnl>

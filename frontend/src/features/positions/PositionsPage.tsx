@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { NoActiveProfile } from "@/features/profiles/NoActiveProfile";
@@ -16,17 +16,25 @@ import {
   type PositionFilters,
 } from "@/api/positions";
 import { isArchived, useTaxonomy, type TagGroup } from "@/api/taxonomy";
-import { TradeFormDialog } from "./TradeFormDialog";
+import { ManualEntryDialog } from "./ManualEntryDialog";
 import { SOURCE_KINDS, SOURCE_LABELS } from "@/lib/sourceKinds";
 import { Badge, Button, Card, CardBody, Input, Select, Textarea } from "@/components/ui/primitives";
 import { QueryError } from "@/components/ui/QueryError";
 import { cn } from "@/lib/cn";
 import { dateInputToIso, fmtDateTime, fmtNum, fmtPrice, fmtUsd, isoToDateInput, pnlTone, toDecimal } from "@/lib/format";
+import { volumeOf } from "@/features/analytics/compute";
+import { gridRoi } from "./entryMath";
 import { useTagLabel } from "@/lib/tagLabel";
 import { showToast } from "@/lib/toastBus";
 
 /** Sentinel option value for the origen filter that selects positions with no origen tag. */
 const ORIGEN_UNSET = "__unset__";
+
+/** A figure a grid-bot run simply does not have — shown as a dash, never as a zero. */
+const optional = (value: string | null, format: (v: string) => string) => (value === null ? "—" : format(value));
+
+/** Beyond this the column would eat the table; longer tag names get an ellipsis in the closed select. */
+const ORIGEN_SELECT_MAX_PX = 192;
 
 export function PositionsPage() {
   const { t } = useTranslation();
@@ -40,6 +48,11 @@ export function PositionsPage() {
   // which keeps them so historical positions stay reachable.
   const assignableTags = useMemo(() => (origen?.tags ?? []).filter((tag) => !isArchived(tag)), [origen]);
   const tagLabel = useTagLabel();
+  // Archived tags count too: they carry the "(archived)" suffix and can still show up in a row.
+  const { origenWidth, origenSizer } = useOrigenSelectWidth([
+    t("common.none"),
+    ...(origen?.tags ?? []).map(tagLabel),
+  ]);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [allMatching, setAllMatching] = useState(false);
@@ -148,10 +161,10 @@ export function PositionsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{t("positions.title")}</h1>
-        <Button onClick={() => setAdding(true)}>{t("trades.add")}</Button>
+        <Button onClick={() => setAdding(true)}>{t("trades.addByHand")}</Button>
       </div>
 
-      <TradeFormDialog open={adding} onClose={() => setAdding(false)} profileId={activeProfileId} />
+      <ManualEntryDialog open={adding} onClose={() => setAdding(false)} profileId={activeProfileId} />
 
       <Card>
         <CardBody>
@@ -294,6 +307,7 @@ export function PositionsPage() {
             </button>
           </div>
         )}
+        {origenSizer}
         <div className="@container hidden overflow-x-auto md:block">
           <table className="w-full text-sm [&>tbody>tr>td:first-child]:pl-3 [&>tbody>tr>td:last-child]:pr-3 [&>thead>tr>th:first-child]:pl-3 [&>thead>tr>th:last-child]:pr-3">
             <thead className="border-b border-border text-left text-xs uppercase text-gray-500 dark:text-gray-400">
@@ -333,6 +347,7 @@ export function PositionsPage() {
                     profileId={activeProfileId}
                     position={p}
                     origen={origen}
+                    origenWidth={origenWidth}
                     selected={allMatching || selected.has(p.id)}
                     selectDisabled={allMatching}
                     onToggleSelect={() => toggleRow(p.id)}
@@ -368,6 +383,7 @@ export function PositionsPage() {
                     profileId={activeProfileId}
                     position={p}
                     origen={origen}
+                    origenWidth={origenWidth}
                     selected={allMatching || selected.has(p.id)}
                     selectDisabled={allMatching}
                     onToggleSelect={() => toggleRow(p.id)}
@@ -444,6 +460,7 @@ interface RowProps {
   profileId: string;
   position: Position;
   origen?: TagGroup;
+  origenWidth?: number;
   selected: boolean;
   selectDisabled: boolean;
   onToggleSelect: () => void;
@@ -462,15 +479,18 @@ function useOrigenTag(profileId: string, position: Position, origen?: TagGroup) 
   return { currentTagId, onTagChange };
 }
 
+/** Every Origen select shares one width so the column stays aligned; see useOrigenSelectWidth. */
 function OrigenSelect({
   origen,
   value,
   onChange,
+  width,
   className,
 }: {
   origen: TagGroup;
   value: string;
   onChange: (tagId: string) => void;
+  width?: number;
   className?: string;
 }) {
   const { t } = useTranslation();
@@ -479,7 +499,12 @@ function OrigenSelect({
   // it stays selected (and re-selectable) so the annotation is never silently lost on edit.
   const options = origen.tags.filter((tag) => !isArchived(tag) || tag.id === value);
   return (
-    <Select className={className} value={value} onChange={(e) => onChange(e.target.value)}>
+    <Select
+      className={cn("truncate", className)}
+      style={{ width: width ?? "auto" }}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
       <option value="">{t("common.none")}</option>
       {options.map((tag) => (
         <option key={tag.id} value={tag.id}>{tagLabel(tag)}</option>
@@ -488,7 +513,31 @@ function OrigenSelect({
   );
 }
 
-function PositionRow({ profileId, position, origen, selected, selectDisabled, onToggleSelect }: RowProps) {
+// A hidden twin of the select, holding every option, is measured once: the browser sizes it to the
+// widest one, chrome and arrow included, which is exactly the width the visible selects need.
+function useOrigenSelectWidth(labels: string[]) {
+  // The node lives in state, not a ref, so the measurement also runs when the twin mounts late —
+  // the page renders without it until a profile is active.
+  const [sizerNode, setSizerNode] = useState<HTMLSelectElement | null>(null);
+  const [width, setWidth] = useState<number>();
+  const labelKey = labels.join("\u0000");
+
+  useLayoutEffect(() => {
+    const measured = sizerNode?.offsetWidth ?? 0;
+    setWidth(measured > 0 ? Math.min(measured, ORIGEN_SELECT_MAX_PX) : undefined);
+  }, [sizerNode, labelKey]);
+
+  const sizer = (
+    <Select ref={setSizerNode} aria-hidden tabIndex={-1} className="invisible fixed -left-[9999px] top-0 w-auto">
+      {labels.map((label, i) => (
+        <option key={i}>{label}</option>
+      ))}
+    </Select>
+  );
+  return { origenWidth: width, origenSizer: sizer };
+}
+
+function PositionRow({ profileId, position, origen, origenWidth, selected, selectDisabled, onToggleSelect }: RowProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const { currentTagId, onTagChange } = useOrigenTag(profileId, position, origen);
@@ -508,7 +557,10 @@ function PositionRow({ profileId, position, origen, selected, selectDisabled, on
           />
         </td>
         <td className="whitespace-nowrap py-2 text-gray-600 dark:text-gray-300">{fmtDateTime(position.closedAt)}</td>
-        <td className="font-medium">{position.symbolBase}/{position.symbolQuote}</td>
+        <td className="whitespace-nowrap font-medium">
+          {position.symbolBase}/{position.symbolQuote}
+          {position.kind === "GRID_BOT" && <span className="ml-1"><Badge tone="sky">{t("grids.badge")}</Badge></span>}
+        </td>
         <td>
           <Badge tone={position.side === "LONG" ? "green" : "red"}>
             {position.side === "LONG" ? t("positions.long") : t("positions.short")}
@@ -516,14 +568,14 @@ function PositionRow({ profileId, position, origen, selected, selectDisabled, on
         </td>
         <td className="hidden whitespace-nowrap text-xs text-gray-500 @min-[1200px]:table-cell dark:text-gray-400">{SOURCE_LABELS[position.source]}</td>
         <td className="hidden whitespace-nowrap text-gray-600 @min-[760px]:table-cell dark:text-gray-300">{position.exchange ?? "—"}</td>
-        <td className="hidden text-right tabular-nums @min-[1010px]:table-cell">{fmtNum(position.qty)}</td>
-        <td className="hidden text-right tabular-nums @min-[880px]:table-cell" title={position.entryPrice}>{fmtPrice(position.entryPrice)}</td>
-        <td className="hidden text-right tabular-nums @min-[880px]:table-cell" title={position.exitPrice}>{fmtPrice(position.exitPrice)}</td>
+        <td className="hidden text-right tabular-nums @min-[1010px]:table-cell">{optional(position.qty, fmtNum)}</td>
+        <td className="hidden text-right tabular-nums @min-[880px]:table-cell" title={position.entryPrice ?? ""}>{optional(position.entryPrice, fmtPrice)}</td>
+        <td className="hidden text-right tabular-nums @min-[880px]:table-cell" title={position.exitPrice ?? ""}>{optional(position.exitPrice, fmtPrice)}</td>
         <td className={cn("text-right font-medium tabular-nums", pnlTone(position.netPnl))}>
           {fmtUsd(position.netPnl, { sign: true })}
         </td>
         <td className="w-[1%] whitespace-nowrap">
-          {origen && <OrigenSelect origen={origen} value={currentTagId} onChange={onTagChange} className="w-auto max-w-[9rem]" />}
+          {origen && <OrigenSelect origen={origen} value={currentTagId} onChange={onTagChange} width={origenWidth} />}
         </td>
         <td className="sticky right-0 w-[1%] whitespace-nowrap bg-inherit text-right">
           <button
@@ -548,7 +600,7 @@ function PositionRow({ profileId, position, origen, selected, selectDisabled, on
   );
 }
 
-function PositionCard({ profileId, position, origen, selected, selectDisabled, onToggleSelect }: RowProps) {
+function PositionCard({ profileId, position, origen, origenWidth, selected, selectDisabled, onToggleSelect }: RowProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const { currentTagId, onTagChange } = useOrigenTag(profileId, position, origen);
@@ -568,6 +620,7 @@ function PositionCard({ profileId, position, origen, selected, selectDisabled, o
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="font-medium">{position.symbolBase}/{position.symbolQuote}</span>
+              {position.kind === "GRID_BOT" && <Badge tone="sky">{t("grids.badge")}</Badge>}
               <Badge tone={position.side === "LONG" ? "green" : "red"}>
                 {position.side === "LONG" ? t("positions.long") : t("positions.short")}
               </Badge>
@@ -581,12 +634,12 @@ function PositionCard({ profileId, position, origen, selected, selectDisabled, o
             {position.exchange ? ` · ${position.exchange}` : ""}
           </div>
           <div className="mt-1 text-xs tabular-nums text-gray-500 dark:text-gray-400">
-            {t("positions.qty")}: {fmtNum(position.qty)} · {t("positions.entry")}: {fmtPrice(position.entryPrice)} ·{" "}
-            {t("positions.exit")}: {fmtPrice(position.exitPrice)}
+            {t("positions.qty")}: {optional(position.qty, fmtNum)} · {t("positions.entry")}:{" "}
+            {optional(position.entryPrice, fmtPrice)} · {t("positions.exit")}: {optional(position.exitPrice, fmtPrice)}
           </div>
           <div className="mt-2 flex items-center justify-between gap-2">
             {origen ? (
-              <OrigenSelect origen={origen} value={currentTagId} onChange={onTagChange} className="w-40" />
+              <OrigenSelect origen={origen} value={currentTagId} onChange={onTagChange} width={origenWidth} className="min-w-0 max-w-full" />
             ) : (
               <span />
             )}
@@ -614,6 +667,9 @@ function PositionCard({ profileId, position, origen, selected, selectDisabled, o
 function ExpandedPanel({ profileId, position }: { profileId: string; position: Position }) {
   const { t } = useTranslation();
   const { data: detail, isLoading } = usePositionDetail(profileId, position.id);
+  // Same rule the Volume statistic applies, so the row and the dashboard never disagree.
+  const volume = volumeOf(position);
+  const roi = position.investment ? gridRoi(toDecimal(position.netPnl), toDecimal(position.investment)) : null;
   const setNote = useSetNote(profileId);
   const deletePosition = useDeletePosition(profileId);
   const [note, setNote_] = useState(position.note ?? "");
@@ -655,11 +711,14 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
           </div>
         )}
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <span>{t("positions.volume")}: {fmtUsd(toDecimal(position.qty).mul(toDecimal(position.entryPrice).plus(toDecimal(position.exitPrice))).toString())}</span>
+          <span>{t("positions.volume")}: {volume ? fmtUsd(volume.toString()) : "—"}</span>
           <span>{t("positions.grossPnl")}: {fmtUsd(position.realizedPnl, { sign: true })}</span>
           <span>{t("positions.fees")}: {fmtUsd(position.fees)}</span>
           <span>{t("positions.funding")}: {fmtUsd(position.funding)}</span>
           <span>{t("positions.netPnl")}: {fmtUsd(position.netPnl, { sign: true })}</span>
+          {position.investment && <span>{t("grids.investment")}: {fmtUsd(position.investment)}</span>}
+          {position.leverage && <span>{t("grids.leverage")}: {fmtNum(position.leverage, 2)}x</span>}
+          {roi && <span>{t("grids.roi")}: {roi.toDecimalPlaces(2).toString()}%</span>}
         </div>
       </div>
 
@@ -712,7 +771,7 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
       </div>
 
       {position.editable && (
-        <TradeFormDialog
+        <ManualEntryDialog
           open={editing}
           onClose={() => setEditing(false)}
           profileId={profileId}

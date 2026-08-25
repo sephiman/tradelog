@@ -38,6 +38,7 @@ function pos(over: Partial<ClosedPosition>): ClosedPosition {
     netPnl: "0",
     fees: "0",
     funding: "0",
+    volume: null,
     tags: [],
     ...over,
   };
@@ -91,6 +92,15 @@ describe("computeStats", () => {
       net(0, { qty: "2", entryPrice: "1000", exitPrice: "1100" }), //    2*(2100)    =  4200
     ]);
     expect(s.volume.toNumber()).toBe(63200);
+  });
+
+  it("takes a recorded volume over the legs, and leaves out a position that has neither", () => {
+    const s = computeStats([
+      net(0, { qty: "2", entryPrice: "1000", exitPrice: "1100", volume: "500" }), // recorded wins
+      net(0, { qty: null, entryPrice: null, exitPrice: null, volume: "25500" }), // a grid run
+      net(0, { qty: null, entryPrice: null, exitPrice: null }), // a grid run with no volume entered
+    ]);
+    expect(s.volume.toNumber()).toBe(26000);
   });
 });
 

@@ -48,6 +48,11 @@ class PositionService(
     @Transactional(readOnly = true)
     fun exchanges(profileId: UUID): List<String> = positions.findDistinctExchanges(profileId)
 
+    /** Pairs already traded in this profile, spelled as the manual forms' symbol field expects them. */
+    @Transactional(readOnly = true)
+    fun symbols(profileId: UUID): List<String> =
+        positions.findDistinctSymbols(profileId).map { "${it.symbolBase}-${it.symbolQuote}" }
+
     /** All closed positions for the profile as lightweight rows for the analytics dashboard. */
     @Transactional(readOnly = true)
     fun closedSummary(profileId: UUID): List<ClosedPositionSummaryDto> {
@@ -70,6 +75,7 @@ class PositionService(
                 netPnl = it.netPnl,
                 fees = it.fees,
                 funding = it.funding,
+                volume = it.volume,
                 tags = tagViews[it.id] ?: emptyList(),
             )
         }
@@ -200,6 +206,7 @@ private fun Position.toDto(tags: List<PositionTagView>, fillCount: Int) = Positi
     side = side,
     openedAt = openedAt,
     closedAt = closedAt,
+    kind = kind,
     qty = qty,
     entryPrice = entryPrice,
     exitPrice = exitPrice,
@@ -208,6 +215,9 @@ private fun Position.toDto(tags: List<PositionTagView>, fillCount: Int) = Positi
     fees = fees,
     funding = funding,
     pnlCurrency = pnlCurrency,
+    volume = volume,
+    leverage = leverage,
+    investment = investment,
     note = note,
     tags = tags,
     fillCount = fillCount,
