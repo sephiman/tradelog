@@ -384,7 +384,7 @@ docker run --rm \
   --add-host host.docker.internal:host-gateway \
   -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal \
   -e TESTCONTAINERS_RYUK_DISABLED=true \
-  -w /workspace gradle:9.6.1-jdk25 gradle --no-daemon test
+  -w /workspace gradle:9.7.1-jdk25 gradle --no-daemon test
 ```
 
 On a host with a local Gradle + Docker, plain `gradle test` works directly. Integration tests
