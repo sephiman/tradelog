@@ -3,7 +3,7 @@ package com.sephilabs.tradelog.sync
 
 import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.datasource.DataSourceRepository
-import com.sephilabs.tradelog.datasource.DataSourceStatus
+import com.sephilabs.tradelog.datasource.isSyncable
 import org.springframework.data.domain.PageRequest
 import org.springframework.web.bind.annotation.*
 import java.util.UUID
@@ -17,11 +17,11 @@ class SyncController(
     private val runs: SyncRunRepository,
 ) {
 
-    /** Sync every ACTIVE API source in the profile; per-source failures and rate-limits are skipped. */
+    /** Sync every syncable API source; ERROR ones included, since this run may be what clears the error. */
     @PostMapping("/sync")
     fun syncAll(@PathVariable profileId: UUID): List<SyncRunDto> =
         dataSources.findAllByProfileIdOrderByCreatedAtAsc(profileId)
-            .filter { it.kind.isApi && it.status == DataSourceStatus.ACTIVE }
+            .filter { it.isSyncable }
             .mapNotNull { ds ->
                 try {
                     syncService.syncApiSource(ds, SyncTrigger.MANUAL)

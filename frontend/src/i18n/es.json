@@ -691,8 +691,11 @@
   },
   "sync": {
     "synced": "Sincronizadas {{inserted}} nuevas, {{updated}} actualizadas",
+    "partial": "Sincronizadas {{inserted}} nuevas, {{updated}} actualizadas — {{failed}} fuente(s) han fallado",
     "failed": "La sincronización ha fallado",
-    "skipped": "Ya hay una sincronización en curso — inténtalo en breve"
+    "unreachable": "No se ha podido conectar con el exchange — comprueba tu conexión e inténtalo de nuevo",
+    "skipped": "No se ha sincronizado nada: todas las fuentes estaban ocupadas o acababan de sincronizarse. Inténtalo en breve",
+    "nothingEnabled": "No hay ninguna fuente de exchange activa para sincronizar — revisa Ajustes › Fuentes de datos"
   },
   "quickSync": {
     "label": "Sincronizar",

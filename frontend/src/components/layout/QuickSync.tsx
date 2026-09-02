@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { useDataSources } from "@/api/dataSources";
-import { useSyncAll } from "@/api/sync";
+import { summarizeSyncAll, syncableSources, useSyncAll } from "@/api/sync";
 import { Button, Modal, Select } from "@/components/ui/primitives";
 import { showToast } from "@/lib/toastBus";
 import { isApiKind } from "@/lib/sourceKinds";
@@ -35,6 +35,7 @@ export function QuickSync() {
 
   const quantfurySources = sources.filter((s) => s.kind === "QUANTFURY");
   const hasApi = sources.some((s) => isApiKind(s.kind));
+  const syncable = syncableSources(sources).length;
   const hasQuantfury = quantfurySources.length > 0;
 
   // Nothing to sync or import yet — keep the header clean.
@@ -44,15 +45,8 @@ export function QuickSync() {
     setMenuOpen(false);
     syncAll.mutate(undefined, {
       onSuccess: (runs) => {
-        // Empty means every source was skipped (rate-limited or a sync already in flight) —
-        // saying "Synced 0" would misreport a sync that never ran.
-        if (runs.length === 0) {
-          showToast(t("sync.skipped"), "info");
-          return;
-        }
-        const ins = runs.reduce((a, r) => a + r.inserted, 0);
-        const upd = runs.reduce((a, r) => a + r.updated, 0);
-        showToast(t("sync.synced", { inserted: ins, updated: upd }), "success");
+        const { key, params, tone } = summarizeSyncAll(runs, syncable);
+        showToast(t(key, params), tone);
       },
       // Errors surface via the global mutation-cache toast with the API's specific message.
     });

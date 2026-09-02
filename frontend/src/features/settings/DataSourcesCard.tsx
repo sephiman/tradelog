@@ -8,7 +8,7 @@ import {
   type DataSource,
 } from "@/api/dataSources";
 import type { SourceKind } from "@/api/positions";
-import { useSyncAll, useSyncOne } from "@/api/sync";
+import { summarizeSyncAll, syncableSources, useSyncAll, useSyncOne } from "@/api/sync";
 import { Badge, Button, Card, CardBody, CardHeader, Input, Select } from "@/components/ui/primitives";
 import { showToast } from "@/lib/toastBus";
 import { dateInputToIso, fmtDate, fmtDateTime } from "@/lib/format";
@@ -69,9 +69,8 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
   const onSyncAll = () =>
     syncAll.mutate(undefined, {
       onSuccess: (runs) => {
-        const ins = runs.reduce((a, r) => a + r.inserted, 0);
-        const upd = runs.reduce((a, r) => a + r.updated, 0);
-        showToast(t("sync.synced", { inserted: ins, updated: upd }), "success");
+        const { key, params, tone } = summarizeSyncAll(runs, syncableSources(sources).length);
+        showToast(t(key, params), tone);
       },
     });
 

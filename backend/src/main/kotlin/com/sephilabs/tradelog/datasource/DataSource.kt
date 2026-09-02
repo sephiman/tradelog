@@ -59,10 +59,15 @@ class DataSource(
     var syncFrom: Instant? = null,
 ) : TimestampedEntity()
 
+/** Sources every sync path may touch: DISABLED is the only opt-out, ERROR is retried so it can clear itself. */
+val DataSource.isSyncable: Boolean get() = kind.isApi && status != DataSourceStatus.DISABLED
+
 interface DataSourceRepository : JpaRepository<DataSource, UUID> {
     fun findAllByProfileIdOrderByCreatedAtAsc(profileId: UUID): List<DataSource>
     fun findByIdAndProfileId(id: UUID, profileId: UUID): DataSource?
     fun deleteByProfileId(profileId: UUID): Long
-    fun findAllByProfileIdInAndStatus(profileIds: Collection<UUID>, status: DataSourceStatus): List<DataSource>
-    fun findAllByStatusAndKindIn(status: DataSourceStatus, kinds: Collection<SourceKind>): List<DataSource>
+
+    // The SQL half of [isSyncable]: pass DISABLED, so an errored source is still swept and can recover.
+    fun findAllByProfileIdInAndStatusNot(profileIds: Collection<UUID>, status: DataSourceStatus): List<DataSource>
+    fun findAllByStatusNotAndKindIn(status: DataSourceStatus, kinds: Collection<SourceKind>): List<DataSource>
 }

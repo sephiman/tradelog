@@ -10,10 +10,11 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
 /**
- * Nightly sweep that keeps every ACTIVE API data source current without the user having to log in.
- * Runs sequentially on the scheduler thread and paces itself ([AppProperties.SyncSchedule.spacingMs])
- * so the trickle stays well under the per-exchange rate limit; per-source failures and rate-limits
- * are isolated by [SyncService.syncEach]. `@Scheduled` will not re-enter a run that is still in flight.
+ * Nightly sweep that keeps every API data source current without the user having to log in, ERROR
+ * ones included so a source that failed once recovers on its own. Runs sequentially on the scheduler
+ * thread and paces itself ([AppProperties.SyncSchedule.spacingMs]) so the trickle stays well under
+ * the per-exchange rate limit; per-source failures and rate-limits are isolated by
+ * [SyncService.syncEach]. `@Scheduled` will not re-enter a run that is still in flight.
  */
 @Component
 class ScheduledSyncJob(
@@ -27,9 +28,9 @@ class ScheduledSyncJob(
     fun sweep() {
         if (!props.sync.schedule.enabled) return
         val apiKinds = SourceKind.entries.filter { it.isApi }
-        val sources = dataSources.findAllByStatusAndKindIn(DataSourceStatus.ACTIVE, apiKinds)
+        val sources = dataSources.findAllByStatusNotAndKindIn(DataSourceStatus.DISABLED, apiKinds)
         if (sources.isEmpty()) return
-        log.info("Scheduled sync sweep starting: {} active API source(s)", sources.size)
+        log.info("Scheduled sync sweep starting: {} API source(s)", sources.size)
         syncService.syncEach(sources, SyncTrigger.SCHEDULED, props.sync.schedule.spacingMs)
         log.info("Scheduled sync sweep finished")
     }

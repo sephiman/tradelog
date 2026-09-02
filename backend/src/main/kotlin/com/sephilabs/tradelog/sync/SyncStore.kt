@@ -64,6 +64,10 @@ class SyncStore(
         return finish(runId, RunStatus.ERROR, 0, 0, code)
     }
 
+    /** Records the outage on the run and leaves the source untouched, so every sweep still picks it up. */
+    @Transactional
+    fun completeUnreachable(runId: UUID): SyncRun = finish(runId, RunStatus.ERROR, 0, 0, UNREACHABLE_CODE)
+
     /**
      * Freeze a shut-down venue's source ([SourceKind.retiredAt]): DISABLED, not ERROR — nothing failed
      * and nothing is deleted. Every position, snapshot and adjustment it wrote stays and keeps counting.
@@ -91,5 +95,8 @@ class SyncStore(
 
         /** Why a frozen source is DISABLED: the venue closed, the user did not turn it off. */
         const val RETIRED_CODE = "DATA_SOURCE_EXCHANGE_CLOSED"
+
+        /** Run error code for "the network dropped", as opposed to anything the user can fix. */
+        const val UNREACHABLE_CODE = "SYNC_UNREACHABLE"
     }
 }

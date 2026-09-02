@@ -11,6 +11,10 @@ import java.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
+/** Venue unreachable — not an AppException, which a backfill walk would read as the retention edge. */
+class VenueUnreachableException(venue: String, cause: Throwable) :
+    RuntimeException("$venue unreachable: ${cause.message}", cause)
+
 /** Shared HTTP plumbing for the exchange connectors. */
 object ExchangeHttp {
 

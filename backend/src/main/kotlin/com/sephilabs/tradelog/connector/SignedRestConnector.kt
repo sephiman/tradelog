@@ -9,6 +9,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientResponseException
 import java.util.SortedMap
@@ -117,6 +118,10 @@ abstract class SignedRestConnector(
                     venue, path, e.statusCode.value(), e.responseBodyAsString.take(ERROR_BODY_CHARS),
                 )
                 throw httpError(e)
+            } catch (e: ResourceAccessException) {
+                // The venue never answered: nothing about the request was wrong.
+                log.warn("{} unreachable: path={} cause={}", venue, path, e.message)
+                throw VenueUnreachableException(venue, e)
             }
             val root = mapper.readTree(body ?: "{}")
             try {

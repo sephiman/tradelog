@@ -6,6 +6,7 @@ import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.config.AppProperties
 import com.sephilabs.tradelog.connector.ConnectorRegistry
 import com.sephilabs.tradelog.connector.PositionRecord
+import com.sephilabs.tradelog.connector.VenueUnreachableException
 import com.sephilabs.tradelog.datasource.DataSource
 import com.sephilabs.tradelog.datasource.DataSourceRepository
 import com.sephilabs.tradelog.datasource.DataSourceService
@@ -20,7 +21,7 @@ import java.util.UUID
  * Orchestrates one synchronisation of a data source (template method): rate-limit → start run →
  * fetch from the connector (network, no DB transaction) → idempotent upsert + cursor advance + run
  * finalisation (transactional, in [SyncStore]). Credential/permission failures move the source to
- * ERROR with an actionable i18n code rather than throwing.
+ * ERROR with an actionable i18n code rather than throwing; an unreachable venue leaves it alone.
  */
 @Service
 class SyncService(
@@ -82,6 +83,12 @@ class SyncService(
             metrics.positionsUpserted(ds.kind.name, finished.inserted + finished.updated)
             log.info("Sync success: source={} kind={} inserted={} updated={}", ds.id, ds.kind, finished.inserted, finished.updated)
             refreshCapitalSnapshots(ds.profileId, finished)
+            SyncRunDto.of(finished)
+        } catch (e: VenueUnreachableException) {
+            // An outage, not a broken source: it keeps its status, so the next sweep retries it.
+            log.warn("Sync unreachable: source={} kind={} detail={}", ds.id, ds.kind, e.message)
+            val finished = store.completeUnreachable(run.id)
+            metrics.syncRun(ds.kind.name, trigger.name, "unreachable")
             SyncRunDto.of(finished)
         } catch (e: Exception) {
             val code = (e as? AppException)?.code ?: "SYNC_FAILED"

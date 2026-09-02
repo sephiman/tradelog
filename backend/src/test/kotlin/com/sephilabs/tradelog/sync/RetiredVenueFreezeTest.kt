@@ -58,14 +58,15 @@ class RetiredVenueFreezeTest @Autowired constructor(
         val profileId = newProfile()
         val id = bitmartSource(profileId)
         val apiKinds = SourceKind.entries.filter { it.isApi }
-        assertThat(dataSources.findAllByStatusAndKindIn(DataSourceStatus.ACTIVE, apiKinds).map { it.id })
+        assertThat(dataSources.findAllByStatusNotAndKindIn(DataSourceStatus.DISABLED, apiKinds).map { it.id })
             .contains(id)
 
         store.freezeRetired(id)
 
         // This is exactly the query the nightly sweep runs, so the source is now invisible to it —
-        // no more calls to a dead host, no more error rows piling up.
-        assertThat(dataSources.findAllByStatusAndKindIn(DataSourceStatus.ACTIVE, apiKinds).map { it.id })
+        // no more calls to a dead host, no more error rows piling up. DISABLED is the only status
+        // the sweep skips: an errored source is deliberately still swept, a frozen one never is.
+        assertThat(dataSources.findAllByStatusNotAndKindIn(DataSourceStatus.DISABLED, apiKinds).map { it.id })
             .doesNotContain(id)
     }
 

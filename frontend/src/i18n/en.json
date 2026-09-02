@@ -691,8 +691,11 @@
   },
   "sync": {
     "synced": "Synced {{inserted}} new, {{updated}} updated",
+    "partial": "Synced {{inserted}} new, {{updated}} updated — {{failed}} source(s) failed",
     "failed": "Sync failed",
-    "skipped": "Sync already in progress — try again shortly"
+    "unreachable": "Couldn't reach the exchange — check your connection and try again",
+    "skipped": "Nothing synced — every source was busy or had just synced. Try again shortly",
+    "nothingEnabled": "No enabled exchange source to sync — check Settings › Data sources"
   },
   "quickSync": {
     "label": "Quick sync",
