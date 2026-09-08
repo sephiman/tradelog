@@ -56,20 +56,72 @@ class BingxConnector(
     }
 
     override fun fetchFills(creds: ExchangeCredentials, start: Instant, end: Instant): List<RawFill> {
-        val node = getJson(
-            creds,
-            PATH_FILLS,
-            mapOf(
-                "startTs" to start.toEpochMilli().toString(),
-                "endTs" to end.toEpochMilli().toString(),
-            ),
-        )
-        val fills = node.rows(ROW_PATHS)
+        val fills = fetchFillRows(creds, start, end)
         val skips = SkipTally()
         val mapped = mutableListOf<RawFill>()
         for (row in fills) skips.keep(row, mapFill(row), mapped)
         skips.report(log, venue, "in window $start..$end", fills.size)
         return mapped
+    }
+
+    /** Re-requests a window from its last fill until nothing new arrives: a reply holds at most 512 fills, oldest first. */
+    internal fun fetchFillRows(creds: ExchangeCredentials, start: Instant, end: Instant): List<JsonNode> =
+        pageThrough<Resume> { resume ->
+            // `startTs` is exclusive: resume 1ms before the last fill and skip the rows already held at that instant.
+            val from = resume?.lastTs?.minusMillis(1) ?: start
+            val page = getJson(
+                creds,
+                PATH_FILLS,
+                mapOf(
+                    "startTs" to from.toEpochMilli().toString(),
+                    "endTs" to end.toEpochMilli().toString(),
+                ),
+            ).rows(ROW_PATHS)
+            val fresh = resume?.unseen(page) ?: page
+            Page(fresh, Resume.after(resume, fresh))
+        }
+
+    /** Where a re-request of one window resumes: the last instant fetched and how many rows at it are held. */
+    private class Resume(val lastTs: Instant, private val heldAtLastTs: Int) {
+
+        /** Rows not yet held: everything after [lastTs], plus rows at it beyond the held count. */
+        fun unseen(page: List<JsonNode>): List<JsonNode> {
+            var seenAtLast = 0
+            return page.filter { row ->
+                val ts = row.instant(FIELD_TIME) ?: return@filter true // kept for the skip tally
+                when {
+                    ts.isBefore(lastTs) -> false
+                    ts == lastTs -> seenAtLast++ >= heldAtLastTs
+                    else -> true
+                }
+            }
+        }
+
+        companion object {
+            /** Resume point once [fresh] rows were added; null when nothing was, which completes the window. */
+            fun after(previous: Resume?, fresh: List<JsonNode>): Resume? {
+                val stamps = fresh.mapNotNull { it.instant(FIELD_TIME) }
+                val lastTs = stamps.maxOrNull() ?: return null
+                val carried = if (previous?.lastTs == lastTs) previous.heldAtLastTs else 0
+                return Resume(lastTs, carried + stamps.count { it == lastTs })
+            }
+        }
+    }
+
+    /** Open positions, signed and keyed like the fill groups, so a history that starts mid-position is anchored to what BingX still holds. */
+    override fun openExposure(creds: ExchangeCredentials): Map<String, BigDecimal> {
+        val exposure = mutableMapOf<String, BigDecimal>()
+        for (row in getJson(creds, PATH_POSITIONS).rows(POSITION_ROW_PATHS)) {
+            val symbol = row.text(FIELD_SYMBOL) ?: continue
+            val side = row.text(FIELD_POSITION_SIDE)?.uppercase() ?: continue
+            val amount = row.dec(FIELD_POSITION_AMT)?.abs() ?: continue // base coins, reported unsigned
+            val signed = if (side == "SHORT") amount.negate() else amount
+            exposure.merge("$symbol$GROUP_SEP$side", signed, BigDecimal::add)
+            // One-way fills say BOTH, so the symbol is also netted under that key.
+            exposure.merge("$symbol${GROUP_SEP}BOTH", signed, BigDecimal::add)
+        }
+        log.debug("{} open exposure: {}", venue, exposure)
+        return exposure
     }
 
     /** Test seam: map a raw `/trade/allFillOrders` body into fills, dropping unmappable rows. */
@@ -96,12 +148,21 @@ class BingxConnector(
                 qty = qty,
                 fee = (n.dec(FIELD_FEE) ?: BigDecimal.ZERO).abs(),
                 realizedPnl = BigDecimal.ZERO, // computed from leg prices post-reconstruction
+                reduces = reducesDeclaredBy(positionSide, side),
             ),
         )
     }
 
+    /** Hedge mode names the position a fill belongs to, so selling a LONG (or buying a SHORT) can only reduce it. */
+    private fun reducesDeclaredBy(positionSide: String?, side: String): Boolean? = when (positionSide) {
+        "LONG" -> side == "SELL"
+        "SHORT" -> side == "BUY"
+        else -> null // one-way mode (`BOTH`) says nothing about intent
+    }
+
     private companion object {
         const val PATH_FILLS = "/openApi/swap/v2/trade/allFillOrders"
+        const val PATH_POSITIONS = "/openApi/swap/v2/user/positions"
 
         /** Separates symbol from positionSide in the reconstruction grouping key. */
         const val GROUP_SEP = ' '
@@ -109,6 +170,8 @@ class BingxConnector(
         val MC = MathContext(34, RoundingMode.HALF_EVEN) // for notional ÷ price → base qty
 
         val ROW_PATHS = listOf("data", "data.fill_orders", "data.fillOrders", "data.orders")
+        val POSITION_ROW_PATHS = listOf("data", "data.positions", "data.list")
+        val FIELD_POSITION_AMT = listOf("positionAmt", "positionAmount")
         val FIELD_SYMBOL = listOf("symbol")
         val FIELD_AMOUNT = listOf("amount") // fill notional in quote (USDT)
         val FIELD_SIDE = listOf("side")

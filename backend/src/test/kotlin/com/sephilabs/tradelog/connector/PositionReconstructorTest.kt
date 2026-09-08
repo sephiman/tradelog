@@ -117,4 +117,124 @@ class PositionReconstructorTest {
         assertEquals(0, p.fees.compareTo(bd("2")))
         assertEquals(0, p.realizedPnl.compareTo(bd("-10")))
     }
+
+    @Test
+    fun `a declared reduce with nothing open is dropped instead of opening the other side`() {
+        // Hedge mode: a SELL on the LONG side can only close. Its opening fills aged out of the
+        // venue's history, so without the guard it would read as a SHORT that swallows the next trade.
+        val fills = listOf(
+            RawFill("BTCUSDT LONG", t(0), buy = false, price = bd("105"), qty = bd("1"), reduces = true),
+            RawFill("BTCUSDT LONG", t(10), buy = true, price = bd("100"), qty = bd("1"), reduces = false),
+            RawFill("BTCUSDT LONG", t(20), buy = false, price = bd("110"), qty = bd("1"), reduces = true),
+        )
+        val p = PositionReconstructor.reconstruct(fills, normalize).single()
+        assertEquals(PositionSide.LONG, p.side)
+        assertEquals(t(10), p.openedAt)
+        assertEquals(0, p.entryPrice!!.compareTo(bd("100")))
+        assertEquals(0, p.exitPrice!!.compareTo(bd("110")))
+    }
+
+    @Test
+    fun `a declared reduce larger than the visible opening drops the fragment and keeps the next trade`() {
+        // Only the last add of an older position is in range: 0.5 opened, 1.5 closed. The fragment
+        // would report a third of the real size, so it is not emitted; the following trade is intact.
+        val fills = listOf(
+            RawFill("ETHUSDT LONG", t(0), buy = true, price = bd("100"), qty = bd("0.5"), reduces = false),
+            RawFill("ETHUSDT LONG", t(10), buy = false, price = bd("120"), qty = bd("1.5"), reduces = true),
+            RawFill("ETHUSDT LONG", t(20), buy = true, price = bd("200"), qty = bd("2"), reduces = false),
+            RawFill("ETHUSDT LONG", t(30), buy = false, price = bd("210"), qty = bd("2"), reduces = true),
+        )
+        val p = PositionReconstructor.reconstruct(fills, normalize).single()
+        assertEquals(t(20), p.openedAt)
+        assertEquals(0, p.qty!!.compareTo(bd("2")))
+        assertEquals(0, p.entryPrice!!.compareTo(bd("200")))
+    }
+
+    @Test
+    fun `an undeclared zero crossing still flips sides in one-way mode`() {
+        // Without a declared intent (one-way `BOTH`), selling past flat is a legitimate reversal.
+        val fills = listOf(
+            RawFill("BTCUSDT", t(0), buy = true, price = bd("100"), qty = bd("1")),
+            RawFill("BTCUSDT", t(10), buy = false, price = bd("110"), qty = bd("2")),
+            RawFill("BTCUSDT", t(20), buy = true, price = bd("105"), qty = bd("1")),
+        )
+        val result = PositionReconstructor.reconstruct(fills, normalize)
+        assertEquals(listOf(PositionSide.LONG, PositionSide.SHORT), result.map { it.side })
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Anchoring on the venue's open exposure: the visible history need not start flat.
+    // ---------------------------------------------------------------------------------------------
+
+    private val flatNow = mapOf("BTCUSDT" to BigDecimal.ZERO)
+
+    @Test
+    fun `a history that starts inside a position is anchored to what the venue holds now`() {
+        // One-way mode: the first BUY covers a short opened before the history began. Read as an
+        // opening, it would swallow both later round trips; anchored on "flat now", it is dropped.
+        val fills = listOf(
+            RawFill("BTCUSDT", t(0), buy = true, price = bd("100"), qty = bd("0.1131")),
+            RawFill("BTCUSDT", t(10), buy = true, price = bd("100"), qty = bd("0.05")),
+            RawFill("BTCUSDT", t(20), buy = false, price = bd("110"), qty = bd("0.05")),
+            RawFill("BTCUSDT", t(30), buy = true, price = bd("100"), qty = bd("0.02")),
+            RawFill("BTCUSDT", t(40), buy = false, price = bd("105"), qty = bd("0.02")),
+        )
+        assertEquals(0, PositionReconstructor.reconstruct(fills, normalize).size)
+
+        val anchored = PositionReconstructor.reconstruct(fills, flatNow, normalize)
+        assertEquals(listOf(t(10), t(30)), anchored.map { it.openedAt })
+        assertEquals(listOf(t(20), t(40)), anchored.map { it.closedAt })
+        assertTrue(anchored.all { it.side == PositionSide.LONG })
+    }
+
+    @Test
+    fun `an open position is left out while the round trips before it are emitted`() {
+        val fills = listOf(
+            RawFill("BTCUSDT", t(0), buy = true, price = bd("100"), qty = bd("1")),
+            RawFill("BTCUSDT", t(10), buy = false, price = bd("110"), qty = bd("1")),
+            RawFill("BTCUSDT", t(20), buy = true, price = bd("105"), qty = bd("2")),
+        )
+        val p = PositionReconstructor.reconstruct(fills, mapOf("BTCUSDT" to bd("2")), normalize).single()
+        assertEquals(t(0), p.openedAt)
+        assertEquals(t(10), p.closedAt)
+    }
+
+    @Test
+    fun `a one-way flip out of a pre-history position opens the new side cleanly`() {
+        // BUY 0.3 covers an unseen 0.1 short and opens 0.2 long, which the SELL then closes.
+        val fills = listOf(
+            RawFill("BTCUSDT", t(0), buy = true, price = bd("100"), qty = bd("0.3")),
+            RawFill("BTCUSDT", t(10), buy = false, price = bd("110"), qty = bd("0.2")),
+        )
+        val p = PositionReconstructor.reconstruct(fills, flatNow, normalize).single()
+        assertEquals(PositionSide.LONG, p.side)
+        assertEquals(0, p.qty!!.compareTo(bd("0.2")))
+        assertEquals(0, p.entryPrice!!.compareTo(bd("100")))
+        assertEquals(0, p.realizedPnl.compareTo(bd("0")))  // derived later by the connector, not here
+    }
+
+    @Test
+    fun `anchoring survives derived-quantity rounding across many round trips`() {
+        // Each SELL lands 0.02% short of its BUY, as BingX's notional/price quantities do. Over 30
+        // round trips that error (0.00006) exceeds the tolerance of the small unseen short (0.00002),
+        // so undoing the fills must snap to flat at every round trip rather than carry the drift.
+        val fills = mutableListOf(RawFill("BTCUSDT", t(0), buy = true, price = bd("100"), qty = bd("0.02")))
+        for (i in 1..30) {
+            fills += RawFill("BTCUSDT", t(i * 20L), buy = true, price = bd("100"), qty = bd("0.01"))
+            fills += RawFill("BTCUSDT", t(i * 20L + 10), buy = false, price = bd("101"), qty = bd("0.009998"))
+        }
+        val result = PositionReconstructor.reconstruct(fills, flatNow, normalize)
+        assertEquals(30, result.size)
+        assertTrue(result.none { it.openedAt == t(0) })
+    }
+
+    @Test
+    fun `without an anchor the venue's silence keeps the flat-start assumption`() {
+        val fills = listOf(
+            RawFill("BTCUSDT", t(0), buy = true, price = bd("100"), qty = bd("1")),
+            RawFill("BTCUSDT", t(10), buy = false, price = bd("110"), qty = bd("1")),
+        )
+        assertEquals(1, PositionReconstructor.reconstruct(fills, null, normalize).size)
+        assertEquals(1, PositionReconstructor.reconstruct(fills, emptyMap(), normalize).size)
+    }
 }

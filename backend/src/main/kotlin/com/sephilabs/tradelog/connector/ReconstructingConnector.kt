@@ -43,6 +43,9 @@ abstract class ReconstructingConnector(
     /** Last chance to adjust a reconstructed position, e.g. to record a non-USDT settlement currency. */
     protected open fun adjust(record: PositionRecord): PositionRecord = record
 
+    /** Signed open exposure per fill group right now, or null when the venue cannot say (the walk then assumes a flat start). */
+    protected open fun openExposure(creds: ExchangeCredentials): Map<String, BigDecimal>? = null
+
     final override fun fetchClosedPositions(
         credentials: ExchangeCredentials,
         cursor: SyncCursor,
@@ -55,6 +58,13 @@ abstract class ReconstructingConnector(
         var windowEnd = now
         var emptyStreak = 0
         var oldestWithData: Instant? = null
+        // Taken just before the newest window so the two views of "now" are as close as one request.
+        val openNow = try {
+            openExposure(credentials)
+        } catch (e: AppException) {
+            log.warn("{} open positions unavailable, reconstruction assumes a flat start: {}", venue, e.message)
+            null
+        }
 
         while (windowEnd.isAfter(hardFloor) && windows < maxWindows) {
             val windowStart = maxOf(windowEnd.minus(windowDays, ChronoUnit.DAYS), hardFloor)
@@ -86,7 +96,7 @@ abstract class ReconstructingConnector(
             pace(windowEnd.isAfter(hardFloor) && windows < maxWindows)
         }
 
-        val reconstructed = PositionReconstructor.reconstruct(raw, ::normalizeSymbol)
+        val reconstructed = PositionReconstructor.reconstruct(raw, openNow, ::normalizeSymbol)
         val keepAfter = cursor.lastClosedAt
         val records = reconstructed
             .filter {

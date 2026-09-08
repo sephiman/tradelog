@@ -8,6 +8,7 @@ import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
 import java.time.Instant
+import org.slf4j.LoggerFactory
 
 /** A single execution as reported by an exchange, before reconstruction into positions. */
 data class RawFill(
@@ -19,6 +20,8 @@ data class RawFill(
     val fee: BigDecimal = BigDecimal.ZERO,
     val realizedPnl: BigDecimal = BigDecimal.ZERO,
     val funding: BigDecimal = BigDecimal.ZERO,
+    /** True when the venue itself says this fill reduces an open position; null when it does not say. */
+    val reduces: Boolean? = null,
 )
 
 /**
@@ -32,6 +35,8 @@ data class RawFill(
  */
 object PositionReconstructor {
 
+    private val log = LoggerFactory.getLogger(PositionReconstructor::class.java)
+
     private val MC = MathContext(34, RoundingMode.HALF_EVEN)
 
     // Flat-detection tolerance: net exposure within max(size * REL_EPS, ABS_EPS) counts as closed.
@@ -39,8 +44,35 @@ object PositionReconstructor {
     private val ABS_EPS = BigDecimal("0.00000001")
 
     fun reconstruct(fills: List<RawFill>, normalize: (String) -> Symbol): List<PositionRecord> =
-        fills.groupBy { it.symbol }
-            .flatMap { (symbol, symFills) -> reconstructSymbol(symbol, symFills.sortedBy { it.ts }, normalize) }
+        reconstruct(fills, null, normalize)
+
+    /** [openNow] is each group's signed exposure at the venue right now, which anchors a history that starts inside a position; null = unknown. */
+    fun reconstruct(
+        fills: List<RawFill>,
+        openNow: Map<String, BigDecimal>?,
+        normalize: (String) -> Symbol,
+    ): List<PositionRecord> =
+        fills.groupBy { it.symbol }.flatMap { (symbol, symFills) ->
+            val sorted = symFills.sortedBy { it.ts }
+            val predating = openNow?.let { exposureBeforeHistory(sorted, it[symbol] ?: BigDecimal.ZERO) } ?: BigDecimal.ZERO
+            reconstructSymbol(symbol, sorted, normalize, predating)
+        }
+
+    /** Undoes the fills from the present back to the first one, snapping to flat at every round trip so derived-quantity rounding never accumulates. */
+    private fun exposureBeforeHistory(sorted: List<RawFill>, openNow: BigDecimal): BigDecimal {
+        var net = openNow
+        var walked = BigDecimal.ZERO // gross quantity since the last flat point, which scales the tolerance
+        for (f in sorted.asReversed()) {
+            val qty = f.qty.abs()
+            net = if (f.buy) net.subtract(qty) else net.add(qty)
+            walked = walked.add(qty)
+            if (net.abs() <= walked.multiply(REL_EPS).max(ABS_EPS)) {
+                net = BigDecimal.ZERO
+                walked = BigDecimal.ZERO
+            }
+        }
+        return if (net.abs() <= ABS_EPS) BigDecimal.ZERO else net
+    }
 
     /**
      * Gross realized PnL (quote currency) derived from the position's average leg prices:
@@ -60,10 +92,21 @@ object PositionReconstructor {
         return diff.multiply(qty)
     }
 
-    private fun reconstructSymbol(symbol: String, sorted: List<RawFill>, normalize: (String) -> Symbol): List<PositionRecord> {
+    private fun reconstructSymbol(
+        symbol: String,
+        sorted: List<RawFill>,
+        normalize: (String) -> Symbol,
+        predating: BigDecimal,
+    ): List<PositionRecord> {
         val out = mutableListOf<PositionRecord>()
-        var net = BigDecimal.ZERO            // signed open exposure (base qty)
+        var net = predating                  // signed open exposure (base qty)
         var acc: Lifecycle? = null
+        val orphans = Orphans(symbol, predating)
+        if (predating.signum() != 0) {
+            // The history starts inside a position: track it so its exits land somewhere, never emit it.
+            val side = if (predating.signum() > 0) PositionSide.LONG else PositionSide.SHORT
+            acc = Lifecycle.predating(side, predating.abs(), sorted.first().ts)
+        }
 
         for (f in sorted) {
             var remaining = f.qty.abs()
@@ -76,6 +119,12 @@ object PositionReconstructor {
             }
             while (remaining > BigDecimal.ZERO) {
                 if (net.signum() == 0) {
+                    if (f.reduces == true) {
+                        // Nothing is open to reduce: the position was opened before the fetched history
+                        // and cannot be rebuilt. Dropping the fill beats reading it as opening the other side.
+                        orphans.fill(f)
+                        break
+                    }
                     // Opening from flat — consume the whole remainder on this side.
                     acc = Lifecycle(if (f.buy) PositionSide.LONG else PositionSide.SHORT, f.ts)
                     acc.applyEntry(f, remaining)
@@ -100,7 +149,11 @@ object PositionReconstructor {
                         // the next position's fills would merge into this never-closed lifecycle.
                         val flatEps = cur.entrySize().multiply(REL_EPS).max(ABS_EPS)
                         if (net.abs() <= flatEps) {
-                            out += cur.build(symbol, normalize)
+                            // Reducing more than was ever seen opening means the rest of this position
+                            // predates the fetched history: what was rebuilt is only a fragment.
+                            val fragment = remaining > flatEps && f.reduces == true
+                            if (fragment || cur.predatesHistory) orphans.position(f) else out += cur.build(symbol, normalize)
+                            if (fragment) remaining = BigDecimal.ZERO
                             acc = null
                             net = BigDecimal.ZERO
                             if (remaining <= flatEps) remaining = BigDecimal.ZERO
@@ -109,11 +162,37 @@ object PositionReconstructor {
                 }
             }
         }
+        orphans.report()
         // A still-open lifecycle (net != 0) is an OPEN position — out of scope; do not emit.
         return out
     }
 
-    private class Lifecycle(val side: PositionSide, val openTs: Instant) {
+    /** Fills and positions dropped because their opening predates the fetched history. */
+    private class Orphans(private val symbol: String, private val predating: BigDecimal) {
+        private var fills = 0
+        private var positions = 0
+        private var first: Instant? = null
+        private var last: Instant? = null
+
+        fun fill(f: RawFill) { fills++; span(f.ts) }
+
+        fun position(f: RawFill) { positions++; span(f.ts) }
+
+        fun report() {
+            if (fills == 0 && positions == 0) return
+            log.warn(
+                "{}: dropped {} reducing fill(s) and {} position(s) between {} and {} whose opening predates the fetched history (exposure open at its start: {})",
+                symbol, fills, positions, first, last, predating,
+            )
+        }
+
+        private fun span(ts: Instant) {
+            if (first == null || ts.isBefore(first)) first = ts
+            if (last == null || ts.isAfter(last)) last = ts
+        }
+    }
+
+    private class Lifecycle(val side: PositionSide, val openTs: Instant, val predatesHistory: Boolean = false) {
         private var closeTs: Instant = openTs
         private var entryQty = BigDecimal.ZERO
         private var entryNotional = BigDecimal.ZERO
@@ -126,6 +205,12 @@ object PositionReconstructor {
 
         /** Total quantity opened on the entry side, used to scale the flat-detection tolerance. */
         fun entrySize(): BigDecimal = entryQty
+
+        companion object {
+            /** A position already open when the history begins: sized so exits and the tolerance work, priced by nothing. */
+            fun predating(side: PositionSide, qty: BigDecimal, firstTs: Instant): Lifecycle =
+                Lifecycle(side, firstTs, predatesHistory = true).apply { entryQty = qty }
+        }
 
         /** Fold a zero-quantity fill's money (fee/PnL/funding) into this lifecycle; no leg is added. */
         fun absorb(f: RawFill) {

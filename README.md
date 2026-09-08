@@ -137,6 +137,9 @@ cursor.
 - **BingX** exposes only raw fills, which a shared reconstructor folds into flat-to-flat positions.
   Because BingX's fill endpoint reports **no per-fill PnL**, realized PnL is computed from the leg
   prices (gross of fees, which are tracked separately), and quantity is derived from notional ÷ price.
+  The walk is anchored on the open positions BingX reports at sync time, so a history that starts
+  inside a position (its opening fills aged out of the API) is not read as starting flat; the
+  unrebuildable position is dropped with a warning and everything after it is reconstructed normally.
 - **BitMart** also exposes only fills, folded by the same reconstructor — but its fills carry
   `realised_profit` and `paid_fees`, so PnL/fees come straight from the payload. Fill volume is in
   contracts; the displayed quantity is scaled by the contract size from BitMart's public details
@@ -223,7 +226,7 @@ History coverage differs **per source** — it's a limit of each platform, not o
 | **KuCoin Futures** | **Last 3 months** (7 per request) | Closed positions. Quantity is *derived* from the PnL and prices — this endpoint reports no size |
 | **Kraken Futures** | As far as Kraken retains | Its own platform and auth. Linear perpetuals (`PF_`) only. **Fees are not imported** — Kraken states its API fee values no longer reflect what was charged |
 | **Kraken** (spot) | Effectively all of it | A different account and balance from Kraken Futures. Positions are rebuilt from trade history, so a holding never fully sold does not appear until it is closed. Real fees; no funding; PnL in the pair's quote currency (often USD/EUR, never converted) |
-| **BingX** | **Only ~the last 30 days** | The `allFillOrders` API serves no older fills; older trades can't be retrieved |
+| **BingX** | **Only ~the last 30 days** | The `allFillOrders` API serves no older fills and at most 512 per request (oldest first), so each window is re-requested from its last fill until nothing new arrives. A position **opened before** that 30-day range cannot be rebuilt when it closes. The walk is anchored on the open positions BingX reports right now, so such a position is recognised and dropped with a warning instead of being mistaken for a new one that swallows every later trade on the symbol |
 | **BitMart** | As far as its fill API retains — **the exchange closes on 2026-08-26** | Keyed REST; fills pulled in 7-day windows until the history runs dry |
 | **Quantfury** | Full — whatever is in the exported PDF (typically your entire history) | Manual PDF import |
 | **Journal CSV** | Whatever you import | Manual CSV in the canonical format — for hand-kept journals or exchanges that no longer exist |

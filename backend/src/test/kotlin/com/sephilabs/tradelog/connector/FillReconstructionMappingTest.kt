@@ -4,6 +4,7 @@ package com.sephilabs.tradelog.connector
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sephilabs.tradelog.config.AppProperties
 import com.sephilabs.tradelog.connector.binance.BinanceConnector
+import com.sephilabs.tradelog.connector.bingx.BingxConnector
 import com.sephilabs.tradelog.connector.bybit.BybitConnector
 import com.sephilabs.tradelog.connector.kraken.KrakenFuturesConnector
 import com.sephilabs.tradelog.position.PositionSide
@@ -184,5 +185,35 @@ class FillReconstructionMappingTest {
         val connector = KrakenFuturesConnector(props, mapper)
         assertThat(connector.normalizeSymbol("PF_ETHUSD")).isEqualTo(Symbol("ETH", "USD"))
         assertThat(connector.normalizeSymbol("PF_SOLUSD")).isEqualTo(Symbol("SOL", "USD"))
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // BingX — hedge-mode fills name their position, which tells the reconstructor what may reduce it.
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    fun `BingX declares a hedge-mode fill's intent and leaves a one-way fill undeclared`() {
+        val connector = BingxConnector(props, mapper)
+        val body = """
+            { "code": 0, "data": { "fill_orders": [
+              { "filledTm": "2026-09-01T10:00:00Z", "symbol": "BTC-USDT", "side": "BUY",  "positionSide": "LONG",
+                "price": "100", "amount": "100", "volume": "1", "commission": "-0.05" },
+              { "filledTm": "2026-09-01T11:00:00Z", "symbol": "BTC-USDT", "side": "SELL", "positionSide": "LONG",
+                "price": "110", "amount": "110", "volume": "1", "commission": "-0.05" },
+              { "filledTm": "2026-09-01T12:00:00Z", "symbol": "ETH-USDT", "side": "BUY",  "positionSide": "SHORT",
+                "price": "50", "amount": "100", "volume": "2", "commission": "-0.05" },
+              { "filledTm": "2026-09-01T13:00:00Z", "symbol": "SOL-USDT", "side": "SELL", "positionSide": "BOTH",
+                "price": "20", "amount": "40", "volume": "2", "commission": "-0.05" }
+            ] } }
+        """.trimIndent()
+
+        val fills = connector.mapFills(parse(body))
+
+        assertThat(fills.map { it.reduces }).containsExactly(false, true, true, null)
+        // The closing SELL of an aged-out long is dropped, so a fresh round trip on the same side is what emits.
+        val p = PositionReconstructor.reconstruct(fills.take(2), connector::normalizeSymbol).single()
+        assertThat(p.symbol).isEqualTo(Symbol("BTC", "USDT"))
+        assertThat(p.side).isEqualTo(PositionSide.LONG)
+        assertThat(p.exitPrice).isEqualByComparingTo("110")
     }
 }
