@@ -206,6 +206,27 @@ class EmailChangeFlowTest @Autowired constructor(
     }
 
     @Test
+    fun `writes both mails in the user's stored locale`() {
+        val current = newEmail("change-es")
+        val wanted = newEmail("change-es-to")
+        val session = sessionOf(register(current, locale = "es"))
+
+        requestChange(session, wanted, PASSWORD)
+
+        val confirmation = mailer.to(wanted).last()
+        assertThat(confirmation.subject).isEqualTo("Confirma tu nuevo correo de tradelog")
+        assertThat(confirmation.body).contains("60 minutos")
+        val linkLine = confirmation.body.lines().single { it.startsWith("$PUBLIC_URL/confirm-email?token=") }
+        assertThat(linkLine).doesNotContain(" ")
+        assertThat(confirmation.body).doesNotContain(SecureTokens.hash(linkLine.substringAfter("token=")))
+
+        val notice = mailer.to(current).last()
+        assertThat(notice.subject).isEqualTo("Se ha pedido cambiar el correo de tu cuenta de tradelog")
+        assertThat(notice.body).contains("Si no has sido tú")
+        assertThat(notice.body).doesNotContain("token=")
+    }
+
+    @Test
     fun `limits how many links one account can send in an hour`() {
         val current = newEmail("change-limit")
         val session = sessionOf(register(current))
