@@ -8,6 +8,10 @@ data class AppProperties(
     val security: Security = Security(),
     val registration: Registration = Registration(),
     val bootstrap: Bootstrap = Bootstrap(),
+    val publicUrl: String = "",
+    val mail: Mail = Mail(),
+    val passwordReset: PasswordReset = PasswordReset(),
+    val emailChange: EmailChange = EmailChange(),
     val crypto: Crypto = Crypto(),
     val sync: Sync = Sync(),
     val connectors: Connectors = Connectors(),
@@ -38,6 +42,30 @@ data class AppProperties(
     data class Bootstrap(
         val adminEmail: String = "",
         val adminPassword: String = "",
+    )
+
+    /** Optional SMTP group, resolved into an `SmtpSettings` by `MailConfig`. A blank host, username,
+     *  password or from address (or a blank [publicUrl]) keeps every mail-backed path hidden rather
+     *  than half-enabled. */
+    data class Mail(
+        val host: String = "",
+        val port: Int = 587,
+        val username: String = "",
+        val password: String = "",
+        val startTls: Boolean = true,
+        val from: String = "",
+        val timeoutMs: Long = 10000,
+    )
+
+    data class PasswordReset(
+        val ttlMinutes: Long = 60,
+        val perHourPerEmail: Long = 3,
+        val perHourPerIp: Long = 10,
+    )
+
+    data class EmailChange(
+        val ttlMinutes: Long = 60,
+        val perHourPerUser: Long = 3,
     )
 
     data class Crypto(

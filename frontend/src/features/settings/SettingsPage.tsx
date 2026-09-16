@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { AccountCard } from "./AccountCard";
+import { EmailChangeCard } from "./EmailChangeCard";
+import { PasswordChangeCard } from "./PasswordChangeCard";
 import { ProfilesCard } from "./ProfilesCard";
 import { DataSourcesCard } from "./DataSourcesCard";
 import { CapitalRiskCard } from "./CapitalRiskCard";
@@ -15,6 +17,8 @@ export function SettingsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("nav.settings")}</h1>
       <AccountCard />
+      <EmailChangeCard />
+      <PasswordChangeCard />
       <ProfilesCard />
       {activeProfile && <DataSourcesCard profileId={activeProfile.id} profileName={activeProfile.name} />}
       {activeProfile && <CapitalRiskCard profileId={activeProfile.id} />}

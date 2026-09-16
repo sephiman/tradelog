@@ -32,6 +32,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.session:spring-session-jdbc")
+    // Outbound SMTP for password-reset and email-change links (optional at runtime: with no SMTP
+    // configured the sender bean is the disabled one and no connection is ever opened).
+    implementation("org.springframework.boot:spring-boot-starter-mail")
 
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")

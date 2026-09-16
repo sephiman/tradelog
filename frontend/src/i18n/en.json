@@ -39,7 +39,23 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeOled": "OLED",
-    "themeSystem": "System"
+    "themeSystem": "System",
+    "forgotPassword": "Forgot your password?",
+    "forgotPasswordIntro": "Enter the email of your account and we will send you a link to choose a new password.",
+    "sendResetLink": "Send reset link",
+    "resetRequested": "If an account exists for that address, an email with a reset link is on its way. The link is valid for a limited time.",
+    "resetUnavailable": "Password reset by email is not enabled on this instance. Ask whoever runs it to reset your password.",
+    "resetPassword": "Choose a new password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "setNewPassword": "Set new password",
+    "resetLinkInvalid": "This reset link is not valid or has expired.",
+    "requestNewLink": "Request a new link",
+    "resetDone": "Your password was updated. Log in with the new one.",
+    "confirmEmail": "Confirm your new email",
+    "emailChangeLinkInvalid": "This confirmation link is not valid or has expired.",
+    "emailChanged": "Your email was updated. Log in with the new address.",
+    "backToLogin": "Back to log in"
   },
   "profiles": {
     "title": "Profiles",
@@ -500,7 +516,20 @@
       "backfillNeedsAnchor": "Create your first adjustment on the Capital page to enable backfilling.",
       "backfillDone": "Snapshots backfilled: {{created}} created, {{updated}} refreshed",
       "timeZoneNote": "Active time zone: {{tz}}. It sets the day boundaries for snapshots, adjustments and ROI periods — change it in Account above."
-    }
+    },
+    "changeEmail": "Email address",
+    "newEmail": "New email",
+    "currentPassword": "Current password",
+    "changeEmailCta": "Change email",
+    "changeEmailVerifiedHint": "We will send a confirmation link to the new address. Nothing changes until you open it, and you will be signed out everywhere once you do.",
+    "changeEmailDirectHint": "The address changes as soon as you confirm your password, and you will be signed out on your other devices.",
+    "emailChangePending": "A confirmation link is on its way to {{email}}. Open it to finish the change.",
+    "emailChanged": "Email updated",
+    "changePassword": "Password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "changePasswordCta": "Change password",
+    "passwordChanged": "Password updated"
   },
   "capital": {
     "title": "Capital",
@@ -717,5 +746,11 @@
     "syncExchanges": "Sync exchanges",
     "importQuantfury": "Import Quantfury PDF…",
     "noExchanges": "No exchange sources to sync. Add Bitunix or BingX in Settings."
+  },
+  "validation": {
+    "fieldRequired": "This field is required",
+    "emailInvalid": "Enter a valid email address",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordConfirmationMismatch": "The two passwords do not match"
   }
 }

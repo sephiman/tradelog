@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/auth/AuthContext";
 import { asApiError } from "@/api/client";
+import { useAuthFeatures } from "@/api/auth";
 import { Button, Card, CardBody, FieldError, Input, Label } from "@/components/ui/primitives";
 import { Logo } from "@/components/ui/Logo";
 
@@ -11,6 +12,9 @@ export function LoginPage() {
   const { user, loading, login } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const features = useAuthFeatures();
+  const justReset = params.get("reset") === "done";
+  const justChangedEmail = params.get("email") === "changed";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +43,11 @@ export function LoginPage() {
           <Logo className="mx-auto mb-2 h-12 w-auto" />
           <p className="mb-6 text-center text-sm text-gray-500 dark:text-gray-400">{t("auth.login")}</p>
           <form onSubmit={onSubmit} className="space-y-4">
+            {(justReset || justChangedEmail) && (
+              <p role="status" className="rounded-md bg-surface-raised px-3 py-2 text-sm text-gray-700 dark:text-gray-200">
+                {justReset ? t("auth.resetDone") : t("auth.emailChanged")}
+              </p>
+            )}
             <div>
               <Label htmlFor="email">{t("auth.email")}</Label>
               <Input id="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -52,6 +61,11 @@ export function LoginPage() {
               {t("auth.loginCta")}
             </Button>
           </form>
+          {features.data?.passwordReset && (
+            <p className="mt-4 text-center text-sm">
+              <Link to="/forgot-password" className="text-primary hover:underline">{t("auth.forgotPassword")}</Link>
+            </p>
+          )}
           <p className="mt-4 text-center text-sm">
             <Link to="/register" className="text-primary hover:underline">{t("auth.needAccount")}</Link>
           </p>

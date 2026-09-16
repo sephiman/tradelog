@@ -21,6 +21,15 @@ app:
   bootstrap:
     admin-email: ""
     admin-password: ""
+  # SMTP fully configured so the mail-backed paths are reachable; RecordingEmailSender stands in for
+  # the real SmtpEmailSender, and TogglableMailAvailability flips the switch for the disabled cases.
+  public-url: "https://tradelog.test"
+  mail:
+    host: "smtp.test"
+    port: 2525
+    username: "mailer"
+    password: "not-a-real-password"
+    from: "tradelog <noreply@tradelog.test>"
   benchmark:
     # No test may reach a price provider: tests seed benchmark_prices directly instead.
     backfill-on-start: false

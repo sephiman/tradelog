@@ -39,7 +39,23 @@
     "themeLight": "Claro",
     "themeDark": "Oscuro",
     "themeOled": "OLED",
-    "themeSystem": "Sistema"
+    "themeSystem": "Sistema",
+    "forgotPassword": "¿Has olvidado tu contraseña?",
+    "forgotPasswordIntro": "Escribe el correo de tu cuenta y te enviaremos un enlace para elegir una contraseña nueva.",
+    "sendResetLink": "Enviar enlace",
+    "resetRequested": "Si existe una cuenta con esa dirección, te llegará un correo con un enlace para restablecer la contraseña. El enlace caduca pronto.",
+    "resetUnavailable": "El restablecimiento de contraseña por correo no está activado en esta instancia. Pide a quien la administra que restablezca tu contraseña.",
+    "resetPassword": "Elige una contraseña nueva",
+    "newPassword": "Contraseña nueva",
+    "confirmNewPassword": "Confirmar contraseña nueva",
+    "setNewPassword": "Guardar contraseña",
+    "resetLinkInvalid": "Este enlace no es válido o ha caducado.",
+    "requestNewLink": "Pedir un enlace nuevo",
+    "resetDone": "Tu contraseña se ha actualizado. Entra con la nueva.",
+    "confirmEmail": "Confirma tu correo nuevo",
+    "emailChangeLinkInvalid": "Este enlace de confirmación no es válido o ha caducado.",
+    "emailChanged": "Tu correo se ha actualizado. Entra con la dirección nueva.",
+    "backToLogin": "Volver a iniciar sesión"
   },
   "profiles": {
     "title": "Perfiles",
@@ -500,7 +516,20 @@
       "backfillNeedsAnchor": "Crea tu primer ajuste en la página Capital para poder rellenar.",
       "backfillDone": "Instantáneas rellenadas: {{created}} creadas, {{updated}} refrescadas",
       "timeZoneNote": "Zona horaria activa: {{tz}}. Define los límites de día de instantáneas, ajustes y periodos de ROI — cámbiala en Cuenta, más arriba."
-    }
+    },
+    "changeEmail": "Dirección de correo",
+    "newEmail": "Correo nuevo",
+    "currentPassword": "Contraseña actual",
+    "changeEmailCta": "Cambiar correo",
+    "changeEmailVerifiedHint": "Enviaremos un enlace de confirmación a la dirección nueva. No cambia nada hasta que lo abras, y al hacerlo se cerrará tu sesión en todos los dispositivos.",
+    "changeEmailDirectHint": "La dirección cambia en cuanto confirmes tu contraseña, y se cerrará tu sesión en los demás dispositivos.",
+    "emailChangePending": "Va camino de {{email}} un enlace de confirmación. Ábrelo para terminar el cambio.",
+    "emailChanged": "Correo actualizado",
+    "changePassword": "Contraseña",
+    "newPassword": "Contraseña nueva",
+    "confirmNewPassword": "Confirmar contraseña nueva",
+    "changePasswordCta": "Cambiar contraseña",
+    "passwordChanged": "Contraseña actualizada"
   },
   "capital": {
     "title": "Capital",
@@ -717,5 +746,11 @@
     "syncExchanges": "Sincronizar exchanges",
     "importQuantfury": "Importar PDF de Quantfury…",
     "noExchanges": "No hay fuentes de exchange que sincronizar. Añade Bitunix o BingX en Ajustes."
+  },
+  "validation": {
+    "fieldRequired": "Este campo es obligatorio",
+    "emailInvalid": "Introduce un correo electrónico válido",
+    "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
+    "passwordConfirmationMismatch": "Las dos contraseñas no coinciden"
   }
 }

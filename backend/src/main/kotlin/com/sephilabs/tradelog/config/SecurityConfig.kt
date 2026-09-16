@@ -47,6 +47,12 @@ class SecurityConfig {
                     "/api/auth/csrf",
                     "/api/auth/login",
                     "/api/auth/register",
+                    "/api/auth/features",
+                    "/api/auth/password-reset",
+                    "/api/auth/password-reset/*",
+                    // The confirmation link is usually opened on the device holding the mailbox,
+                    // not on the one that is signed in; the token is the proof.
+                    "/api/auth/email/confirm",
                 ).permitAll()
                 auth.requestMatchers("/actuator/**").permitAll()
                 auth.requestMatchers("/api/**").authenticated()

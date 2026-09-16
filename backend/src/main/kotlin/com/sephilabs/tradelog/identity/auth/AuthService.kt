@@ -3,6 +3,7 @@ package com.sephilabs.tradelog.identity.auth
 
 import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.config.AppProperties
+import com.sephilabs.tradelog.identity.emailchange.EmailChangeService
 import com.sephilabs.tradelog.identity.user.User
 import com.sephilabs.tradelog.identity.user.UserRepository
 import com.sephilabs.tradelog.observability.AppMetrics
@@ -19,6 +20,7 @@ class AuthService(
     private val encoder: PasswordEncoder,
     private val metrics: AppMetrics,
     private val props: AppProperties,
+    private val emailChange: EmailChangeService,
 ) {
 
     @Transactional
@@ -55,6 +57,9 @@ class AuthService(
             throw AppException.badRequest("PASSWORD_MISMATCH")
         }
         user.passwordHash = encoder.encode(newPassword)!!
+        // Changing the password is how someone shuts an intruder out; an email change still waiting
+        // on its confirmation link must not survive it.
+        emailChange.cancelPending(user.id)
     }
 
     /** Partial profile update: applies only the provided fields. A bad time zone is rejected. */

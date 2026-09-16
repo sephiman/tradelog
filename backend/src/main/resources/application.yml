@@ -107,6 +107,28 @@ app:
   crypto:
     # Base64-encoded AES key (16/24/32 bytes) for encrypting exchange API credentials at rest.
     key: ${TRADELOG_CRYPTO_KEY:}
+  # Public frontend origin of this deployment, no trailing slash (https://tradelog.example.com).
+  # Mailed links are built from it and never from request headers, so a forged Host cannot poison them.
+  public-url: ${APP_PUBLIC_URL:}
+  # Outbound mail (optional, configured as a GROUP). Drives the self-service password reset, which
+  # stays hidden — no link on the login page, endpoints 404 — until host, username, password, from
+  # and app.public-url are all set, and the verified half of the email change. A partial group logs
+  # one startup warning naming the missing variables and counts as not configured.
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    start-tls: ${SMTP_STARTTLS:true}
+    from: ${MAIL_FROM:}
+    timeout-ms: 10000
+  password-reset:
+    ttl-minutes: 60
+    per-hour-per-email: 3
+    per-hour-per-ip: 10
+  email-change:
+    ttl-minutes: 60
+    per-hour-per-user: 3
   sync:
     # Sync RUNS allowed per minute per exchange. Not HTTP calls: one run makes many, and each
     # connector paces those itself against its venue's documented quota.

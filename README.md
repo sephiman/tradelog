@@ -20,6 +20,7 @@ anyone running a modified version as a network service must publish the source.
 - [How it works](#how-it-works)
 - [Tech stack](#tech-stack)
 - [Running it](#running-it)
+  - [Password reset & email change by mail (SMTP)](#password-reset--email-change-by-mail-smtp)
 - [Connecting your accounts](#connecting-your-accounts)
   - [Exchanges (API)](#exchanges-api)
   - [Quantfury (PDF import)](#quantfury-pdf-import)
@@ -114,6 +115,13 @@ anyone running a modified version as a network service must publish the source.
   replaces the account's data, guarded by an explicit confirmation so a stray request can't wipe
   anything. Exports from older app versions import fine (the importer only refuses files newer than
   itself).
+- **Account & sign-in**: sessions are stored server-side (Spring Session JDBC) and survive a restart;
+  passwords are Argon2id and login is rate-limited per source IP. From *Settings* you can change your
+  **password** and your **email address**, both gated on the current password. With SMTP configured
+  the instance also offers **password reset by email** — a *Forgot your password?* link mails a
+  single-use link valid for 60 minutes — and verifies an email change with a link to the new address.
+  Completing either signs you out of every device. See
+  [Password reset & email change by mail](#password-reset--email-change-by-mail-smtp).
 - **UI & Analytics**: Spanish/English (persisted per user), light/dark/system theme, responsive on desktop and
   mobile. Every widget features a **Maximize** button (`⤢`) to open a high-resolution fullscreen modal overlay with auto-resizing charts and full detail view. An analytics dashboard with a shared **Period / Exchange / Origen** filter bar across 7 dedicated view tabs:
   - **Summary**: KPIs and equity curve chart.
@@ -195,6 +203,8 @@ Edit `.env`:
 - generate an encryption key for stored API credentials:
   `openssl rand -base64 32` → `TRADELOG_CRYPTO_KEY` (keep it **stable** — rotating it makes
   previously stored credentials undecryptable),
+- optionally set `APP_PUBLIC_URL` and the `SMTP_*` / `MAIL_FROM` group to enable password reset by
+  email and verified email changes (see below),
 - for local plain-HTTP testing set `APP_COOKIE_SECURE=false`.
 
 ```bash
@@ -207,6 +217,48 @@ docker compose up --build
 Register the first account, create a profile, then add data sources. To seed an admin on first run
 instead of self-registering, set `ADMIN_EMAIL` / `ADMIN_PASSWORD` and use a non-`open` registration
 mode.
+
+### Password reset & email change by mail (SMTP)
+
+Optional, and configured as a **group**: `SMTP_HOST`, `SMTP_PORT` (default `587`), `SMTP_USERNAME`,
+`SMTP_PASSWORD`, `SMTP_STARTTLS` (default `true`), `MAIL_FROM`, plus `APP_PUBLIC_URL`. With none of
+them set nothing changes: no *Forgot your password?* link, the reset endpoints answer 404, and an
+email change applies without verification. A **partial** group counts as not configured — the
+features stay hidden and the backend logs one `smtp_partially_configured` warning at startup naming
+the missing variables, so there is never a link whose mail cannot go out.
+
+- **Password reset**: *Forgot your password?* → a form asking only for the email → the page always
+  says the same thing ("if an account exists for that address, an email is on its way"), whether or
+  not the address is known. The lookup, the token and the SMTP round-trip all happen off the request
+  thread, so the answer is identical in body and timing either way (no user enumeration). The mail is
+  localized (EN/ES, per the stored preference) and carries a link to
+  `<APP_PUBLIC_URL>/reset-password?token=…` on a line of its own, built from `APP_PUBLIC_URL` and
+  never from request headers, so a forged `Origin`/`Host` cannot poison it.
+- **Email change** (*Settings → Email address*): always requires the current password, so a stolen
+  session cookie is not enough to move the account's recovery channel. With SMTP configured nothing
+  changes until the link mailed to the **new** address is opened, and the **old** address gets a
+  notice (no link, and it does not name the new address) so its owner can react — changing the
+  password, by either route, cancels a change still in flight. Without SMTP there is no channel to
+  verify with and no reset flow to protect, so the password check alone carries it and the address
+  changes at once, with the caller's session rebuilt under the new address.
+- **Tokens**: 256 random bits, sent once, only the SHA-256 hash stored, **valid 60 minutes**,
+  **single-use**, and asking again invalidates any previous unused link. Unknown, expired and used
+  all return one code — never which of the three it was.
+- **Completion** deletes every `SPRING_SESSION` row of the user, so a session opened by whoever
+  prompted the change does not survive it.
+- **Rate limits** (Bucket4j, in-memory, consumed before any lookup so a 429 reveals nothing): 3 reset
+  requests per target email per hour, 10 per source IP per hour, and 3 email-change requests per
+  account per hour. Tunable under `app.password-reset.*` / `app.email-change.*` in `application.yml`.
+- **Delivery** is fire-and-log: one structured line per attempt (`password_reset_mail`,
+  `email_change_mail`) with the outcome, the SMTP response on failure, the user id and a token *hash
+  prefix* — never the token — and no retry queue. A failed send never fails the request. Counters:
+  `tl_password_resets_total{outcome}` and `tl_email_changes_total{outcome}`.
+- **Gmail as the relay**: Google rejects regular account passwords over SMTP. The account needs
+  **2-Step Verification** and an **App Password** (the 16-character value is `SMTP_PASSWORD`), with
+  `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_STARTTLS=true`, `SMTP_USERNAME=<the Gmail
+  address>` and `MAIL_FROM` set to that same address (or a verified *Send mail as* alias).
+- **Out of scope**: email verification on registration, an admin "reset another user" action, and any
+  other outbound mail.
 
 ## Connecting your accounts
 
@@ -401,7 +453,8 @@ On a host with a local Gradle + Docker, plain `gradle test` works directly. Inte
 (`*IntegrationTest`, `*LifecycleTest`, `ApplicationContextTest`, …) spin up a real PostgreSQL via
 Testcontainers and exercise the full Spring context, Flyway schema, JDBC sessions, the
 profile-ownership interceptor, credential encryption, idempotent position upsert, the taxonomy, the
-capital-history engine (anchors, carry-forward, snapshot cadence, ROI), and the Quantfury PDF import.
+capital-history engine (anchors, carry-forward, snapshot cadence, ROI), the Quantfury PDF import,
+and the mail-backed identity flows (password reset and email change, against a recording mail sender).
 
 Frontend (Node 26):
 

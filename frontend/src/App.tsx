@@ -8,6 +8,9 @@ import { ToastHost } from "@/components/ui/ToastHost";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { LoginPage } from "@/auth/LoginPage";
 import { RegisterPage } from "@/auth/RegisterPage";
+import { ForgotPasswordPage } from "@/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/auth/ResetPasswordPage";
+import { ConfirmEmailPage } from "@/auth/ConfirmEmailPage";
 
 // Lazy routes keep the heavy pages (the dashboard alone pulls in recharts) off the initial
 // login-screen load; each page becomes its own chunk fetched on first navigation.
@@ -59,6 +62,9 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/confirm-email" element={<ConfirmEmailPage />} />
         <Route
           path="/*"
           element={

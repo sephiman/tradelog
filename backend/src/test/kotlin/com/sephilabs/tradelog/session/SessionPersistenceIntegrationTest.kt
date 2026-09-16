@@ -2,12 +2,14 @@
 package com.sephilabs.tradelog.session
 
 import com.sephilabs.tradelog.IntegrationTestBase
+import com.sephilabs.tradelog.mail.MailTestDoublesConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
+import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
 import java.net.CookieManager
@@ -24,6 +26,7 @@ import java.net.http.HttpResponse.BodyHandlers
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@Import(MailTestDoublesConfig::class)
 class SessionPersistenceIntegrationTest @Autowired constructor(
     private val jdbc: JdbcTemplate,
 ) {

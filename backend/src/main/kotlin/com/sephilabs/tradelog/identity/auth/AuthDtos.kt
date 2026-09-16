@@ -43,3 +43,8 @@ data class MeResponse(
     val locale: String,
     val timeZone: String,
 )
+
+data class AuthFeaturesResponse(
+    val passwordReset: Boolean,
+    val emailChangeVerified: Boolean,
+)

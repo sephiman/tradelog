@@ -23,6 +23,22 @@ class AppMetrics(private val registry: MeterRegistry) {
             .increment()
     }
 
+    /** One line per reset request and per completion: requested, rate_limited, completed. */
+    fun passwordReset(outcome: String) {
+        Counter.builder("tl_password_resets_total")
+            .tag("outcome", outcome)
+            .register(registry)
+            .increment()
+    }
+
+    /** requested / applied / confirmed / rejected — `applied` is the unverified path (no SMTP). */
+    fun emailChange(outcome: String) {
+        Counter.builder("tl_email_changes_total")
+            .tag("outcome", outcome)
+            .register(registry)
+            .increment()
+    }
+
     fun syncRun(source: String, trigger: String, outcome: String) {
         Counter.builder("tl_sync_runs_total")
             .tag("source", source)
