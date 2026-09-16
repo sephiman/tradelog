@@ -50,7 +50,7 @@ class JournalCsvImportIntegrationTest @Autowired constructor(
         assertThat(preview.totalPositions).isEqualTo(2)
         assertThat(preview.symbols).contains("BTC/USDT", "SUI/USDT")
 
-        // This is the only path that inserts a JOURNAL_CSV row — it exercises the V007 CHECK constraint.
+        // The only path that inserts a JOURNAL_CSV row.
         val run1 = importService.execute(profileId, dsId, bytes.inputStream())
         assertThat(run1.inserted).isEqualTo(2)
 

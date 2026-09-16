@@ -9,6 +9,7 @@ import com.sephilabs.tradelog.connector.gateio.GateioConnector
 import com.sephilabs.tradelog.connector.kucoin.KucoinConnector
 import com.sephilabs.tradelog.connector.mexc.MexcConnector
 import com.sephilabs.tradelog.connector.okx.OkxConnector
+import com.sephilabs.tradelog.connector.toobit.ToobitConnector
 import com.sephilabs.tradelog.position.PositionSide
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -353,5 +354,87 @@ class ClosedPositionMappingTest {
         """.trimIndent()
 
         assertThat(KucoinConnector(props, mapper).mapRows(parse(body))).isEmpty()
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Toobit — `realizedPnL` is NET of openFee + closeFee; sizes are contracts × exchangeInfo multiplier.
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    fun `Toobit backs the gross out of its net realizedPnL and scales contracts by the multiplier`() {
+        val body = """
+            [ {
+              "symbol": "BTC-SWAP-USDT", "side": "LONG", "position": "100", "closeTotalQty": "100", "maxPosition": "100",
+              "openValue": "600", "closeValue": "610", "leverage": "20", "marginType": "CROSS",
+              "realizedPnL": "9.274", "realizedPnlRate": "0.3091", "realizedPnlWithoutFee": "10",
+              "unrealizedPnL": "0", "unrealizedPnlRate": "0", "status": "CLOSED",
+              "openAvgPrice": "60000", "closeAvgPrice": "61000", "openFee": "0.36", "closeFee": "0.366",
+              "openTime": 1700000000000, "closeTime": 1700003600000, "id": "1000"
+            } ]
+        """.trimIndent()
+        // BTC-SWAP-USDT is 0.0001 BTC per contract.
+        val sizes = ContractSizes.of(mapOf("BTC-SWAP-USDT" to BigDecimal("0.0001")))
+
+        val p = ToobitConnector(props, mapper).mapRows(parse(body), sizes).single()
+
+        assertThat(p.externalId).isEqualTo("1000")
+        assertThat(p.symbol).isEqualTo(Symbol("BTC", "USDT"))
+        assertThat(p.side).isEqualTo(PositionSide.LONG)
+        assertThat(p.qty).isEqualByComparingTo("0.01") // 100 contracts × 0.0001
+        assertThat(p.entryPrice).isEqualByComparingTo("60000")
+        assertThat(p.exitPrice).isEqualByComparingTo("61000")
+        assertThat(p.openedAt).isEqualTo(Instant.ofEpochMilli(1700000000000))
+        assertThat(p.closedAt).isEqualTo(Instant.ofEpochMilli(1700003600000))
+        assertThat(p.fees).isEqualByComparingTo("0.726")
+        assertThat(p.realizedPnl).isEqualByComparingTo("10") // (61000 − 60000) × 0.01, gross of fees
+        assertThat(p.funding).isEqualByComparingTo("0") // not itemised by the endpoint
+        assertThat(net(p)).isEqualByComparingTo("9.274") // Toobit's own realizedPnL
+    }
+
+    @Test
+    fun `Toobit reads a short and skips a position that is only partially closed`() {
+        val body = """
+            [
+              { "symbol": "ETH-SWAP-USDT", "side": "SHORT", "closeTotalQty": "50", "status": "CLOSED",
+                "realizedPnL": "-10.726", "realizedPnlWithoutFee": "-10",
+                "openAvgPrice": "3000", "closeAvgPrice": "3200", "openFee": "0.36", "closeFee": "0.366",
+                "openTime": 1700000000000, "closeTime": 1700003600000, "id": "2001" },
+              { "symbol": "ETH-SWAP-USDT", "side": "LONG", "closeTotalQty": "20", "status": "PARTIAL_CLOSE",
+                "realizedPnL": "1", "unrealizedPnL": "5",
+                "openAvgPrice": "3000", "closeAvgPrice": "3100", "openFee": "0.1", "closeFee": "0.1",
+                "openTime": 1700010000000, "closeTime": 1700013600000, "id": "2002" }
+            ]
+        """.trimIndent()
+        val sizes = ContractSizes.of(mapOf("ETH-SWAP-USDT" to BigDecimal("0.001")))
+
+        val positions = ToobitConnector(props, mapper).mapRows(parse(body), sizes)
+
+        // The partially closed row is a position still open, so it is not a canonical position yet.
+        val p = positions.single()
+        assertThat(p.externalId).isEqualTo("2001")
+        assertThat(p.symbol).isEqualTo(Symbol("ETH", "USDT"))
+        assertThat(p.side).isEqualTo(PositionSide.SHORT)
+        assertThat(p.qty).isEqualByComparingTo("0.05") // 50 contracts × 0.001
+        assertThat(p.realizedPnl).isEqualByComparingTo("-10") // (3000 − 3200) × 0.05
+        assertThat(p.fees).isEqualByComparingTo("0.726")
+        assertThat(net(p)).isEqualByComparingTo("-10.726")
+    }
+
+    @Test
+    fun `Toobit takes the gross figure directly when the net one is missing`() {
+        val body = """
+            [ { "symbol": "SOL-SWAP-USDT", "side": "LONG", "position": "10", "status": "CLOSED",
+                "realizedPnlWithoutFee": "2.5", "openAvgPrice": "100", "closeAvgPrice": "125",
+                "openFee": "0.06", "closeFee": "0.075",
+                "openTime": 1700000000000, "closeTime": 1700003600000, "id": "3001" } ]
+        """.trimIndent()
+
+        // No multiplier known for the symbol: one contract counts as one unit rather than as nothing.
+        val p = ToobitConnector(props, mapper).mapRows(parse(body), ContractSizes.NONE).single()
+
+        assertThat(p.qty).isEqualByComparingTo("10")
+        assertThat(p.realizedPnl).isEqualByComparingTo("2.5")
+        assertThat(p.fees).isEqualByComparingTo("0.135")
+        assertThat(net(p)).isEqualByComparingTo("2.365")
     }
 }

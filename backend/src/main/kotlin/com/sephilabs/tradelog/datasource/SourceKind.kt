@@ -27,6 +27,7 @@ enum class SourceKind {
     GATEIO_FUTURES,
     MEXC_FUTURES,
     KUCOIN_FUTURES,
+    TOOBIT,
     QUANTFURY,
 
     /** Manual closed-position CSV in tradelog's canonical format (dead exchanges, hand-kept journals). */
@@ -66,6 +67,7 @@ enum class SourceKind {
             GATEIO_FUTURES -> "Gate.io"
             MEXC_FUTURES -> "MEXC"
             KUCOIN_FUTURES -> "KuCoin"
+            TOOBIT -> "Toobit"
             QUANTFURY -> "Quantfury"
             JOURNAL_CSV -> null
         }

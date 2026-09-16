@@ -48,6 +48,7 @@ class ConnectorRegistryIntegrationTest @Autowired constructor(
             SourceKind.GATEIO_FUTURES to "BTC_USDT",
             SourceKind.MEXC_FUTURES to "BTC_USDT",
             SourceKind.KUCOIN_FUTURES to "XBTUSDTM",
+            SourceKind.TOOBIT to "BTC-SWAP-USDT",
         )
         samples.forEach { (kind, raw) ->
             assertThat(registry.get(kind).normalizeSymbol(raw))

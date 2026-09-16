@@ -202,6 +202,7 @@
       "GATEIO_FUTURES": "Posiciones cerradas con el PnL ya desglosado en resultado de la operación, funding y comisiones — la fuente más limpia de todas. La profundidad depende de lo que retenga Gate.io.",
       "MEXC_FUTURES": "Posiciones cerradas con PnL y apalancamiento. Nota: MEXC restringe el acceso a la API de futuros, así que una clave nueva puede ser rechazada — si la sincronización falla con un error de permisos, ese límite es la causa, no tu configuración.",
       "KUCOIN_FUTURES": "Los últimos 3 meses de posiciones cerradas, en ventanas de 7 días. PnL, comisiones y funding vienen directamente de KuCoin. Necesita la passphrase de API además de la clave y el secreto.",
+      "TOOBIT": "Posiciones cerradas, hasta donde Toobit las conserve. PnL y comisiones vienen directamente de Toobit; el funding no se desglosa, porque su endpoint de historial no lo informa. Toda clave de API de Toobit caduca 90 días después de crearla, así que cuenta con reemplazarla.",
       "QUANTFURY": "Todo tu historial — lo que contenga el PDF subido (sin API, no se sincroniza nada automáticamente).",
       "JOURNAL_CSV": "Lo que importes — un CSV manual de posiciones cerradas, p. ej. de exchanges que ya no existen. No se sincroniza nada automáticamente."
     },
@@ -381,6 +382,18 @@
           "ip": "No hace falta en una clave de app de terceros. En una clave de **API Trading**, añade la dirección de tu servidor si es fija.",
           "secret": "Clave, secreto y passphrase no se pueden recuperar si se pierden — copia los tres en cuanto aparezcan.",
           "note": "Una misma clave de KuCoin sirve también para el host de la API de futuros; tradelog solo lee tus posiciones de futuros cerradas."
+        },
+        "TOOBIT": {
+          "steps": [
+            "Icono de usuario (arriba a la derecha) → **API Management** — o abre toobit.com/user/sub-api directamente.",
+            "Pulsa **New API**. En la ventana de configuración ponle nombre a la clave, define los permisos de abajo y, si la dirección de tu servidor es fija, añádela a la lista blanca de IP.",
+            "Pulsa **Confirm**, introduce el código de Google Authenticator y pulsa **OK**.",
+            "Copia la **API Key** y la **Secret Key** en los campos de arriba."
+          ],
+          "permissions": "Solo lectura: desactiva todos los permisos de trading que ofrezca la ventana (spot, futuros, transferencias, retiradas). tradelog solo lee tus posiciones de futuros cerradas.",
+          "ip": "Opcional. Añade la dirección de tu servidor a la lista blanca si es fija; déjala vacía si tu IP es dinámica.",
+          "secret": "La **Secret Key** se muestra una sola vez, al crearla, y después queda oculta para siempre — cópiala en el momento.",
+          "note": "Toda clave de API de Toobit caduca **90 días** después de crearla, sea cual sea su configuración. Cuando la sincronización empiece a fallar con un error de credenciales, crea una clave nueva y pégala con **Reemplazar credenciales**."
         },
         "QUANTFURY": {
           "steps": [

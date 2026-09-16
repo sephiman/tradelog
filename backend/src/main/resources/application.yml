@@ -194,3 +194,6 @@ app:
     kucoin:
       base-url: ${KUCOIN_FUTURES_BASE_URL:https://api-futures.kucoin.com}
       timeout-ms: ${KUCOIN_FUTURES_TIMEOUT_MS:10000}
+    toobit:
+      base-url: ${TOOBIT_BASE_URL:https://api.toobit.com}
+      timeout-ms: ${TOOBIT_TIMEOUT_MS:10000}

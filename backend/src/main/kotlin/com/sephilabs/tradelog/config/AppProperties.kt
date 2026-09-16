@@ -147,6 +147,7 @@ data class AppProperties(
         val gateio: ExchangeEndpoint = ExchangeEndpoint("https://api.gateio.ws"),
         val mexc: ExchangeEndpoint = ExchangeEndpoint("https://contract.mexc.com"),
         val kucoin: ExchangeEndpoint = ExchangeEndpoint("https://api-futures.kucoin.com"),
+        val toobit: ExchangeEndpoint = ExchangeEndpoint("https://api.toobit.com"),
     )
 
     data class ExchangeEndpoint(

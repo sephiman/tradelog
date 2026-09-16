@@ -2,8 +2,8 @@
 
 A self-hosted, multi-user, multi-profile **crypto-futures trading journal**. It syncs your **closed
 positions** over REST from **Binance**, **Bybit**, **OKX**, **Bitget** (UTA and classic), **Bitunix**,
-**BingX**, **BitMart**, **Kraken Futures**, **Kraken spot**, **Gate.io**, **MEXC** and
-**KuCoin Futures**, imports **Quantfury**
+**BingX**, **BitMart**, **Kraken Futures**, **Kraken spot**, **Gate.io**, **MEXC**,
+**KuCoin Futures** and **Toobit**, imports **Quantfury**
 from its exported **PDF** "Trading History Report" and anything else from a **canonical Journal CSV**,
 organises everything by **profiles** (personal trading and bot strategies), and lets you annotate
 positions to analyse how you trade.
@@ -31,7 +31,7 @@ anyone running a modified version as a network service must publish the source.
 
 - **Profiles** (`PERSONAL` / `BOT`), each owning its own data sources (1:N). Profiles are private to
   one user and never shared. Each bot strategy lives on its own sub-account / API key.
-- **Fifteen sources behind one connector abstraction** — adding a source is a new module, not a core
+- **Sixteen sources behind one connector abstraction** — adding a source is a new module, not a core
   change. Every exchange falls into one of two shapes, and each shape's hard-won logic lives in one
   shared base class rather than in each connector:
   - **Closed-position venues** — the exchange serves finished positions with realized PnL, so each row
@@ -39,7 +39,7 @@ anyone running a modified version as a network service must publish the source.
     opened), **OKX**, **Bitget** (both the Unified Trading Account v3 API and the pre-UTA classic v2 —
     the keys are not interchangeable, so they are separate sources), **Gate.io** (PnL arrives already
     split into trading result, funding and fees — the cleanest payload of the lot), **MEXC**,
-    **KuCoin Futures**.
+    **KuCoin Futures**, **Toobit** (sizes in contracts, scaled by its public contract multiplier).
   - **Fill-reconstruction venues** — the exchange exposes only fills, which are pulled over time
     windows and folded into flat-to-flat positions: **Binance** (funding included), **Bybit** (funding
     included, ~2 years deep), **BingX**, **BitMart**, **Kraken Futures**, **Kraken spot**.
@@ -152,11 +152,14 @@ cursor.
   per position, and rows cannot be recombined reliably once a position is scaled into between two
   partial closes. Fills give the correct flat-to-flat lifecycle instead, and funding arrives in the
   same execution stream.
-- **OKX, Bitget, Gate.io, MEXC and KuCoin Futures** all serve finished positions. Each reports the money
+- **OKX, Bitget, Gate.io, MEXC, KuCoin Futures and Toobit** all serve finished positions. Each reports the money
   its own way — some give gross PnL with negative fee components, some give the net figure and leave the
   gross to be backed out — so every connector's mapping is asserted by deriving net back to the
   exchange's own published net for a sample payload. Gate.io needs the least work of any source: its
   payload already splits PnL into trading result, funding and fees, exactly as tradelog stores them.
+- **Toobit** reports each closed position in contracts, so the quantity is scaled by the contract
+  multiplier from its public exchange info, and its `realizedPnL` is already net of the opening and
+  closing fees, so the gross is backed out. Its history endpoint itemises no funding, so none is recorded.
 - **Kraken Futures** is its own platform with its own signing scheme. Only linear perpetuals (`PF_`) are
   imported, and no fee is recorded at all — Kraken documents that the fee values these endpoints return
   no longer reflect what was charged, and `realized_pnl` is null on any paged request, so PnL comes from
@@ -224,6 +227,7 @@ History coverage differs **per source** — it's a limit of each platform, not o
 | **Gate.io** | As far as Gate retains | Closed positions, already flat-to-flat, with PnL pre-split into trading result / funding / fees |
 | **MEXC** | As far as MEXC retains | Closed positions with PnL and fees. **MEXC restricts futures API access**, so a new key may simply be refused |
 | **KuCoin Futures** | **Last 3 months** (7 per request) | Closed positions. Quantity is *derived* from the PnL and prices — this endpoint reports no size |
+| **Toobit** | As far as Toobit retains | Closed positions, sized in contracts and scaled by the contract multiplier. PnL and fees from Toobit; funding is not itemised. Every API key **expires 90 days** after creation |
 | **Kraken Futures** | As far as Kraken retains | Its own platform and auth. Linear perpetuals (`PF_`) only. **Fees are not imported** — Kraken states its API fee values no longer reflect what was charged |
 | **Kraken** (spot) | Effectively all of it | A different account and balance from Kraken Futures. Positions are rebuilt from trade history, so a holding never fully sold does not appear until it is closed. Real fees; no funding; PnL in the pair's quote currency (often USD/EUR, never converted) |
 | **BingX** | **Only ~the last 30 days** | The `allFillOrders` API serves no older fills and at most 512 per request (oldest first), so each window is re-requested from its last fill until nothing new arrives. A position **opened before** that 30-day range cannot be rebuilt when it closes. The walk is anchored on the open positions BingX reports right now, so such a position is recognised and dropped with a warning instead of being mistaken for a new one that swallows every later trade on the symbol |
@@ -247,7 +251,7 @@ So for **BingX**, sync it regularly — anything older than ~30 days is gone for
 ### Exchanges (API)
 
 The same three steps for every exchange — Binance, Bybit, OKX, Bitget, Bitget Classic, Bitunix,
-BingX, BitMart, Kraken Futures, Kraken spot, Gate.io, MEXC and KuCoin Futures:
+BingX, BitMart, Kraken Futures, Kraken spot, Gate.io, MEXC, KuCoin Futures and Toobit:
 
 1. On the exchange, create an API key with **read-only** permissions — **no trading and no
    withdrawal** scope. (tradelog never needs more; a key with write scope is flagged.)
@@ -290,6 +294,9 @@ Per-exchange notes worth knowing before you connect:
 - **KuCoin Futures** reports no position size on its closed-position endpoint, so quantity is derived
   from the PnL and the entry/exit prices — exact for a linear perpetual, except on a trade that opened
   and closed at the same price, which keeps a zero quantity. Its PnL, fees and funding are exact.
+- **Toobit** keys expire **90 days** after creation regardless of their settings, so a source that starts
+  failing with a credentials error needs a fresh key via **Replace credentials**. Its history endpoint
+  reports PnL net of fees and carries no funding line, so funding is not itemised for Toobit.
 - **BitMart**'s private reads are keyed, not signed, so only the API key is actually used — and it
   **closes on 2026-08-26** (see above).
 

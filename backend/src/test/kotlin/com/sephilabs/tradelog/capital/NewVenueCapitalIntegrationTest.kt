@@ -82,7 +82,7 @@ class NewVenueCapitalIntegrationTest @Autowired constructor(
         val known = capitalService.overview(profileId).knownExchanges
 
         assertThat(known).containsAll(exchangeKinds.mapNotNull { it.venueLabel })
-        assertThat(known).contains("Binance", "Bybit", "OKX", "Bitget", "Kraken Futures", "Gate.io", "MEXC", "KuCoin")
+        assertThat(known).contains("Binance", "Bybit", "OKX", "Bitget", "Kraken Futures", "Gate.io", "MEXC", "KuCoin", "Toobit")
     }
 
     @Test

@@ -17,6 +17,7 @@ export type SourceKind =
   | "GATEIO_FUTURES"
   | "MEXC_FUTURES"
   | "KUCOIN_FUTURES"
+  | "TOOBIT"
   | "QUANTFURY"
   | "JOURNAL_CSV";
 export type FillAction = "OPEN" | "ADD" | "REDUCE" | "CLOSE";

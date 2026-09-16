@@ -202,6 +202,7 @@
       "GATEIO_FUTURES": "Closed positions with PnL already split into trading result, funding and fees — the cleanest source here. Depth depends on what Gate.io retains.",
       "MEXC_FUTURES": "Closed positions with PnL and leverage. Note: MEXC restricts futures API access, so a new key may be rejected — if syncing fails with a permissions error, that limit is why, not your setup.",
       "KUCOIN_FUTURES": "The last 3 months of closed positions, pulled in 7-day windows. PnL, fees and funding come from KuCoin directly. Needs the API passphrase as well as key and secret.",
+      "TOOBIT": "Closed positions, as far back as Toobit retains them. PnL and fees come from Toobit directly; funding is not itemised, since its history endpoint reports none. Every Toobit API key expires 90 days after creation, so plan on replacing it.",
       "QUANTFURY": "Your entire history — whatever is in the uploaded PDF (no API, so nothing syncs automatically).",
       "JOURNAL_CSV": "Whatever you import — a manual CSV of closed positions, e.g. from exchanges that no longer exist. Nothing syncs automatically."
     },
@@ -381,6 +382,18 @@
           "ip": "Not required for a third-party-app key. On an **API Trading** key, add your server's address if it is fixed.",
           "secret": "Key, secret and passphrase cannot be recovered once lost — copy all three the moment they appear.",
           "note": "One KuCoin key covers the futures API host as well; tradelog reads only your closed futures positions."
+        },
+        "TOOBIT": {
+          "steps": [
+            "User icon (top right) → **API Management** — or open toobit.com/user/sub-api directly.",
+            "Press **New API**. In the configuration window name the key, set the permissions below and, if your server's address is fixed, add it to the IP whitelist.",
+            "Press **Confirm**, enter your Google Authenticator code and press **OK**.",
+            "Copy the **API Key** and **Secret Key** into the fields above."
+          ],
+          "permissions": "Read access only: switch off every trade-related permission the window offers (spot, futures, transfers, withdrawal). tradelog only reads your closed futures positions.",
+          "ip": "Optional. Whitelist your server's address if it is fixed; leave it empty when your self-hosted IP is dynamic.",
+          "secret": "The **Secret Key** is displayed once, at creation, and hidden permanently afterwards — copy it immediately.",
+          "note": "Every Toobit API key expires **90 days** after creation, whatever its settings. When syncing starts failing with a credentials error, create a new key and paste it via **Replace credentials**."
         },
         "QUANTFURY": {
           "steps": [

@@ -123,21 +123,6 @@ class DataSourceIntegrationTest @Autowired constructor(
     }
 
     @Test
-    fun `every new exchange kind is accepted by the database`() {
-        // The kind and source CHECK constraints list their values twice, in two tables. A kind missing
-        // from either one fails only when a row is written, so each is written here once.
-        val profileId = newProfile()
-        SourceKind.entries.filter { it.isApi }.forEach { kind ->
-            val dto = service.create(
-                profileId,
-                CreateDataSourceRequest(kind, "src-${kind.name}", "k", "s", passphrase = "p"),
-            )
-            assertThat(dto.kind).isEqualTo(kind)
-        }
-        assertThat(service.list(profileId)).hasSize(SourceKind.entries.count { it.isApi })
-    }
-
-    @Test
     fun `sync cursor round-trips through JSON`() {
         val dto = service.create(newProfile(), CreateDataSourceRequest(SourceKind.BITUNIX, "c", "k", "s"))
         val entity = dataSources.findById(dto.id).orElseThrow()

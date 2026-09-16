@@ -15,6 +15,7 @@ export const SOURCE_KINDS: readonly SourceKind[] = [
   "GATEIO_FUTURES",
   "MEXC_FUTURES",
   "KUCOIN_FUTURES",
+  "TOOBIT",
   "QUANTFURY",
   "JOURNAL_CSV",
 ];
@@ -48,6 +49,7 @@ export const SOURCE_LABELS: Record<SourceKind, string> = {
   GATEIO_FUTURES: "Gate.io Futures",
   MEXC_FUTURES: "MEXC Futures",
   KUCOIN_FUTURES: "KuCoin Futures",
+  TOOBIT: "Toobit",
   QUANTFURY: "Quantfury",
   JOURNAL_CSV: "Journal CSV",
 };

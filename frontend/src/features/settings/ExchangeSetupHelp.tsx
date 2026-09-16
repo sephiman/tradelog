@@ -50,6 +50,10 @@ const SETUP_LINKS: Partial<Record<SourceKind, { console?: string; docs?: string 
     console: "https://www.kucoin.com/account/api",
     docs: "https://www.kucoin.com/support/360015102174",
   },
+  TOOBIT: {
+    console: "https://www.toobit.com/user/sub-api",
+    docs: "https://www.toobit.com/support/toobit-api-key-creation-guide",
+  },
   QUANTFURY: {
     console: "https://trading.quantfury.com/trading_history",
     docs: "https://help.quantfury.com/en/articles/5448773-trading-history",
