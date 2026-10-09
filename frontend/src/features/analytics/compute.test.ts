@@ -166,6 +166,20 @@ describe("traderStyle", () => {
     expect(ts.shortestMs).toBe(60_000);
     expect(ts.longestMs).toBe(2 * 60 * 60_000);
   });
+
+  it("computes win rate per style excluding breakeven trades", () => {
+    const mk = (pnl: number, closeMs: number) => net(pnl, { openedAt: new Date(0).toISOString(), closedAt: new Date(closeMs).toISOString() });
+    const ts = traderStyle([
+      mk(5, 60_000), // scalper win
+      mk(-1, 60_000), // scalper loss
+      mk(0, 60_000), // scalper breakeven, excluded
+      mk(0, 60 * 60_000), // day breakeven only
+    ]);
+    expect(ts.scalper.winRate).toBe(50);
+    expect(ts.day.count).toBe(1);
+    expect(ts.day.winRate).toBeNull();
+    expect(ts.swing.winRate).toBeNull();
+  });
 });
 
 describe("directionBreakdown", () => {

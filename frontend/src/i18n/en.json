@@ -682,7 +682,7 @@
     "direction": "Trade direction",
     "directionInfo": "Long vs short: number of trades, win rate, total PnL and expectancy.",
     "traderStyle": "Trader style",
-    "traderStyleInfo": "Trades grouped by holding time: scalper (< 15m), day trader (15m–24h), swing (> 24h).",
+    "traderStyleInfo": "Trades grouped by holding time: scalper (< 15m), day trader (15m–24h), swing (> 24h). Win rate per style excludes break-even trades (0).",
     "style": {
       "scalper": "Scalper",
       "day": "Day trader",

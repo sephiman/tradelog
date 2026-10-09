@@ -128,6 +128,7 @@ export function TraderStyleCard({ rows }: { rows: ClosedPosition[] }) {
             stats={[
               { label: t("analytics.trades"), value: style.scalper.count },
               { label: t("analytics.style.weight"), value: weight(style.scalper.count) },
+              { label: t("analytics.winRate"), value: fmtPctValue(style.scalper.winRate) },
             ]}
           />
           <div>
@@ -135,7 +136,8 @@ export function TraderStyleCard({ rows }: { rows: ClosedPosition[] }) {
               <Donut data={donut} tooltipStyle={theme.tooltipStyle} format={(v) => `${v} ${t("analytics.trades").toLowerCase()}`} />
             </div>
             <p className="mt-2 text-center text-sm font-semibold" style={{ color: VIOLET_SCALE[1] }}>
-              {t("analytics.style.day")}: {style.day.count} {t("analytics.trades").toLowerCase()} · {weight(style.day.count)}
+              {t("analytics.style.day")}: {style.day.count} {t("analytics.trades").toLowerCase()} · {weight(style.day.count)} · {t("analytics.winRate").toLowerCase()}{" "}
+              {fmtPctValue(style.day.winRate)}
             </p>
             <DonutLegend
               items={[
@@ -151,6 +153,7 @@ export function TraderStyleCard({ rows }: { rows: ClosedPosition[] }) {
             stats={[
               { label: t("analytics.trades"), value: style.swing.count },
               { label: t("analytics.style.weight"), value: weight(style.swing.count) },
+              { label: t("analytics.winRate"), value: fmtPctValue(style.swing.winRate) },
             ]}
           />
         </div>

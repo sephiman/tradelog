@@ -682,7 +682,7 @@
     "direction": "Dirección",
     "directionInfo": "Largo vs corto: número de operaciones, tasa de acierto, PnL total y esperanza.",
     "traderStyle": "Estilo de trader",
-    "traderStyleInfo": "Operaciones agrupadas por duración: scalper (< 15m), day trader (15m–24h), swing (> 24h).",
+    "traderStyleInfo": "Operaciones agrupadas por duración: scalper (< 15m), day trader (15m–24h), swing (> 24h). La tasa de acierto por estilo excluye las operaciones en cero.",
     "style": {
       "scalper": "Scalper",
       "day": "Day trader",
