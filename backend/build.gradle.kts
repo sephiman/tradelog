@@ -1,10 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "2.4.10"
-    kotlin("plugin.spring") version "2.4.10"
-    kotlin("plugin.jpa") version "2.4.10"
-    id("org.springframework.boot") version "4.1.1"
+    kotlin("jvm") version "2.4.21"
+    kotlin("plugin.spring") version "2.4.21"
+    kotlin("plugin.jpa") version "2.4.21"
+    id("org.springframework.boot") version "4.1.2"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -22,7 +22,7 @@ repositories {
 }
 
 // Spring Boot 4.1 still manages Flyway 12; overridden to the current major.
-extra["flyway.version"] = "13.4.0"
+extra["flyway.version"] = "13.11.1"
 
 dependencies {
     // Spring Boot core
@@ -60,10 +60,10 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus")
 
     // Rate limiting (per-exchange sync throttling, login + import limits)
-    implementation("com.bucket4j:bucket4j_jdk17-core:8.19.0")
+    implementation("com.bucket4j:bucket4j_jdk17-core:8.21.0")
 
     // Argon2 password hashing (Spring Security delegates to BouncyCastle)
-    implementation("org.bouncycastle:bcprov-jdk18on:1.85.2")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.86")
 
     // Tests
     testImplementation("org.springframework.boot:spring-boot-starter-test")

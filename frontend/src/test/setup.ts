@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 
 // jsdom ships no matchMedia, which ThemeProvider queries for the "system" theme
 // preference. Report "light" and accept (and ignore) change listeners.
