@@ -5,7 +5,7 @@ services:
   tradelog-backend:
     build:
       context: ./backend
-    image: tradelog-backend:latest
+    image: ghcr.io/sephiman/tradelog-backend:latest
     container_name: tradelog-backend
     env_file: .env
     environment:
@@ -49,7 +49,7 @@ services:
   tradelog-frontend:
     build:
       context: ./frontend
-    image: tradelog-frontend:latest
+    image: ghcr.io/sephiman/tradelog-frontend:latest
     container_name: tradelog-frontend
     depends_on:
       tradelog-backend:

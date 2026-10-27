@@ -207,9 +207,30 @@ Edit `.env`:
   email and verified email changes (see below),
 - for local plain-HTTP testing set `APP_COOKIE_SECURE=false`.
 
+CI publishes both images to GitHub Container Registry on every green push to `main`, as
+`ghcr.io/sephiman/tradelog-backend` and `ghcr.io/sephiman/tradelog-frontend` (tags `latest` and
+`sha-<commit>`); `docker-compose.yml` points at these `:latest` tags and keeps its `build:` blocks.
+
+**Deploy host — pull the published images.** GHCR packages are private by default, so log in once
+with a personal access token that has the `read:packages` scope:
+
 ```bash
-docker compose up --build
+docker login ghcr.io -u <github-user>      # paste the token as the password
+docker compose pull --policy always && docker compose up -d
 ```
+
+Always pull before `up`: without it, `up -d` keeps reusing whatever `latest` is already on the host.
+`--policy always` makes a failed pull (e.g. not logged in) an error; otherwise Compose only warns and
+silently builds from source because the services also have a `build:` block.
+
+**Local — build from source.**
+
+```bash
+docker compose up -d --build
+```
+
+A local build is tagged with the same `ghcr.io/...:latest` name as the published image, so the two
+overwrite each other; run `docker compose pull` to get back to the CI image.
 
 - Frontend: <http://localhost:8088> (override with `FRONTEND_PORT`)
 - Backend API is proxied under `/api`; management endpoints (health/Prometheus) are on port `9090`.

@@ -41,12 +41,6 @@ jobs:
       # build = compile + test (Testcontainers Postgres runs on the runner's Docker) + bootJar
       - run: ./gradlew --no-daemon build
 
-  backend-image:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - run: docker build -t tradelog-backend:ci ./backend
-
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -65,10 +59,39 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  frontend-image:
+  # Builds every image on each run (the frontend Dockerfile copies an explicit file list, so a new
+  # root-level source file breaks the image while the frontend job stays green); publishes to GHCR
+  # only on pushes, and only after the test jobs pass.
+  images:
+    needs: [migrations, backend, frontend]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        component: [backend, frontend]
     steps:
       - uses: actions/checkout@v7
-      # The Dockerfile copies an explicit file list, so a new root-level source file silently
-      # breaks the image while the frontend job above stays green.
-      - run: docker build -t tradelog-frontend:ci ./frontend
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/tradelog-${{ matrix.component }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
+      - uses: docker/build-push-action@v7
+        with:
+          context: ./${{ matrix.component }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
