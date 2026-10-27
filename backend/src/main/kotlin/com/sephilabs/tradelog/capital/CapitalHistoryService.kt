@@ -8,6 +8,7 @@ import com.sephilabs.tradelog.identity.user.UserRepository
 import com.sephilabs.tradelog.position.ClosedPnl
 import com.sephilabs.tradelog.position.PositionRepository
 import com.sephilabs.tradelog.profile.ProfileRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -50,6 +51,7 @@ class CapitalHistoryService(
     private val profiles: ProfileRepository,
     private val users: UserRepository,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     /** The profile owner's IANA time zone id — every day boundary in this feature uses it. */
     @Transactional(readOnly = true)
@@ -134,6 +136,7 @@ class CapitalHistoryService(
             snapshots.flush()
             recomputeAutoSnapshots(profileId, touched)
         }
+        log.info("capital_adjustments_saved date={} entries={} exchanges={}", request.date, request.entries.size, touched.size)
         return listAdjustments(profileId)
     }
 
@@ -164,6 +167,7 @@ class CapitalHistoryService(
         snapshots.save(row)
         snapshots.flush()
         recomputeAutoSnapshots(profileId, setOf(row.exchange))
+        log.info("capital_adjustment_updated adjustmentId={} date={} amountChanged={}", id, row.snapshotDate, newAmount != null)
         return listAdjustments(profileId)
     }
 
@@ -175,6 +179,7 @@ class CapitalHistoryService(
         // The recompute may re-insert the same (exchange, date) as AUTO — the delete must land first.
         snapshots.flush()
         recomputeAutoSnapshots(profileId, setOf(row.exchange))
+        log.info("capital_adjustment_deleted adjustmentId={}", id)
         return listAdjustments(profileId)
     }
 
@@ -192,6 +197,7 @@ class CapitalHistoryService(
         // The recompute may re-insert the same (exchange, date) as AUTO — the deletes must land first.
         snapshots.flush()
         recomputeAutoSnapshots(profileId, rows.map { it.exchange }.toSet())
+        log.info("capital_snapshot_day_deleted date={} rows={}", date, rows.size)
     }
 
     @Transactional(readOnly = true)
@@ -367,6 +373,13 @@ class CapitalHistoryService(
                     updated++
                 }
             }
+        }
+        // Also runs from the nightly job and after syncs, where no profileId is in the MDC.
+        if (created + updated + deleted > 0) {
+            log.info(
+                "capital_snapshots_recomputed profileId={} exchanges={} created={} updated={} deleted={}",
+                profileId, onlyExchanges?.size ?: "all", created, updated, deleted,
+            )
         }
         return RecomputeResult(created, updated, deleted)
     }

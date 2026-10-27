@@ -7,6 +7,7 @@ import com.sephilabs.tradelog.identity.emailchange.EmailChangeService
 import com.sephilabs.tradelog.identity.user.User
 import com.sephilabs.tradelog.identity.user.UserRepository
 import com.sephilabs.tradelog.observability.AppMetrics
+import org.slf4j.LoggerFactory
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -22,6 +23,7 @@ class AuthService(
     private val props: AppProperties,
     private val emailChange: EmailChangeService,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional
     fun register(request: RegisterRequest): User {
@@ -42,12 +44,14 @@ class AuthService(
         )
         users.save(user)
         metrics.registration(mode.name, "success")
+        log.info("user_registered userId={}", user.id)
         return user
     }
 
     @Transactional
     fun recordLogin(userId: UUID) {
         loadManaged(userId).lastLoginAt = Instant.now()
+        log.info("user_login userId={}", userId)
     }
 
     @Transactional
@@ -60,6 +64,7 @@ class AuthService(
         // Changing the password is how someone shuts an intruder out; an email change still waiting
         // on its confirmation link must not survive it.
         emailChange.cancelPending(user.id)
+        log.info("password_changed")
     }
 
     /** Partial profile update: applies only the provided fields. A bad time zone is rejected. */
@@ -69,8 +74,14 @@ class AuthService(
             if (it !in ZoneId.getAvailableZoneIds()) throw AppException.badRequest("INVALID_PARAMETER", "timeZone")
         }
         val user = loadManaged(userId)
+        val localeBefore = user.locale
+        val timeZoneBefore = user.timeZone
         locale?.let { user.locale = it }
         timeZone?.let { user.timeZone = it }
+        log.info(
+            "user_settings_updated locale={}->{} timeZone={}->{}",
+            localeBefore, user.locale, timeZoneBefore, user.timeZone,
+        )
         return user
     }
 

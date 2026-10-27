@@ -18,6 +18,7 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.PositiveOrZero
 import jakarta.validation.constraints.Size
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.Instant
@@ -155,6 +156,7 @@ class ManualEntryService(
     private val syncService: SyncService,
     private val positionService: PositionService,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     fun create(profileId: UUID, userId: UUID, entry: ManualEntry): PositionDto {
         validate(entry)
@@ -168,6 +170,7 @@ class ManualEntryService(
             ?: throw AppException.badRequest("IMPORT_FAILED")
 
         applyTag(userId, profileId, saved.id, entry)
+        log.info("position_manual_created positionId={} kind={} dataSourceId={}", saved.id, entry.kind, ds.id)
         return positionService.get(profileId, saved.id).position
     }
 
@@ -191,6 +194,7 @@ class ManualEntryService(
         // The shared upsert deliberately never touches notes; on a hand-entered row it is editable.
         positionService.updateNote(profileId, positionId, entry.note)
         applyTag(userId, profileId, positionId, entry)
+        log.info("position_manual_updated positionId={} kind={}", positionId, entry.kind)
         return positionService.get(profileId, positionId).position
     }
 

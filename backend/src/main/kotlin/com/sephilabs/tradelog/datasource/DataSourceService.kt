@@ -8,6 +8,7 @@ import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.connector.ExchangeCredentials
 import com.sephilabs.tradelog.connector.SyncCursor
 import com.sephilabs.tradelog.position.PositionRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -19,6 +20,7 @@ class DataSourceService(
     private val crypto: CredentialCrypto,
     private val objectMapper: ObjectMapper,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional(readOnly = true)
     fun list(profileId: UUID): List<DataSourceDto> =
@@ -39,18 +41,21 @@ class DataSourceService(
             ds.syncFrom = request.syncFrom
         }
         dataSources.save(ds)
+        log.info("data_source_created dataSourceId={} kind={} hasCredentials={}", ds.id, ds.kind, ds.credentialsEnc != null)
         return ds.toDto()
     }
 
     @Transactional
     fun update(profileId: UUID, id: UUID, request: UpdateDataSourceRequest): DataSourceDto {
         val ds = loadOwn(profileId, id)
+        val statusBefore = ds.status
         request.label?.trim()?.takeIf { it.isNotEmpty() }?.let { ds.label = it }
         request.status?.let {
             ds.status = it
             if (it != DataSourceStatus.ERROR) ds.statusDetail = null
         }
-        if (ds.kind.isApi && !request.apiKey.isNullOrBlank() && !request.apiSecret.isNullOrBlank()) {
+        val rotateCredentials = ds.kind.isApi && !request.apiKey.isNullOrBlank() && !request.apiSecret.isNullOrBlank()
+        if (rotateCredentials) {
             ds.credentialsEnc = encryptCredentials(ds.kind, request.apiKey, request.apiSecret, request.passphrase)
             // Rotating credentials clears a prior error state so the next sync can re-validate.
             if (ds.status == DataSourceStatus.ERROR) {
@@ -58,12 +63,18 @@ class DataSourceService(
                 ds.statusDetail = null
             }
         }
+        log.info(
+            "data_source_updated dataSourceId={} kind={} status={}->{} credentialsChanged={}",
+            ds.id, ds.kind, statusBefore, ds.status, rotateCredentials,
+        )
         return ds.toDto()
     }
 
     @Transactional
     fun delete(profileId: UUID, id: UUID) {
-        dataSources.delete(loadOwn(profileId, id))
+        val ds = loadOwn(profileId, id)
+        dataSources.delete(ds)
+        log.info("data_source_deleted dataSourceId={} kind={}", ds.id, ds.kind)
     }
 
     // --- Internal helpers used by the sync worker (credentials decrypted only here) ---

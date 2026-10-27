@@ -14,6 +14,7 @@ import com.sephilabs.tradelog.position.PositionTagRepository
 import com.sephilabs.tradelog.taxonomy.TagGroupRepository
 import com.sephilabs.tradelog.taxonomy.TagRepository
 import org.flywaydb.core.Flyway
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -36,6 +37,7 @@ class ExportService(
     private val capitalRiskSettings: CapitalRiskSettingsRepository,
     private val flyway: Flyway,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional(readOnly = true)
     fun export(user: User): BackupEnvelope {
@@ -86,6 +88,13 @@ class ExportService(
             )
         }
 
+        // Read-only, but a full data export is security-relevant.
+        log.info(
+            "backup_exported profiles={} dataSources={} positions={}",
+            backupProfiles.size,
+            backupProfiles.sumOf { it.dataSources.size },
+            backupProfiles.sumOf { p -> p.dataSources.sumOf { it.positions.size } },
+        )
         return BackupEnvelope(
             meta = BackupMeta(BACKUP_EXPORT_VERSION, schemaVersion(), Instant.now()),
             user = BackupUser(email = user.email, locale = user.locale, timeZone = user.timeZone),

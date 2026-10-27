@@ -8,6 +8,7 @@ import com.sephilabs.tradelog.position.PositionRepository
 import com.sephilabs.tradelog.sync.SyncRunDto
 import com.sephilabs.tradelog.sync.SyncService
 import com.sephilabs.tradelog.sync.SyncTrigger
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.io.InputStream
@@ -71,6 +72,7 @@ class FileImportService(
     private val syncService: SyncService,
     private val positions: PositionRepository,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional(readOnly = true)
     fun preview(profileId: UUID, dataSourceId: UUID, input: InputStream): FileImportPreviewDto {
@@ -82,6 +84,7 @@ class FileImportService(
     fun execute(profileId: UUID, dataSourceId: UUID, input: InputStream): SyncRunDto {
         val ds = loadFileSource(profileId, dataSourceId)
         val records = registry.file(ds.kind).parse(input)
+        log.info("file_import_started dataSourceId={} kind={} records={}", ds.id, ds.kind, records.size)
         return syncService.importFile(ds, records, SyncTrigger.UPLOAD)
     }
 

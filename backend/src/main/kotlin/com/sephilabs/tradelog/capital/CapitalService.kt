@@ -6,6 +6,7 @@ import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.datasource.DataSourceRepository
 import com.sephilabs.tradelog.datasource.DataSourceStatus
 import com.sephilabs.tradelog.position.PositionRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -18,6 +19,8 @@ class CapitalService(
     private val positions: PositionRepository,
     private val dataSources: DataSourceRepository,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
+
     companion object {
         val DEFAULT_PCT_1: BigDecimal = BigDecimal.ONE
         val DEFAULT_PCT_2: BigDecimal = BigDecimal("2")
@@ -66,12 +69,14 @@ class CapitalService(
         }
         row.riskPct1 = pct1
         row.riskPct2 = pct2
-        val frequencyChanged = row.snapshotFrequency != request.snapshotFrequency
+        val frequencyBefore = row.snapshotFrequency
+        val frequencyChanged = frequencyBefore != request.snapshotFrequency
         row.snapshotFrequency = request.snapshotFrequency
         settings.save(row)
         // A new cadence changes which days the series materializes — re-derive right away rather
         // than leaving the chart stale until the next job run.
         if (frequencyChanged) history.recomputeAutoSnapshots(profileId)
+        log.info("capital_settings_updated snapshotFrequency={}->{}", frequencyBefore, row.snapshotFrequency)
         return overview(profileId)
     }
 

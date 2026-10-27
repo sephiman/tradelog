@@ -7,6 +7,7 @@ import com.sephilabs.tradelog.taxonomy.Tag
 import com.sephilabs.tradelog.taxonomy.TagGroupRepository
 import com.sephilabs.tradelog.taxonomy.TagRepository
 import com.sephilabs.tradelog.taxonomy.TaxonomyService
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
@@ -24,6 +25,7 @@ class PositionService(
     private val tags: TagRepository,
     private val taxonomy: TaxonomyService,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional(readOnly = true)
     fun search(criteria: PositionSearchCriteria): PageResponse<PositionDto> {
@@ -93,6 +95,7 @@ class PositionService(
     fun updateNote(profileId: UUID, positionId: UUID, note: String?) {
         val position = loadOwn(profileId, positionId)
         position.note = note?.trim()?.takeIf { it.isNotEmpty() }
+        log.info("position_note_updated positionId={} hasNote={}", positionId, position.note != null)
     }
 
     /**
@@ -102,6 +105,7 @@ class PositionService(
     @Transactional
     fun softDelete(profileId: UUID, positionId: UUID) {
         loadOwn(profileId, positionId).deletedAt = Instant.now()
+        log.info("position_deleted positionId={}", positionId)
     }
 
     /** Soft-deletes many positions (explicit ids or the current filter set); returns how many were removed. */
@@ -110,6 +114,7 @@ class PositionService(
         val targets = positions.findAll(bulkTargetSpec(profileId, req.positionIds, req.filters))
         val now = Instant.now()
         targets.forEach { it.deletedAt = now }
+        log.info("position_bulk_deleted count={} byIds={}", targets.size, !req.positionIds.isNullOrEmpty())
         return targets.size
     }
 
@@ -126,12 +131,14 @@ class PositionService(
         } else {
             positionTags.save(PositionTag(PositionTagId(positionId, groupId), tagId))
         }
+        log.info("position_tag_set positionId={} groupId={} tagId={}", positionId, groupId, tagId)
     }
 
     @Transactional
     fun clearTag(profileId: UUID, positionId: UUID, groupId: UUID) {
         loadOwn(profileId, positionId)
         positionTags.deleteByIdPositionIdAndIdGroupId(positionId, groupId)
+        log.info("position_tag_cleared positionId={} groupId={}", positionId, groupId)
     }
 
     /** Set (tagId != null) or clear (tagId == null) one tag group on many positions; returns how many were touched. */
@@ -149,6 +156,7 @@ class PositionService(
         if (req.tagId != null) {
             positionTags.saveAll(ids.map { PositionTag(PositionTagId(it, groupId), req.tagId) })
         }
+        log.info("position_bulk_tagged groupId={} tagId={} count={} byIds={}", groupId, req.tagId, ids.size, !req.positionIds.isNullOrEmpty())
         return ids.size
     }
 

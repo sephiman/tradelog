@@ -2,6 +2,7 @@
 package com.sephilabs.tradelog.taxonomy
 
 import com.sephilabs.tradelog.common.errors.AppException
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
@@ -16,6 +17,7 @@ class TaxonomyService(
     private val tags: TagRepository,
     private val seeder: TaxonomySeeder,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     /**
      * Creates the default per-user taxonomy the first time it is needed. Idempotent and safe under
@@ -26,6 +28,7 @@ class TaxonomyService(
         if (groups.existsByUserId(userId)) return
         try {
             seeder.seedDefaults(userId)
+            log.info("taxonomy_defaults_seeded")
         } catch (_: DataIntegrityViolationException) {
             // A concurrent request seeded it first — the data now exists, nothing to do.
         }
@@ -47,6 +50,7 @@ class TaxonomyService(
         val name = request.name.trim()
         val group = TagGroup(userId = userId, code = uniqueGroupCode(userId, name), name = name)
         groups.save(group)
+        log.info("taxonomy_group_created groupId={} code={}", group.id, group.code)
         return TagGroupDto(group.id, group.code, group.name, group.sortOrder, emptyList())
     }
 
@@ -54,6 +58,7 @@ class TaxonomyService(
     fun updateGroup(userId: UUID, groupId: UUID, request: TagGroupRequest): TagGroupDto {
         val group = ownGroup(userId, groupId)
         group.name = request.name.trim()
+        log.info("taxonomy_group_renamed groupId={}", group.id)
         val tagList = tags.findAllByGroupIdInOrderBySortOrderAscNameAsc(listOf(group.id)).map { it.toDto() }
         return TagGroupDto(group.id, group.code, group.name, group.sortOrder, tagList)
     }
@@ -61,6 +66,7 @@ class TaxonomyService(
     @Transactional
     fun deleteGroup(userId: UUID, groupId: UUID) {
         groups.delete(ownGroup(userId, groupId))
+        log.info("taxonomy_group_deleted groupId={}", groupId)
     }
 
     @Transactional
@@ -69,6 +75,7 @@ class TaxonomyService(
         val name = request.name.trim()
         val tag = Tag(groupId = group.id, code = uniqueTagCode(group.id, name), name = name)
         tags.save(tag)
+        log.info("taxonomy_tag_created groupId={} tagId={} code={}", group.id, tag.id, tag.code)
         return tag.toDto()
     }
 
@@ -77,6 +84,7 @@ class TaxonomyService(
         ownGroup(userId, groupId)
         val tag = tags.findByIdAndGroupId(tagId, groupId) ?: throw AppException.notFound("TAG_NOT_FOUND")
         tag.name = request.name.trim()
+        log.info("taxonomy_tag_renamed groupId={} tagId={}", groupId, tagId)
         return tag.toDto()
     }
 
@@ -85,6 +93,7 @@ class TaxonomyService(
         ownGroup(userId, groupId)
         val tag = tags.findByIdAndGroupId(tagId, groupId) ?: throw AppException.notFound("TAG_NOT_FOUND")
         tags.delete(tag)
+        log.info("taxonomy_tag_deleted groupId={} tagId={}", groupId, tagId)
     }
 
     /**
@@ -95,7 +104,9 @@ class TaxonomyService(
     fun setTagArchived(userId: UUID, groupId: UUID, tagId: UUID, archived: Boolean): TagDto {
         ownGroup(userId, groupId)
         val tag = tags.findByIdAndGroupId(tagId, groupId) ?: throw AppException.notFound("TAG_NOT_FOUND")
+        val wasArchived = tag.archivedAt != null
         tag.archivedAt = if (archived) Instant.now() else null
+        log.info("taxonomy_tag_archived groupId={} tagId={} archived={}->{}", groupId, tagId, wasArchived, archived)
         return tag.toDto()
     }
 

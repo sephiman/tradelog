@@ -73,7 +73,7 @@ class SyncService(
         if (!rateLimiter.tryAcquire(ds.kind)) throw AppException.tooManyRequests("SYNC_RATE_LIMITED")
         val connector = registry.api(ds.kind)
         val run = store.startRun(ds.id, trigger)
-        log.info("Sync starting: source={} kind={} trigger={} run={}", ds.id, ds.kind, trigger, run.id)
+        log.info("Sync starting: profile={} source={} kind={} trigger={} run={}", ds.profileId, ds.id, ds.kind, trigger, run.id)
         try {
             val creds = dataSourceService.credentialsOf(ds)
             val cursor = dataSourceService.cursorOf(ds)
@@ -134,7 +134,10 @@ class SyncService(
             val finished = store.completeFileSuccess(ds.id, run.id, records)
             metrics.syncRun(ds.kind.name, trigger.name, "success")
             metrics.positionsUpserted(ds.kind.name, finished.inserted + finished.updated)
-            log.info("Import success: source={} kind={} inserted={} updated={}", ds.id, ds.kind, finished.inserted, finished.updated)
+            log.info(
+                "Import success: profile={} source={} kind={} trigger={} inserted={} updated={}",
+                ds.profileId, ds.id, ds.kind, trigger, finished.inserted, finished.updated,
+            )
             refreshCapitalSnapshots(ds.profileId, finished)
             SyncRunDto.of(finished)
         } catch (e: Exception) {

@@ -2,6 +2,7 @@
 package com.sephilabs.tradelog.common.errors
 
 import com.sephilabs.tradelog.i18n.Messages
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.ConstraintViolationException
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
@@ -27,13 +28,15 @@ class GlobalExceptionHandler(private val messages: Messages) {
     private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(AppException::class)
-    fun handleAppException(ex: AppException): ResponseEntity<ApiError> {
+    fun handleAppException(ex: AppException, request: HttpServletRequest): ResponseEntity<ApiError> {
+        if (ex.httpStatus in 400..499) logRefusal(request, ex.httpStatus, ex.code)
         val message = messages.resolve(ex.code, ex.args, ex.fallbackMessage)
         return ResponseEntity.status(ex.httpStatus).body(ApiError(ex.code, message, ex.fields))
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<ApiError> {
+    fun handleValidation(ex: MethodArgumentNotValidException, request: HttpServletRequest): ResponseEntity<ApiError> {
+        logRefusal(request, HttpStatus.BAD_REQUEST.value(), "VALIDATION_FAILED")
         val fields = ex.bindingResult.fieldErrors.associate { fe ->
             val key = fe.defaultMessage ?: "validation.invalid"
             fe.field to messages.resolve(key, emptyArray(), key)
@@ -48,7 +51,8 @@ class GlobalExceptionHandler(private val messages: Messages) {
     }
 
     @ExceptionHandler(ConstraintViolationException::class)
-    fun handleConstraintViolation(ex: ConstraintViolationException): ResponseEntity<ApiError> {
+    fun handleConstraintViolation(ex: ConstraintViolationException, request: HttpServletRequest): ResponseEntity<ApiError> {
+        logRefusal(request, HttpStatus.BAD_REQUEST.value(), "VALIDATION_FAILED")
         val fields = ex.constraintViolations.associate { v ->
             val key = v.message
             v.propertyPath.toString() to messages.resolve(key, emptyArray(), key)
@@ -73,10 +77,12 @@ class GlobalExceptionHandler(private val messages: Messages) {
     }
 
     @ExceptionHandler(BadCredentialsException::class)
-    fun handleBadCredentials(ex: BadCredentialsException): ResponseEntity<ApiError> =
-        ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+    fun handleBadCredentials(ex: BadCredentialsException, request: HttpServletRequest): ResponseEntity<ApiError> {
+        logRefusal(request, HttpStatus.UNAUTHORIZED.value(), "INVALID_CREDENTIALS")
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
             ApiError("INVALID_CREDENTIALS", messages.resolve("INVALID_CREDENTIALS", emptyArray(), "Invalid credentials"))
         )
+    }
 
     @ExceptionHandler(AuthenticationException::class)
     fun handleAuth(ex: AuthenticationException): ResponseEntity<ApiError> =
@@ -85,10 +91,12 @@ class GlobalExceptionHandler(private val messages: Messages) {
         )
 
     @ExceptionHandler(AccessDeniedException::class)
-    fun handleAccessDenied(ex: AccessDeniedException): ResponseEntity<ApiError> =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+    fun handleAccessDenied(ex: AccessDeniedException, request: HttpServletRequest): ResponseEntity<ApiError> {
+        logRefusal(request, HttpStatus.FORBIDDEN.value(), "FORBIDDEN")
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
             ApiError("FORBIDDEN", messages.resolve("FORBIDDEN", emptyArray(), "Access denied"))
         )
+    }
 
     @ExceptionHandler(DataIntegrityViolationException::class)
     fun handleDataIntegrity(ex: DataIntegrityViolationException): ResponseEntity<ApiError> {
@@ -106,5 +114,10 @@ class GlobalExceptionHandler(private val messages: Messages) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
             ApiError("INTERNAL_ERROR", messages.resolve("INTERNAL_ERROR", emptyArray(), "Unexpected error"))
         )
+    }
+
+    // Path only, never the query string; requestId/userId/clientIp come from the MDC.
+    private fun logRefusal(request: HttpServletRequest, status: Int, code: String) {
+        log.info("request_refused code={} status={} method={} path={}", code, status, request.method, request.requestURI)
     }
 }
