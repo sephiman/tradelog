@@ -29,7 +29,7 @@ class DataSource(
     var profileId: UUID,
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "kind", nullable = false, length = 16, updatable = false)
+    @Column(name = "kind", nullable = false, length = 32, updatable = false)
     var kind: SourceKind,
 
     @Column(name = "label", nullable = false, length = 80)

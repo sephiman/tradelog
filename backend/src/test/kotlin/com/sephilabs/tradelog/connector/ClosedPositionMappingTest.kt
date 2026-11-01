@@ -6,6 +6,7 @@ import com.sephilabs.tradelog.config.AppProperties
 import com.sephilabs.tradelog.connector.bitget.BitgetClassicConnector
 import com.sephilabs.tradelog.connector.bitget.BitgetConnector
 import com.sephilabs.tradelog.connector.gateio.GateioConnector
+import com.sephilabs.tradelog.connector.grvt.GrvtConnector
 import com.sephilabs.tradelog.connector.kucoin.KucoinConnector
 import com.sephilabs.tradelog.connector.mexc.MexcConnector
 import com.sephilabs.tradelog.connector.okx.OkxConnector
@@ -436,5 +437,53 @@ class ClosedPositionMappingTest {
         assertThat(p.realizedPnl).isEqualByComparingTo("2.5")
         assertThat(p.fees).isEqualByComparingTo("0.135")
         assertThat(net(p)).isEqualByComparingTo("2.365")
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // GRVT — consolidated position history with reported leverage.
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    fun `GRVT maps a closed long and stores reported leverage`() {
+        val body = """
+            { "result": [ {
+              "instrument": "BTC_USDT_Perp", "status": "CLOSED", "is_long": "true",
+              "open_time": "1700000000000000000", "close_time": "1700003600000000000",
+              "entry_price": "60000", "exit_price": "61000",
+              "closed_volume_base": "0.1", "realized_pnl": "100",
+              "cumulative_fee": "1.5", "cumulative_realized_funding_payment": "0.5",
+              "leverage": "10"
+            } ] }
+        """.trimIndent()
+
+        val p = GrvtConnector(props, mapper).mapRows(parse(body)).single()
+
+        assertThat(p.symbol).isEqualTo(Symbol("BTC", "USDT"))
+        assertThat(p.side).isEqualTo(PositionSide.LONG)
+        assertThat(p.openedAt).isEqualTo(Instant.ofEpochMilli(1_700_000_000_000L))
+        assertThat(p.closedAt).isEqualTo(Instant.ofEpochMilli(1_700_003_600_000L))
+        assertThat(p.qty).isEqualByComparingTo("0.1")
+        assertThat(p.entryPrice).isEqualByComparingTo("60000")
+        assertThat(p.exitPrice).isEqualByComparingTo("61000")
+        assertThat(p.realizedPnl).isEqualByComparingTo("100")
+        assertThat(p.fees).isEqualByComparingTo("1.5")
+        assertThat(p.funding).isEqualByComparingTo("0.5")
+        assertThat(net(p)).isEqualByComparingTo("98")
+        assertThat(p.leverage).isEqualByComparingTo("10")
+        assertThat(p.pnlCurrency).isEqualTo("USDT")
+    }
+
+    @Test
+    fun `GRVT skips still-open and non-dollar margined positions`() {
+        val body = """
+            { "result": [
+              { "instrument": "BTC_USDT_Perp", "status": "PARTIALLY_CLOSED", "is_long": "true",
+                "open_time": "1700000000000000000", "close_time": "1700003600000000000" },
+              { "instrument": "ETH_BTC_Perp", "status": "CLOSED", "is_long": "false",
+                "open_time": "1700000000000000000", "close_time": "1700003600000000000" }
+            ] }
+        """.trimIndent()
+
+        assertThat(GrvtConnector(props, mapper).mapRows(parse(body))).isEmpty()
     }
 }

@@ -178,7 +178,19 @@
     "apiKey": "API key (read-only)",
     "apiSecret": "API secret",
     "passphrase": "API passphrase",
+    "walletAddress": "Wallet address (0x…)",
+    "readOnlyToken": "Read-only token (ro:…)",
     "passphraseHint": "This exchange also needs the passphrase you chose when you created the API key. It is encrypted at rest like the secret and never shown again.",
+    "grvtSubAccountHint": "Only needed for Funding Account keys. Trading Account keys return their sub-account ID on login and can leave this blank.",
+    "asterSignerHint": "Only needed for V3 Pro API Agent keys. Paste the Agent signer address (0x…). Leave blank for V1 HMAC keys.",
+    "credentials": {
+      "COINBASE_FUTURES": { "apiKey": "CDP API key name", "apiSecret": "CDP private key" },
+      "COINBASE_EU_FUTURES": { "apiKey": "CDP API key name", "apiSecret": "CDP private key" },
+      "HYPERLIQUID": { "apiKey": "Wallet address (0x…)", "apiSecret": "" },
+      "ASTER": { "apiKey": "API key / main wallet address", "apiSecret": "API secret / agent private key", "passphrase": "Agent signer address (V3 only)" },
+      "LIGHTER": { "apiKey": "Read-only token (ro:…)", "apiSecret": "" },
+      "GRVT": { "apiKey": "API key", "apiSecret": "", "passphrase": "Sub-account ID (optional)" }
+    },
     "lastSynced": "Last synced",
     "positions": "Positions",
     "new": "Add data source",
@@ -219,6 +231,12 @@
       "MEXC_FUTURES": "Closed positions with PnL and leverage. Note: MEXC restricts futures API access, so a new key may be rejected — if syncing fails with a permissions error, that limit is why, not your setup.",
       "KUCOIN_FUTURES": "The last 3 months of closed positions, pulled in 7-day windows. PnL, fees and funding come from KuCoin directly. Needs the API passphrase as well as key and secret.",
       "TOOBIT": "Closed positions, as far back as Toobit retains them. PnL and fees come from Toobit directly; funding is not itemised, since its history endpoint reports none. Every Toobit API key expires 90 days after creation, so plan on replacing it.",
+      "COINBASE_FUTURES": "Closed perpetual positions reconstructed from fills on Coinbase's Deribit-powered gateway. USDC-margined perpetuals only. EU SCA two-factor challenges can block unattended reads for some accounts.",
+      "COINBASE_EU_FUTURES": "Closed positions reconstructed from fills on Coinbase Advanced Trade v3 REST (EU / CFM futures and perpetual-style products). USDC/USD-margined products only. EU SCA two-factor challenges can block unattended reads.",
+      "HYPERLIQUID": "The last 10,000 fills, reconstructed into closed positions. Hyperliquid is queried by wallet address alone — no API key or signature. USDC-margined perpetuals only.",
+      "ASTER": "Closed positions reconstructed from fills, using either a legacy V1 HMAC key or a V3 Pro API Agent key. USDT/USDC-margined perpetuals only.",
+      "LIGHTER": "Closed positions reconstructed from fills using a Lighter read-only token. USDC-margined perpetuals only.",
+      "GRVT": "Consolidated closed position history from GRVT, with leverage when available. USDT/USDC-margined perpetuals only.",
       "QUANTFURY": "Your entire history — whatever is in the uploaded PDF (no API, so nothing syncs automatically).",
       "JOURNAL_CSV": "Whatever you import — a manual CSV of closed positions, e.g. from exchanges that no longer exist. Nothing syncs automatically."
     },
@@ -410,6 +428,68 @@
           "ip": "Optional. Whitelist your server's address if it is fixed; leave it empty when your self-hosted IP is dynamic.",
           "secret": "The **Secret Key** is displayed once, at creation, and hidden permanently afterwards — copy it immediately.",
           "note": "Every Toobit API key expires **90 days** after creation, whatever its settings. When syncing starts failing with a credentials error, create a new key and paste it via **Replace credentials**."
+        },
+        "COINBASE_FUTURES": {
+          "steps": [
+            "Open the Coinbase Developer Platform portal and create a new **CDP API key**.",
+            "Choose **On-chain** access and enable the **Advanced Trade** scope.",
+            "Download or copy the private key (Ed25519 base64 or ECDSA PEM).",
+            "Paste the **API key name** into the first field above and the full private key into the second field."
+          ],
+          "permissions": "The key only needs read access to derivatives/futures. Never enable trading or withdrawal.",
+          "secret": "The private key is shown only once at creation. tradelog uses it to sign a short-lived JWT for each sync.",
+          "note": "This connector targets the Deribit-powered gateway (drb.coinbase.com). If your account is served by the EU/CFM v3 REST API instead, use **Coinbase EU Futures**."
+        },
+        "COINBASE_EU_FUTURES": {
+          "steps": [
+            "Open the Coinbase Developer Platform portal and create a new **CDP API key**.",
+            "Choose **On-chain** access and enable the **Advanced Trade** scope.",
+            "Download or copy the private key (Ed25519 base64 or ECDSA PEM).",
+            "Paste the **API key name** into the first field above and the full private key into the second field."
+          ],
+          "permissions": "Read access only. Never enable trading or withdrawal.",
+          "secret": "The private key is shown only once at creation. tradelog uses it to sign a short-lived JWT for each sync.",
+          "note": "EU accounts may require an SCA **proof_token** for unattended reads; if sync fails with a permission error mentioning proof_token, the account cannot be synced automatically."
+        },
+        "HYPERLIQUID": {
+          "steps": [
+            "Open your Hyperliquid portfolio and copy the wallet address you trade perpetuals with.",
+            "Paste the **0x…** address into the field above. No API key or secret is needed.",
+            "Choose a sync-from date if you only want positions closed after a certain day; leave it blank to pull the last 10,000 fills."
+          ],
+          "permissions": "Address-only read access. Hyperliquid's info endpoint is public and returns the last 10,000 fills for any address.",
+          "secret": "Nothing secret is stored beyond the public wallet address, which is encrypted at rest like other credentials.",
+          "note": "Only USDC-margined perpetuals are imported. Spot fills are ignored."
+        },
+        "ASTER": {
+          "steps": [
+            "Open Aster's API management and create either a **V1 API key** (legacy HMAC) or a **V3 Pro API** Agent key.",
+            "For V1: copy the **API Key** and **Secret** into the first two fields, leaving the signer address blank.",
+            "For V3 Pro API: copy your **main wallet address** as the API key, the **agent private key** as the secret, and the **agent signer address** as the optional third field."
+          ],
+          "permissions": "Read access only. The V3 Agent signer must be authorized for the account; do not grant it trading permissions.",
+          "secret": "For V1, the secret is the HMAC key. For V3, the secret is the agent private key used to EIP-712-sign each request.",
+          "note": "Only USDT/USDC-margined perpetuals are imported. V1 API key creation was disabled on 2026-03-25, but existing V1 keys keep working."
+        },
+        "LIGHTER": {
+          "steps": [
+            "Open Lighter's settings and create a **Read-only token** (valid up to 10 years).",
+            "Copy the token, which starts with **ro:**, into the field above.",
+            "Choose a sync-from date if you only want positions closed after a certain day; leave it blank to pull the full retained history."
+          ],
+          "permissions": "Read-only tokens cannot trade or withdraw. They only expose fills, funding and positions.",
+          "secret": "The token itself is the only credential. It is encrypted at rest and never shown again.",
+          "note": "Only USDC-margined perpetuals are imported. Standard accounts are rate-limited, so the first sync of a large history can be slow."
+        },
+        "GRVT": {
+          "steps": [
+            "Open GRVT's API key settings and create a read-only API key under the trading account whose history you want.",
+            "For a **Trading Account** key, paste only the API key above — the sub-account ID is returned on login.",
+            "For a **Funding Account** key, paste the API key and also the **sub-account ID** into the optional field above."
+          ],
+          "permissions": "Read-only access to position history and fills. Never enable trading or withdrawal.",
+          "secret": "The API key is the only secret. tradelog exchanges it for a short-lived session cookie on each sync.",
+          "note": "Only USDT/USDC-margined perpetuals are imported. Leverage is stored when GRVT reports it."
         },
         "QUANTFURY": {
           "steps": [

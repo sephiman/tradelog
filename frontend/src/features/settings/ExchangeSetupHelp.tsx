@@ -54,6 +54,30 @@ const SETUP_LINKS: Partial<Record<SourceKind, { console?: string; docs?: string 
     console: "https://www.toobit.com/user/sub-api",
     docs: "https://www.toobit.com/support/toobit-api-key-creation-guide",
   },
+  COINBASE_FUTURES: {
+    console: "https://portal.cdp.coinbase.com/access/api",
+    docs: "https://docs.cdp.coinbase.com/coinbase-app/advanced-trade-apis/guides/derivatives/technical",
+  },
+  COINBASE_EU_FUTURES: {
+    console: "https://portal.cdp.coinbase.com/access/api",
+    docs: "https://docs.cdp.coinbase.com/api-reference/advanced-trade-api/rest-api/perpetuals/list-perpetuals-positions",
+  },
+  HYPERLIQUID: {
+    console: "https://app.hyperliquid.xyz/portfolio",
+    docs: "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint",
+  },
+  ASTER: {
+    console: "https://www.asterdex.com/en-US/api-management",
+    docs: "https://asterdex.github.io/aster-api-website/futures-v3/account%26trades/",
+  },
+  LIGHTER: {
+    console: "https://app.lighter.xyz/settings/api",
+    docs: "https://docs.lighter.xyz/api/authentication",
+  },
+  GRVT: {
+    console: "https://app.grvt.io/settings/api-keys",
+    docs: "https://api-docs.grvt.io/",
+  },
   QUANTFURY: {
     console: "https://trading.quantfury.com/trading_history",
     docs: "https://help.quantfury.com/en/articles/5448773-trading-history",

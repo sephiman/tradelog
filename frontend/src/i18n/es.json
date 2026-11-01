@@ -178,7 +178,19 @@
     "apiKey": "Clave API (solo lectura)",
     "apiSecret": "Secreto API",
     "passphrase": "Passphrase de API",
+    "walletAddress": "Dirección de wallet (0x…)",
+    "readOnlyToken": "Token de solo lectura (ro:…)",
     "passphraseHint": "Este exchange necesita además la passphrase que elegiste al crear la clave de API. Se cifra igual que el secreto y no se vuelve a mostrar.",
+    "grvtSubAccountHint": "Solo necesario para claves de Funding Account. Las claves de Trading Account devuelven su sub-account ID al iniciar sesión y pueden dejar este campo vacío.",
+    "asterSignerHint": "Solo necesario para claves Agent de la API V3 Pro. Pega la dirección del signer agent (0x…). Déjalo en blanco para claves V1 HMAC.",
+    "credentials": {
+      "COINBASE_FUTURES": { "apiKey": "Nombre de la clave CDP", "apiSecret": "Clave privada CDP" },
+      "COINBASE_EU_FUTURES": { "apiKey": "Nombre de la clave CDP", "apiSecret": "Clave privada CDP" },
+      "HYPERLIQUID": { "apiKey": "Dirección de wallet (0x…)", "apiSecret": "" },
+      "ASTER": { "apiKey": "Clave API / dirección principal", "apiSecret": "Secreto API / clave privada agent", "passphrase": "Dirección signer agent (solo V3)" },
+      "LIGHTER": { "apiKey": "Token de solo lectura (ro:…)", "apiSecret": "" },
+      "GRVT": { "apiKey": "Clave API", "apiSecret": "", "passphrase": "Sub-account ID (opcional)" }
+    },
     "lastSynced": "Última sincronización",
     "positions": "Posiciones",
     "new": "Añadir fuente",
@@ -219,6 +231,12 @@
       "MEXC_FUTURES": "Posiciones cerradas con PnL y apalancamiento. Nota: MEXC restringe el acceso a la API de futuros, así que una clave nueva puede ser rechazada — si la sincronización falla con un error de permisos, ese límite es la causa, no tu configuración.",
       "KUCOIN_FUTURES": "Los últimos 3 meses de posiciones cerradas, en ventanas de 7 días. PnL, comisiones y funding vienen directamente de KuCoin. Necesita la passphrase de API además de la clave y el secreto.",
       "TOOBIT": "Posiciones cerradas, hasta donde Toobit las conserve. PnL y comisiones vienen directamente de Toobit; el funding no se desglosa, porque su endpoint de historial no lo informa. Toda clave de API de Toobit caduca 90 días después de crearla, así que cuenta con reemplazarla.",
+      "COINBASE_FUTURES": "Posiciones perpetuas cerradas reconstruidas a partir de ejecuciones en la pasarela Deribit de Coinbase. Solo perpetuos con margen en USDC. Los desafíos SCA de dos factores de la UE pueden bloquear lecturas desatendidas en algunas cuentas.",
+      "COINBASE_EU_FUTURES": "Posiciones cerradas reconstruidas a partir de ejecuciones en la API v3 REST de Coinbase Advanced Trade (futuros y productos perpetuos de la UE/CFM). Solo productos con margen en USDC/USD. Los desafíos SCA de dos factores de la UE pueden bloquear lecturas desatendidas.",
+      "HYPERLIQUID": "Las últimas 10 000 ejecuciones, reconstruidas en posiciones cerradas. Hyperliquid se consulta solo con la dirección de wallet; no hace falta clave ni firma. Solo perpetuos con margen en USDC.",
+      "ASTER": "Posiciones cerradas reconstruidas a partir de ejecuciones, usando una clave V1 HMAC heredada o una clave Agent de la API V3 Pro. Solo perpetuos con margen en USDT/USDC.",
+      "LIGHTER": "Posiciones cerradas reconstruidas a partir de ejecuciones usando un token de solo lectura de Lighter. Solo perpetuos con margen en USDC.",
+      "GRVT": "Historial consolidado de posiciones cerradas de GRVT, con apalancamiento cuando esté disponible. Solo perpetuos con margen en USDT/USDC.",
       "QUANTFURY": "Todo tu historial — lo que contenga el PDF subido (sin API, no se sincroniza nada automáticamente).",
       "JOURNAL_CSV": "Lo que importes — un CSV manual de posiciones cerradas, p. ej. de exchanges que ya no existen. No se sincroniza nada automáticamente."
     },
@@ -410,6 +428,68 @@
           "ip": "Opcional. Añade la dirección de tu servidor a la lista blanca si es fija; déjala vacía si tu IP es dinámica.",
           "secret": "La **Secret Key** se muestra una sola vez, al crearla, y después queda oculta para siempre — cópiala en el momento.",
           "note": "Toda clave de API de Toobit caduca **90 días** después de crearla, sea cual sea su configuración. Cuando la sincronización empiece a fallar con un error de credenciales, crea una clave nueva y pégala con **Reemplazar credenciales**."
+        },
+        "COINBASE_FUTURES": {
+          "steps": [
+            "Abre el portal Coinbase Developer Platform y crea una nueva **CDP API key**.",
+            "Elige acceso **On-chain** y activa el ámbito **Advanced Trade**.",
+            "Descarga o copia la clave privada (Ed25519 en base64 o ECDSA PEM).",
+            "Pega el **nombre de la clave API** en el primer campo de arriba y la clave privada completa en el segundo."
+          ],
+          "permissions": "La clave solo necesita lectura de derivados/futuros. Nunca actives trading ni retiradas.",
+          "secret": "La clave privada solo se muestra una vez al crearla. tradelog la usa para firmar un JWT de corta duración en cada sincronización.",
+          "note": "Este connector apunta a la pasarela Deribit (drb.coinbase.com). Si tu cuenta usa la API v3 REST de UE/CFM, usa **Coinbase EU Futures**."
+        },
+        "COINBASE_EU_FUTURES": {
+          "steps": [
+            "Abre el portal Coinbase Developer Platform y crea una nueva **CDP API key**.",
+            "Elige acceso **On-chain** y activa el ámbito **Advanced Trade**.",
+            "Descarga o copia la clave privada (Ed25519 en base64 o ECDSA PEM).",
+            "Pega el **nombre de la clave API** en el primer campo de arriba y la clave privada completa en el segundo."
+          ],
+          "permissions": "Solo lectura. Nunca actives trading ni retiradas.",
+          "secret": "La clave privada solo se muestra una vez al crearla. tradelog la usa para firmar un JWT de corta duración en cada sincronización.",
+          "note": "Las cuentas de la UE pueden exigir un **proof_token** SCA para lecturas desatendidas; si la sincronización falla con un error de permisos que mencione proof_token, la cuenta no se puede sincronizar automáticamente."
+        },
+        "HYPERLIQUID": {
+          "steps": [
+            "Abre tu portfolio de Hyperliquid y copia la dirección de wallet con la que operas perpetuos.",
+            "Pega la dirección **0x…** en el campo de arriba. No se necesita clave ni secreto.",
+            "Elige una fecha de sincronización si solo quieres posiciones cerradas después de un día concreto; déjala en blanco para traer las últimas 10 000 ejecuciones."
+          ],
+          "permissions": "Lectura solo por dirección. El endpoint info de Hyperliquid es público y devuelve las últimas 10 000 ejecuciones de cualquier dirección.",
+          "secret": "No se guarda nada secreto más allá de la dirección pública de wallet, que se cifra en reposo como el resto de credenciales.",
+          "note": "Solo se importan perpetuos con margen en USDC. Se ignoran las ejecuciones spot."
+        },
+        "ASTER": {
+          "steps": [
+            "Abre la gestión de API de Aster y crea una **V1 API key** (HMAC heredada) o una clave Agent de la **API V3 Pro**.",
+            "Para V1: copia la **API Key** y el **Secret** en los dos primeros campos, dejando la dirección signer en blanco.",
+            "Para V3 Pro API: copia tu **dirección principal** como clave API, la **clave privada del agent** como secreto y la **dirección signer del agent** en el tercer campo opcional."
+          ],
+          "permissions": "Solo lectura. El signer agent de V3 debe estar autorizado para la cuenta; no le concedas permisos de trading.",
+          "secret": "Para V1, el secreto es la clave HMAC. Para V3, el secreto es la clave privada del agent que firma cada petición EIP-712.",
+          "note": "Solo se importan perpetuos con margen en USDT/USDC. La creación de claves V1 se desactivó el 25 de marzo de 2026, pero las claves V1 existentes siguen funcionando."
+        },
+        "LIGHTER": {
+          "steps": [
+            "Abre los ajustes de Lighter y crea un **Read-only token** (válido hasta 10 años).",
+            "Copia el token, que empieza por **ro:**, en el campo de arriba.",
+            "Elige una fecha de sincronización si solo quieres posiciones cerradas después de un día concreto; déjala en blanco para traer todo el historial retenido."
+          ],
+          "permissions": "Los tokens de solo lectura no pueden operar ni retirar. Solo exponen ejecuciones, funding y posiciones.",
+          "secret": "El propio token es la única credencial. Se cifra en reposo y no se vuelve a mostrar.",
+          "note": "Solo se importan perpetuos con margen en USDC. Las cuentas estándar tienen un límite de velocidad bajo, así que la primera sincronización de un historial grande puede ser lenta."
+        },
+        "GRVT": {
+          "steps": [
+            "Abre los ajustes de claves API de GRVT y crea una clave de solo lectura bajo la trading account cuyo historial quieras.",
+            "Para una clave de **Trading Account**, pega solo la clave API arriba — el sub-account ID se devuelve al iniciar sesión.",
+            "Para una clave de **Funding Account**, pega la clave API y también el **sub-account ID** en el campo opcional de arriba."
+          ],
+          "permissions": "Acceso de solo lectura al historial de posiciones y ejecuciones. Nunca actives trading ni retiradas.",
+          "secret": "La clave API es el único secreto. tradelog la canjea por una cookie de sesión de corta duración en cada sincronización.",
+          "note": "Solo se importan perpetuos con margen en USDT/USDC. El apalancamiento se guarda cuando GRVT lo informa."
         },
         "QUANTFURY": {
           "steps": [

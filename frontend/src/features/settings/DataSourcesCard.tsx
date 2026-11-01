@@ -13,8 +13,12 @@ import { Badge, Button, Card, CardBody, CardHeader, Input, Select } from "@/comp
 import { showToast } from "@/lib/toastBus";
 import { dateInputToIso, fmtDate, fmtDateTime } from "@/lib/format";
 import {
+  hasOptionalPassphrase,
   isApiKind,
+  isReadOnlyTokenKind,
+  isWalletAddressKind,
   needsPassphrase,
+  needsSecret,
   retirementOf,
   SOURCE_KINDS,
   SOURCE_LABELS,
@@ -40,6 +44,8 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
 
   const isApi = isApiKind(kind);
   const wantsPassphrase = needsPassphrase(kind);
+  const allowsPassphrase = wantsPassphrase || hasOptionalPassphrase(kind);
+  const wantsSecret = needsSecret(kind);
 
   const onCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +57,7 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
         apiKey: isApi ? apiKey : undefined,
         apiSecret: isApi ? apiSecret : undefined,
         // Only for venues that use one, so switching the dropdown can't leave a stale value.
-        passphrase: wantsPassphrase ? passphrase : undefined,
+        passphrase: allowsPassphrase ? passphrase : undefined,
         syncFrom: isApi ? dateInputToIso(syncFrom) : undefined,
       },
       {
@@ -119,16 +125,40 @@ export function DataSourcesCard({ profileId, profileName }: { profileId: string;
           </p>
           {isApi && (
             <div className="space-y-2">
-              <p className="text-xs text-amber-700 dark:text-amber-400">{t("dataSources.readOnlyHint")}</p>
+              {!isWalletAddressKind(kind) && !isReadOnlyTokenKind(kind) && (
+                <p className="text-xs text-amber-700 dark:text-amber-400">{t("dataSources.readOnlyHint")}</p>
+              )}
               <div className="flex flex-wrap gap-3">
-                <Input className="flex-1" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t("dataSources.apiKey")} autoComplete="off" />
-                <Input className="flex-1" type="password" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} placeholder={t("dataSources.apiSecret")} autoComplete="off" />
-                {wantsPassphrase && (
-                  <Input className="flex-1" type="password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} placeholder={t("dataSources.passphrase")} autoComplete="off" />
+                <Input
+                  className="flex-1"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={credentialLabel(kind, "apiKey", t)}
+                  autoComplete="off"
+                />
+                {wantsSecret && (
+                  <Input
+                    className="flex-1"
+                    type="password"
+                    value={apiSecret}
+                    onChange={(e) => setApiSecret(e.target.value)}
+                    placeholder={credentialLabel(kind, "apiSecret", t)}
+                    autoComplete="off"
+                  />
+                )}
+                {allowsPassphrase && (
+                  <Input
+                    className="flex-1"
+                    type="password"
+                    value={passphrase}
+                    onChange={(e) => setPassphrase(e.target.value)}
+                    placeholder={credentialLabel(kind, "passphrase", t)}
+                    autoComplete="off"
+                  />
                 )}
               </div>
-              {wantsPassphrase && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">{t("dataSources.passphraseHint")}</p>
+              {allowsPassphrase && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">{passphraseHint(kind, t)}</p>
               )}
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t("dataSources.syncFrom")}</span>
@@ -265,7 +295,9 @@ function CredentialsEditor({ profileId, source, onDone }: { profileId: string; s
 
   // Rotation replaces the whole set: stored secrets never reach the browser, so nothing to merge into.
   const wantsPassphrase = needsPassphrase(source.kind);
-  const complete = !!apiKey.trim() && !!apiSecret.trim() && (!wantsPassphrase || !!passphrase.trim());
+  const allowsPassphrase = wantsPassphrase || hasOptionalPassphrase(source.kind);
+  const wantsSecret = needsSecret(source.kind);
+  const complete = !!apiKey.trim() && (!wantsSecret || !!apiSecret.trim()) && (!wantsPassphrase || !!passphrase.trim());
 
   const onSave = () => {
     if (!complete) return;
@@ -275,7 +307,7 @@ function CredentialsEditor({ profileId, source, onDone }: { profileId: string; s
         body: {
           apiKey: apiKey.trim(),
           apiSecret: apiSecret.trim(),
-          passphrase: wantsPassphrase ? passphrase.trim() : undefined,
+          passphrase: allowsPassphrase ? passphrase.trim() : undefined,
         },
       },
       {
@@ -293,16 +325,40 @@ function CredentialsEditor({ profileId, source, onDone }: { profileId: string; s
 
   return (
     <div className="mt-3 rounded-md border border-dashed border-border-strong p-3">
-      <p className="mb-2 text-xs text-amber-700 dark:text-amber-400">{t("dataSources.readOnlyHint")}</p>
+      {!isWalletAddressKind(source.kind) && !isReadOnlyTokenKind(source.kind) && (
+        <p className="mb-2 text-xs text-amber-700 dark:text-amber-400">{t("dataSources.readOnlyHint")}</p>
+      )}
       <div className="flex flex-wrap gap-3">
-        <Input className="flex-1" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t("dataSources.apiKey")} autoComplete="off" />
-        <Input className="flex-1" type="password" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} placeholder={t("dataSources.apiSecret")} autoComplete="off" />
-        {wantsPassphrase && (
-          <Input className="flex-1" type="password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} placeholder={t("dataSources.passphrase")} autoComplete="off" />
+        <Input
+          className="flex-1"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder={credentialLabel(source.kind, "apiKey", t)}
+          autoComplete="off"
+        />
+        {wantsSecret && (
+          <Input
+            className="flex-1"
+            type="password"
+            value={apiSecret}
+            onChange={(e) => setApiSecret(e.target.value)}
+            placeholder={credentialLabel(source.kind, "apiSecret", t)}
+            autoComplete="off"
+          />
+        )}
+        {allowsPassphrase && (
+          <Input
+            className="flex-1"
+            type="password"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+            placeholder={credentialLabel(source.kind, "passphrase", t)}
+            autoComplete="off"
+          />
         )}
       </div>
-      {wantsPassphrase && (
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t("dataSources.passphraseHint")}</p>
+      {allowsPassphrase && (
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{passphraseHint(source.kind, t)}</p>
       )}
       {/* Rotating a key means going back to the exchange, so the same instructions belong here too. */}
       <ExchangeSetupHelp kind={source.kind} className="mt-2" />
@@ -314,4 +370,21 @@ function CredentialsEditor({ profileId, source, onDone }: { profileId: string; s
       </div>
     </div>
   );
+}
+
+function credentialLabel(kind: SourceKind, field: "apiKey" | "apiSecret" | "passphrase", t: (key: string) => string): string {
+  const key = `dataSources.credentials.${kind}.${field}`;
+  const fallback = {
+    apiKey: isWalletAddressKind(kind) ? t("dataSources.walletAddress") : t("dataSources.apiKey"),
+    apiSecret: isReadOnlyTokenKind(kind) ? t("dataSources.readOnlyToken") : t("dataSources.apiSecret"),
+    passphrase: t("dataSources.passphrase"),
+  }[field];
+  const translated = t(key);
+  return translated === key ? fallback : translated;
+}
+
+function passphraseHint(kind: SourceKind, t: (key: string) => string): string {
+  if (kind === "GRVT") return t("dataSources.grvtSubAccountHint");
+  if (kind === "ASTER") return t("dataSources.asterSignerHint");
+  return t("dataSources.passphraseHint");
 }

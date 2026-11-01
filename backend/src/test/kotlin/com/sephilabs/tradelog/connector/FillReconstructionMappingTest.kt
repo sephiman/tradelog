@@ -6,7 +6,9 @@ import com.sephilabs.tradelog.config.AppProperties
 import com.sephilabs.tradelog.connector.binance.BinanceConnector
 import com.sephilabs.tradelog.connector.bingx.BingxConnector
 import com.sephilabs.tradelog.connector.bybit.BybitConnector
+import com.sephilabs.tradelog.connector.hyperliquid.HyperliquidConnector
 import com.sephilabs.tradelog.connector.kraken.KrakenFuturesConnector
+import com.sephilabs.tradelog.connector.lighter.LighterConnector
 import com.sephilabs.tradelog.position.PositionSide
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -215,5 +217,83 @@ class FillReconstructionMappingTest {
         assertThat(p.symbol).isEqualTo(Symbol("BTC", "USDT"))
         assertThat(p.side).isEqualTo(PositionSide.LONG)
         assertThat(p.exitPrice).isEqualByComparingTo("110")
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Hyperliquid — address-only; per-leg closedPnl, funding under a separate `delta` object.
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    fun `Hyperliquid folds fills and a funding payment into a USDC perpetual position`() {
+        val connector = HyperliquidConnector(props, mapper)
+        val fills = connector.mapUserFills(parse("""
+            [
+              { "coin": "BTC", "side": "B", "dir": "Open Long", "px": "60000", "sz": "0.1",
+                "fee": "0.6", "builderFee": "0.05", "closedPnl": "0", "time": 1700000000000 },
+              { "coin": "BTC", "side": "A", "dir": "Close Long", "px": "61000", "sz": "0.1",
+                "fee": "0.61", "builderFee": "0", "closedPnl": "100", "time": 1700003600000 },
+              { "coin": "BTC/USD", "side": "B", "px": "60000", "sz": "0.1", "fee": "1", "time": 1700007200000 }
+            ]
+        """.trimIndent()))
+
+        assertThat(fills).hasSize(2)
+        assertThat(fills.map { it.symbol }).containsOnly("BTC")
+
+        val funding = connector.mapFundingPayments(parse("""
+            [
+              { "time": 1700001800000, "delta": { "coin": "BTC", "usdc": "-0.25" } }
+            ]
+        """.trimIndent()))
+
+        assertThat(funding).hasSize(1)
+        assertThat(funding.single().funding).isEqualByComparingTo("0.25")
+
+        val p = PositionReconstructor.reconstruct(fills + funding, connector::normalizeSymbol).single()
+        assertThat(p.symbol).isEqualTo(Symbol("BTC", "USDC"))
+        assertThat(p.side).isEqualTo(PositionSide.LONG)
+        assertThat(p.qty).isEqualByComparingTo("0.1")
+        assertThat(p.realizedPnl).isEqualByComparingTo("100")
+        assertThat(p.fees).isEqualByComparingTo("1.26")
+        assertThat(p.funding).isEqualByComparingTo("0.25")
+        assertThat(net(p)).isEqualByComparingTo("98.49")
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Lighter — read-only token; the account index in the token decides which side of each trade.
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    fun `Lighter maps the user's side of each trade and drops rows that belong to others`() {
+        val connector = LighterConnector(props, mapper)
+        val markets = mapOf("1" to "BTC-PERP")
+        val rows = connector.mapTrades(
+            parse("""
+                { "trades": [
+                  { "market_id": "1", "timestamp": 1700000000, "price": "60000", "size": "0.1",
+                    "bid_account_id": "7", "ask_account_id": "99", "is_maker_ask": "false",
+                    "maker_fee": "0.1", "taker_fee": "0.2", "bid_account_pnl": "0", "ask_account_pnl": "0" },
+                  { "market_id": "1", "timestamp": 1700003600, "price": "61000", "size": "0.1",
+                    "bid_account_id": "99", "ask_account_id": "7", "is_maker_ask": "false",
+                    "maker_fee": "0.1", "taker_fee": "0.2", "bid_account_pnl": "0", "ask_account_pnl": "100" },
+                  { "market_id": "1", "timestamp": 1700007200, "price": "62000", "size": "0.1",
+                    "bid_account_id": "8", "ask_account_id": "9", "is_maker_ask": "false",
+                    "maker_fee": "0.1", "taker_fee": "0.2", "bid_account_pnl": "0", "ask_account_pnl": "0" }
+                ] }
+            """.trimIndent()),
+            accountIndex = "7",
+            markets = markets,
+        )
+
+        assertThat(rows).hasSize(2)
+        assertThat(rows.map { it.buy }).containsExactly(true, false)
+        assertThat(rows[0].fee).isEqualByComparingTo("0.1")
+        assertThat(rows[1].fee).isEqualByComparingTo("0.2")
+
+        val p = PositionReconstructor.reconstruct(rows, connector::normalizeSymbol).single()
+        assertThat(p.symbol).isEqualTo(Symbol("BTC", "USDC"))
+        assertThat(p.side).isEqualTo(PositionSide.LONG)
+        assertThat(p.realizedPnl).isEqualByComparingTo("100")
+        assertThat(p.fees).isEqualByComparingTo("0.3")
+        assertThat(net(p)).isEqualByComparingTo("99.7")
     }
 }

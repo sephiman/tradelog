@@ -54,7 +54,8 @@ class DataSourceService(
             ds.status = it
             if (it != DataSourceStatus.ERROR) ds.statusDetail = null
         }
-        val rotateCredentials = ds.kind.isApi && !request.apiKey.isNullOrBlank() && !request.apiSecret.isNullOrBlank()
+        val rotateCredentials = ds.kind.isApi && !request.apiKey.isNullOrBlank()
+            && (ds.kind.secretOptional || !request.apiSecret.isNullOrBlank())
         if (rotateCredentials) {
             ds.credentialsEnc = encryptCredentials(ds.kind, request.apiKey, request.apiSecret, request.passphrase)
             // Rotating credentials clears a prior error state so the next sync can re-validate.
@@ -102,7 +103,24 @@ class DataSourceService(
         apiSecret: String?,
         passphrase: String?,
     ): String {
-        if (apiKey.isNullOrBlank() || apiSecret.isNullOrBlank()) {
+        val key = apiKey?.trim() ?: ""
+        if (key.isBlank()) {
+            throw AppException.badRequest("DATA_SOURCE_CREDENTIALS_REQUIRED")
+        }
+        when {
+            kind.isWalletAddress -> {
+                if (!WALLET_ADDRESS_REGEX.matches(key)) {
+                    throw AppException.badRequest("DATA_SOURCE_CREDENTIALS_INVALID")
+                }
+            }
+            kind.isReadOnlyToken -> {
+                if (!key.startsWith(READ_ONLY_TOKEN_PREFIX)) {
+                    throw AppException.badRequest("DATA_SOURCE_CREDENTIALS_INVALID")
+                }
+            }
+        }
+        val secret = apiSecret?.trim() ?: ""
+        if (!kind.secretOptional && secret.isBlank()) {
             throw AppException.badRequest("DATA_SOURCE_CREDENTIALS_REQUIRED")
         }
         val pass = passphrase?.trim()?.takeIf { it.isNotEmpty() }
@@ -110,7 +128,11 @@ class DataSourceService(
             throw AppException.badRequest("DATA_SOURCE_PASSPHRASE_REQUIRED")
         }
         val json = objectMapper.writeValueAsString(
-            DataSourceCredentials(apiKey.trim(), apiSecret.trim(), pass.takeIf { kind.requiresPassphrase }),
+            DataSourceCredentials(
+                apiKey = key,
+                apiSecret = if (kind.secretOptional) secret else secret,
+                passphrase = pass.takeIf { kind.requiresPassphrase || kind.optionalPassphrase },
+            ),
         )
         return crypto.encrypt(json)
     }
@@ -127,4 +149,9 @@ class DataSourceService(
         positionCount = positions.countByDataSourceIdAndDeletedAtIsNull(id),
         createdAt = createdAt,
     )
+
+    companion object {
+        private val WALLET_ADDRESS_REGEX = Regex("^0x[0-9a-fA-F]{40}$")
+        private const val READ_ONLY_TOKEN_PREFIX = "ro:"
+    }
 }

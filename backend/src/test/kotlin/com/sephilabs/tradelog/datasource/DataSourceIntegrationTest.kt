@@ -123,6 +123,91 @@ class DataSourceIntegrationTest @Autowired constructor(
     }
 
     @Test
+    fun `Hyperliquid source stores a wallet address with no secret`() {
+        val profileId = newProfile()
+        val address = "0x1234567890123456789012345678901234567890"
+        val dto = service.create(profileId, CreateDataSourceRequest(SourceKind.HYPERLIQUID, "hl", address))
+
+        assertThat(dto.hasCredentials).isTrue
+        val entity = dataSources.findById(dto.id).orElseThrow()
+        assertThat(service.credentialsOf(entity).apiKey).isEqualTo(address)
+        assertThat(service.credentialsOf(entity).apiSecret).isBlank
+    }
+
+    @Test
+    fun `Hyperliquid source rejects a malformed wallet address`() {
+        assertThatThrownBy {
+            service.create(newProfile(), CreateDataSourceRequest(SourceKind.HYPERLIQUID, "hl", "not-an-address"))
+        }
+            .isInstanceOf(AppException::class.java)
+            .hasMessageContaining("DATA_SOURCE_CREDENTIALS_INVALID")
+    }
+
+    @Test
+    fun `Lighter source stores a read-only token with no secret`() {
+        val profileId = newProfile()
+        val token = "ro:7:single:1893456000:a1b2c3"
+        val dto = service.create(profileId, CreateDataSourceRequest(SourceKind.LIGHTER, "lighter", token))
+
+        assertThat(dto.hasCredentials).isTrue
+        val entity = dataSources.findById(dto.id).orElseThrow()
+        assertThat(service.credentialsOf(entity).apiKey).isEqualTo(token)
+        assertThat(service.credentialsOf(entity).apiSecret).isBlank
+    }
+
+    @Test
+    fun `Lighter source rejects a token that does not start with ro`() {
+        assertThatThrownBy {
+            service.create(newProfile(), CreateDataSourceRequest(SourceKind.LIGHTER, "lighter", "api-key"))
+        }
+            .isInstanceOf(AppException::class.java)
+            .hasMessageContaining("DATA_SOURCE_CREDENTIALS_INVALID")
+    }
+
+    @Test
+    fun `GRVT source accepts an API key with optional sub-account ID`() {
+        val profileId = newProfile()
+        val dto = service.create(
+            profileId,
+            CreateDataSourceRequest(SourceKind.GRVT, "grvt", "GRVT-KEY", passphrase = "sub-123"),
+        )
+        val entity = dataSources.findById(dto.id).orElseThrow()
+        val creds = service.credentialsOf(entity)
+        assertThat(creds.apiKey).isEqualTo("GRVT-KEY")
+        assertThat(creds.apiSecret).isBlank
+        assertThat(creds.passphrase).isEqualTo("sub-123")
+    }
+
+    @Test
+    fun `Aster V1 source stores key and secret and ignores a blank signer`() {
+        val profileId = newProfile()
+        val dto = service.create(profileId, CreateDataSourceRequest(SourceKind.ASTER, "aster", "k", "s"))
+        val entity = dataSources.findById(dto.id).orElseThrow()
+        val creds = service.credentialsOf(entity)
+        assertThat(creds.apiKey).isEqualTo("k")
+        assertThat(creds.apiSecret).isEqualTo("s")
+        assertThat(creds.passphrase).isNull()
+    }
+
+    @Test
+    fun `Aster V3 source stores key secret and signer address`() {
+        val profileId = newProfile()
+        val dto = service.create(
+            profileId,
+            CreateDataSourceRequest(
+                SourceKind.ASTER,
+                "aster",
+                "0x1234567890123456789012345678901234567890",
+                "0xprivate",
+                passphrase = "0xSignerSignerSignerSignerSignerSignerSigne",
+            ),
+        )
+        val entity = dataSources.findById(dto.id).orElseThrow()
+        val creds = service.credentialsOf(entity)
+        assertThat(creds.passphrase).isEqualTo("0xSignerSignerSignerSignerSignerSignerSigne")
+    }
+
+    @Test
     fun `sync cursor round-trips through JSON`() {
         val dto = service.create(newProfile(), CreateDataSourceRequest(SourceKind.BITUNIX, "c", "k", "s"))
         val entity = dataSources.findById(dto.id).orElseThrow()

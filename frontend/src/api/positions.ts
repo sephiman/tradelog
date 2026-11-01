@@ -18,6 +18,12 @@ export type SourceKind =
   | "MEXC_FUTURES"
   | "KUCOIN_FUTURES"
   | "TOOBIT"
+  | "COINBASE_FUTURES"
+  | "COINBASE_EU_FUTURES"
+  | "HYPERLIQUID"
+  | "ASTER"
+  | "LIGHTER"
+  | "GRVT"
   | "QUANTFURY"
   | "JOURNAL_CSV";
 export type FillAction = "OPEN" | "ADD" | "REDUCE" | "CLOSE";

@@ -49,7 +49,15 @@ class NewVenueCapitalIntegrationTest @Autowired constructor(
 
     private fun connect(profileId: UUID, kind: SourceKind): UUID = dataSourceService.create(
         profileId,
-        CreateDataSourceRequest(kind, "src-${kind.name}", "k", "s", passphrase = "p"),
+        when (kind) {
+            SourceKind.HYPERLIQUID -> CreateDataSourceRequest(
+                kind,
+                "src-${kind.name}",
+                "0x1234567890123456789012345678901234567890",
+            )
+            SourceKind.LIGHTER -> CreateDataSourceRequest(kind, "src-${kind.name}", "ro:1:single:1893456000:a1b2")
+            else -> CreateDataSourceRequest(kind, "src-${kind.name}", "k", "s", passphrase = "p")
+        },
     ).id
 
     /** A synced closed position, exactly as a connector would hand it to the upsert. */
@@ -89,8 +97,10 @@ class NewVenueCapitalIntegrationTest @Autowired constructor(
     fun `an anchored active exchange is counted in the capital total and is never dormant`() {
         val profileId = newProfile()
         exchangeKinds.forEach { connect(profileId, it) }
-        // 1,000 on each of the eleven exchanges.
-        exchangeKinds.mapNotNull { it.venueLabel }.forEach { venue ->
+        // 1,000 on each distinct venue. Coinbase Futures and Coinbase EU Futures intentionally share
+        // the "Coinbase" venue, so they anchor the same column.
+        val venues = exchangeKinds.mapNotNull { it.venueLabel }.toSet()
+        venues.forEach { venue ->
             history.saveAdjustments(
                 profileId,
                 SaveAdjustmentsRequest(LocalDate.of(2026, 7, 1), listOf(AdjustmentEntryInput(venue, BigDecimal("1000")))),
@@ -100,10 +110,10 @@ class NewVenueCapitalIntegrationTest @Autowired constructor(
         val overview = capitalService.overview(profileId)
 
         val anchored = overview.entries.filter { it.amount != null }
-        assertThat(anchored).hasSize(exchangeKinds.size)
+        assertThat(anchored).hasSize(venues.size)
         // A live exchange is never dormant, so none of these drops out of the capital & risk block.
         assertThat(anchored).allMatch { !it.dormant }
-        assertThat(overview.total).isEqualByComparingTo(BigDecimal(1000 * exchangeKinds.size))
+        assertThat(overview.total).isEqualByComparingTo(BigDecimal(1000 * venues.size))
         assertThat(overview.hasAnchors).isTrue
     }
 

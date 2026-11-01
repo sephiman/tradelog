@@ -75,6 +75,29 @@ abstract class SignedRestConnector(
             .body(String::class.java)
     }
 
+    /** Signed POST with a JSON body. */
+    protected fun postJson(
+        creds: ExchangeCredentials,
+        path: String,
+        body: Any,
+        params: Map<String, String> = emptyMap(),
+    ): JsonNode = send(creds, "POST", path, params) { path, query, auth ->
+        client.post()
+            .uri { b ->
+                b.path(path)
+                query.forEach { (k, v) -> b.queryParam(k, v) }
+                auth.query.forEach { (k, v) -> b.queryParam(k, v) }
+                b.build()
+            }
+            .headers { h ->
+                auth.headers.forEach { (k, v) -> h.set(k, v) }
+                h.set("Content-Type", "application/json")
+            }
+            .body(body)
+            .retrieve()
+            .body(String::class.java)
+    }
+
     /** Signed POST with a form body (Kraken spot); [authorize] still sees the params as `query`. */
     protected fun postForm(
         creds: ExchangeCredentials,
@@ -186,7 +209,7 @@ abstract class SignedRestConnector(
         if (!more || pacingMs <= 0) return
         try {
             Thread.sleep(pacingMs)
-        } catch (ie: InterruptedException) {
+        } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
         }
     }

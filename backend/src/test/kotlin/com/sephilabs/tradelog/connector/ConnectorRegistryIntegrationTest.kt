@@ -49,11 +49,21 @@ class ConnectorRegistryIntegrationTest @Autowired constructor(
             SourceKind.MEXC_FUTURES to "BTC_USDT",
             SourceKind.KUCOIN_FUTURES to "XBTUSDTM",
             SourceKind.TOOBIT to "BTC-SWAP-USDT",
+            SourceKind.COINBASE_FUTURES to "BTC_USDC-PERPETUAL",
+            SourceKind.COINBASE_EU_FUTURES to "BTC-PERP-INTX",
+            SourceKind.HYPERLIQUID to "BTC",
+            SourceKind.ASTER to "BTCUSDT",
+            SourceKind.LIGHTER to "BTC",
+            SourceKind.GRVT to "BTC_USDT_Perp",
         )
         samples.forEach { (kind, raw) ->
+            val expectedQuote = when (kind) {
+                SourceKind.COINBASE_FUTURES, SourceKind.COINBASE_EU_FUTURES, SourceKind.HYPERLIQUID, SourceKind.LIGHTER -> "USDC"
+                else -> "USDT"
+            }
             assertThat(registry.get(kind).normalizeSymbol(raw))
                 .describedAs("%s normalizing %s", kind, raw)
-                .isEqualTo(Symbol("BTC", "USDT"))
+                .isEqualTo(Symbol("BTC", expectedQuote))
         }
         // Kraken's linear perpetuals are USD-quoted, so it is checked separately rather than forced.
         assertThat(registry.get(SourceKind.KRAKEN_FUTURES).normalizeSymbol("PF_XBTUSD"))

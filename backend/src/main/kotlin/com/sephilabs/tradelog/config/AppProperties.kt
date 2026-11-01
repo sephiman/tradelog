@@ -176,6 +176,15 @@ data class AppProperties(
         val mexc: ExchangeEndpoint = ExchangeEndpoint("https://contract.mexc.com"),
         val kucoin: ExchangeEndpoint = ExchangeEndpoint("https://api-futures.kucoin.com"),
         val toobit: ExchangeEndpoint = ExchangeEndpoint("https://api.toobit.com"),
+        /** Coinbase International perpetuals on the Deribit/Starbase gateway (JSON-RPC 2.0). */
+        val coinbaseFutures: ExchangeEndpoint = ExchangeEndpoint("https://drb.coinbase.com"),
+        /** Coinbase Advanced Trade v3 REST (EU / CFM futures). */
+        val coinbaseEu: ExchangeEndpoint = ExchangeEndpoint("https://api.coinbase.com"),
+        val hyperliquid: ExchangeEndpoint = ExchangeEndpoint("https://api.hyperliquid.xyz"),
+        val aster: ExchangeEndpoint = ExchangeEndpoint("https://fapi.asterdex.com"),
+        val lighter: ExchangeEndpoint = ExchangeEndpoint("https://mainnet.zklighter.elliot.ai"),
+        /** GRVT trade API; authentication uses the separate edge.grvt.io endpoint. */
+        val grvt: ExchangeEndpoint = ExchangeEndpoint("https://trades.grvt.io"),
     )
 
     data class ExchangeEndpoint(

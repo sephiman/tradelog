@@ -16,6 +16,12 @@ export const SOURCE_KINDS: readonly SourceKind[] = [
   "MEXC_FUTURES",
   "KUCOIN_FUTURES",
   "TOOBIT",
+  "COINBASE_FUTURES",
+  "COINBASE_EU_FUTURES",
+  "HYPERLIQUID",
+  "ASTER",
+  "LIGHTER",
+  "GRVT",
   "QUANTFURY",
   "JOURNAL_CSV",
 ];
@@ -30,6 +36,26 @@ export const isApiKind = (kind: SourceKind): boolean => !FILE_KINDS.has(kind);
 const PASSPHRASE_KINDS: ReadonlySet<SourceKind> = new Set<SourceKind>(["OKX", "BITGET", "BITGET_CLASSIC", "KUCOIN_FUTURES"]);
 
 export const needsPassphrase = (kind: SourceKind): boolean => PASSPHRASE_KINDS.has(kind);
+
+/** Venues where the primary credential is a wallet address and no secret is stored. */
+const WALLET_ADDRESS_KINDS: ReadonlySet<SourceKind> = new Set<SourceKind>(["HYPERLIQUID"]);
+
+export const isWalletAddressKind = (kind: SourceKind): boolean => WALLET_ADDRESS_KINDS.has(kind);
+
+/** Venues where the primary credential is a read-only token and no secret is stored. */
+const READ_ONLY_TOKEN_KINDS: ReadonlySet<SourceKind> = new Set<SourceKind>(["LIGHTER"]);
+
+export const isReadOnlyTokenKind = (kind: SourceKind): boolean => READ_ONLY_TOKEN_KINDS.has(kind);
+
+/** Venues where the API secret is optional. */
+const OPTIONAL_SECRET_KINDS: ReadonlySet<SourceKind> = new Set<SourceKind>(["HYPERLIQUID", "LIGHTER", "GRVT"]);
+
+export const needsSecret = (kind: SourceKind): boolean => !OPTIONAL_SECRET_KINDS.has(kind);
+
+/** Venues that accept an optional sub-account or signer address in the passphrase field. */
+const OPTIONAL_PASSPHRASE_KINDS: ReadonlySet<SourceKind> = new Set<SourceKind>(["ASTER", "GRVT"]);
+
+export const hasOptionalPassphrase = (kind: SourceKind): boolean => OPTIONAL_PASSPHRASE_KINDS.has(kind);
 
 /**
  * The platform each key comes from, which is why several say "Futures". NOT the backend's
@@ -50,6 +76,12 @@ export const SOURCE_LABELS: Record<SourceKind, string> = {
   MEXC_FUTURES: "MEXC Futures",
   KUCOIN_FUTURES: "KuCoin Futures",
   TOOBIT: "Toobit",
+  COINBASE_FUTURES: "Coinbase Futures",
+  COINBASE_EU_FUTURES: "Coinbase EU Futures",
+  HYPERLIQUID: "Hyperliquid",
+  ASTER: "Aster",
+  LIGHTER: "Lighter",
+  GRVT: "GRVT",
   QUANTFURY: "Quantfury",
   JOURNAL_CSV: "Journal CSV",
 };

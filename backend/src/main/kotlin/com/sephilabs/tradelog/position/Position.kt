@@ -41,7 +41,7 @@ class Position(
     var dataSourceId: UUID,
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "source", nullable = false, length = 16, updatable = false)
+    @Column(name = "source", nullable = false, length = 32, updatable = false)
     var source: SourceKind,
 
     @Column(name = "external_id", nullable = false, length = 160, updatable = false)

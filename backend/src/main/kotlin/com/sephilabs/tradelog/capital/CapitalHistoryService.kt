@@ -250,7 +250,7 @@ class CapitalHistoryService(
             val periodStart: Instant
             val startCapital: BigDecimal?
             if (fromDate != null) {
-                periodStart = from!!
+                periodStart = from
                 // The period-start day's stored value is the truth; without one, carry the latest
                 // anchor at/before that day forward to the start of that day.
                 val stored = snapshots.findByProfileIdAndExchangeAndSnapshotDate(profileId, ex, fromDate)

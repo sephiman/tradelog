@@ -28,6 +28,25 @@ enum class SourceKind {
     MEXC_FUTURES,
     KUCOIN_FUTURES,
     TOOBIT,
+
+    /** Coinbase International perpetuals on the Deribit/Starbase gateway. */
+    COINBASE_FUTURES,
+
+    /** Coinbase Advanced Trade v3 REST futures / perpetual-style (EU / CFM). */
+    COINBASE_EU_FUTURES,
+
+    /** Hyperliquid: address-only, public info endpoint. */
+    HYPERLIQUID,
+
+    /** Aster: V1 HMAC or V3 Pro API-agent signing. */
+    ASTER,
+
+    /** Lighter: read-only auth token. */
+    LIGHTER,
+
+    /** GRVT: API key + optional sub-account ID. */
+    GRVT,
+
     QUANTFURY,
 
     /** Manual closed-position CSV in tradelog's canonical format (dead exchanges, hand-kept journals). */
@@ -39,6 +58,18 @@ enum class SourceKind {
     /** Venues needing a third credential: the passphrase chosen when the API key was created. */
     val requiresPassphrase: Boolean
         get() = this == OKX || this == BITGET || this == BITGET_CLASSIC || this == KUCOIN_FUTURES
+
+    /** Venues where the primary credential is a wallet address and no secret is used. */
+    val isWalletAddress: Boolean get() = this == HYPERLIQUID
+
+    /** Venues where the primary credential is a read-only token and no secret is used. */
+    val isReadOnlyToken: Boolean get() = this == LIGHTER
+
+    /** Venues where the API secret is optional. */
+    val secretOptional: Boolean get() = this == HYPERLIQUID || this == LIGHTER || this == GRVT
+
+    /** Venues that accept an optional sub-account or signer address in the passphrase field. */
+    val optionalPassphrase: Boolean get() = this == ASTER || this == GRVT
 
     /** When the venue stops serving its API, for an exchange that has announced it is closing. */
     val retiredAt: Instant?
@@ -68,6 +99,11 @@ enum class SourceKind {
             MEXC_FUTURES -> "MEXC"
             KUCOIN_FUTURES -> "KuCoin"
             TOOBIT -> "Toobit"
+            COINBASE_FUTURES, COINBASE_EU_FUTURES -> "Coinbase"
+            HYPERLIQUID -> "Hyperliquid"
+            ASTER -> "Aster"
+            LIGHTER -> "Lighter"
+            GRVT -> "GRVT"
             QUANTFURY -> "Quantfury"
             JOURNAL_CSV -> null
         }

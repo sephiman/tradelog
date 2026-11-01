@@ -3,7 +3,8 @@
 A self-hosted, multi-user, multi-profile **crypto-futures trading journal**. It syncs your **closed
 positions** over REST from **Binance**, **Bybit**, **OKX**, **Bitget** (UTA and classic), **Bitunix**,
 **BingX**, **BitMart**, **Kraken Futures**, **Kraken spot**, **Gate.io**, **MEXC**,
-**KuCoin Futures** and **Toobit**, imports **Quantfury**
+**KuCoin Futures**, **Toobit**, **Coinbase** (global Deribit gateway and EU/CFM v3 REST),
+**Hyperliquid**, **Aster**, **Lighter** and **GRVT**, imports **Quantfury**
 from its exported **PDF** "Trading History Report" and anything else from a **canonical Journal CSV**,
 organises everything by **profiles** (personal trading and bot strategies), and lets you annotate
 positions to analyse how you trade.
@@ -32,7 +33,7 @@ anyone running a modified version as a network service must publish the source.
 
 - **Profiles** (`PERSONAL` / `BOT`), each owning its own data sources (1:N). Profiles are private to
   one user and never shared. Each bot strategy lives on its own sub-account / API key.
-- **Sixteen sources behind one connector abstraction** — adding a source is a new module, not a core
+- **Twenty-two sources behind one connector abstraction** — adding a source is a new module, not a core
   change. Every exchange falls into one of two shapes, and each shape's hard-won logic lives in one
   shared base class rather than in each connector:
   - **Closed-position venues** — the exchange serves finished positions with realized PnL, so each row
@@ -40,16 +41,22 @@ anyone running a modified version as a network service must publish the source.
     opened), **OKX**, **Bitget** (both the Unified Trading Account v3 API and the pre-UTA classic v2 —
     the keys are not interchangeable, so they are separate sources), **Gate.io** (PnL arrives already
     split into trading result, funding and fees — the cleanest payload of the lot), **MEXC**,
-    **KuCoin Futures**, **Toobit** (sizes in contracts, scaled by its public contract multiplier).
+    **KuCoin Futures**, **Toobit** (sizes in contracts, scaled by its public contract multiplier),
+    **GRVT** (position history with leverage when reported).
   - **Fill-reconstruction venues** — the exchange exposes only fills, which are pulled over time
     windows and folded into flat-to-flat positions: **Binance** (funding included), **Bybit** (funding
-    included, ~2 years deep), **BingX**, **BitMart**, **Kraken Futures**, **Kraken spot**.
+    included, ~2 years deep), **BingX**, **BitMart**, **Kraken Futures**, **Kraken spot**,
+    **Coinbase** (both the global Deribit gateway and the EU/CFM v3 REST; PnL derived from leg prices),
+    **Hyperliquid** (address-only, USDC perpetuals), **Aster** (V1 HMAC or V3 Pro API Agent signing),
+    **Lighter** (read-only token).
   - **Quantfury** — parses the exported **PDF**; no public API.
   - **Journal CSV** — manual import in tradelog's canonical format, for hand-kept journals or dead
     exchanges.
 - **Read-only API keys only**, everywhere. **OKX**, **Bitget** and **KuCoin Futures** also need the API
   **passphrase** you chose when creating the key; it is encrypted at rest exactly like the secret and
-  never sent back to the browser. The connection form asks for it only for those three.
+  never sent back to the browser. **Aster** accepts an optional V3 Pro API Agent signer address, and
+  **GRVT** accepts an optional sub-account ID. **Hyperliquid** needs only a wallet address; **Lighter**
+  needs only a read-only token.
 - **Platforms that hold separate money are separate venues.** "Kraken Futures" and "Kraken" (spot) are
   distinct — different API domains, authentication and accounts — as are "Bitget" and "Bitget Classic",
   so each keeps its own capital history and ROI instead of being merged into one balance.
@@ -305,6 +312,11 @@ History coverage differs **per source** — it's a limit of each platform, not o
 | **Kraken** (spot) | Effectively all of it | A different account and balance from Kraken Futures. Positions are rebuilt from trade history, so a holding never fully sold does not appear until it is closed. Real fees; no funding; PnL in the pair's quote currency (often USD/EUR, never converted) |
 | **BingX** | **Only ~the last 30 days** | The `allFillOrders` API serves no older fills and at most 512 per request (oldest first), so each window is re-requested from its last fill until nothing new arrives. A position **opened before** that 30-day range cannot be rebuilt when it closes. The walk is anchored on the open positions BingX reports right now, so such a position is recognised and dropped with a warning instead of being mistaken for a new one that swallows every later trade on the symbol |
 | **BitMart** | As far as its fill API retains — **the exchange closes on 2026-08-26** | Keyed REST; fills pulled in 7-day windows until the history runs dry |
+| **Coinbase** | Varies by account region / gateway | Two connectors: the global Deribit gateway and the EU/CFM v3 REST. Both reconstruct from fills; USDC/USD-margined products only. EU SCA two-factor challenges may block unattended reads |
+| **Hyperliquid** | The last **10,000 fills** | Queried by wallet address alone; no key or signature. USDC-margined perpetuals only |
+| **Aster** | As far as Aster retains | Reconstructs from fills; supports V1 HMAC or V3 Pro API Agent keys. USDT/USDC-margined perpetuals only |
+| **Lighter** | Up to **12 months / 1M trades** | Read-only token. USDC-margined perpetuals only |
+| **GRVT** | As far as GRVT retains | Consolidated position-history endpoint; USDT/USDC-margined perpetuals only. Leverage stored when reported |
 | **Quantfury** | Full — whatever is in the exported PDF (typically your entire history) | Manual PDF import |
 | **Journal CSV** | Whatever you import | Manual CSV in the canonical format — for hand-kept journals or exchanges that no longer exist |
 
@@ -324,15 +336,18 @@ So for **BingX**, sync it regularly — anything older than ~30 days is gone for
 ### Exchanges (API)
 
 The same three steps for every exchange — Binance, Bybit, OKX, Bitget, Bitget Classic, Bitunix,
-BingX, BitMart, Kraken Futures, Kraken spot, Gate.io, MEXC, KuCoin Futures and Toobit:
+BingX, BitMart, Kraken Futures, Kraken spot, Gate.io, MEXC, KuCoin Futures, Toobit, Coinbase,
+Hyperliquid, Aster, Lighter and GRVT:
 
 1. On the exchange, create an API key with **read-only** permissions — **no trading and no
    withdrawal** scope. (tradelog never needs more; a key with write scope is flagged.)
 2. In tradelog, add a data source of that kind, give it a label (e.g. the sub-account or strategy
    name), and paste the **API key** and **API secret**. Three exchanges need a third field:
    **OKX**, **Bitget** (both generations) and **KuCoin Futures** also ask for the **API passphrase** you chose when
-   creating the key — the form shows that input only for them. It is encrypted at rest like the
-   secret and never shown again.
+   creating the key — the form shows that input only for them. **Hyperliquid** asks only for a
+   **wallet address**, **Lighter** only for a **read-only token**, **GRVT** accepts an optional
+   **sub-account ID**, and **Aster** accepts an optional **V3 Agent signer address**. It is encrypted
+   at rest like the secret and never shown again.
 3. The source syncs automatically on your next login, or immediately via **Sync now**. The first sync
    backfills as much history as that exchange's API allows, which varies a great deal — see
    [How far back each source goes](#how-far-back-each-source-goes). If the credentials are rejected or
@@ -372,6 +387,20 @@ Per-exchange notes worth knowing before you connect:
   reports PnL net of fees and carries no funding line, so funding is not itemised for Toobit.
 - **BitMart**'s private reads are keyed, not signed, so only the API key is actually used — and it
   **closes on 2026-08-26** (see above).
+- **Coinbase** is split into two source kinds because retail futures access varies by region and API
+  gateway: use **Coinbase Futures** for the global Deribit-powered gateway, or **Coinbase EU Futures**
+  for the Advanced Trade v3 REST surface used in the EU/CFM. Both map to the "Coinbase" venue so their
+  capital and ROI are not split. EU accounts may require an SCA **proof_token** for unattended reads.
+- **Hyperliquid** is address-only: paste the wallet address you trade perpetuals with. No API key or
+  signature is needed, and only USDC-margined perpetuals are imported.
+- **Aster** supports two key generations: legacy **V1 HMAC** (API key + secret) and **V3 Pro API**
+  Agent keys (main wallet address + agent private key + agent signer address). Pick the one your key
+  is. Only USDT/USDC-margined perpetuals are imported.
+- **Lighter** connects with a **read-only token** (`ro:…`) created in Lighter's settings. It exposes
+  fills and funding but cannot trade or withdraw. Only USDC-margined perpetuals are imported.
+- **GRVT** uses a read-only API key. Trading Account keys return their sub-account ID automatically;
+  Funding Account keys need the sub-account ID pasted into the optional field. Only USDT/USDC-margined
+  perpetuals are imported; leverage is stored when GRVT reports it.
 
 ### Quantfury (PDF import)
 
@@ -506,15 +535,16 @@ TRADELOG_REAL_PDF=/path/to/report.pdf \
 - The **BitMart** connector follows the same fill-reconstruction path as BingX (PnL/fees taken from
   the fill payload, mapping verified against BitMart's official SDK); history depth depends on how
   far back its fill API still serves data. BitMart **closes on 2026-08-26** — see above.
-- The **ten newer sources** (Binance, Bybit, OKX, Bitget, Bitget Classic, Kraken Futures, Kraken spot,
-  Gate.io, MEXC, KuCoin Futures) were built against each venue's current official API documentation, with the endpoint,
-  pagination model, symbol format and money semantics verified per exchange before any code was
-  written. Their field mappings are unit-tested against representative payloads — each one asserting
-  that net PnL derives back to the figure that exchange itself publishes — but they have **not yet been
-  reconciled against live accounts** the way Bitunix and BingX have. Check the first sync's totals
-  against the exchange's own UI before trusting them, and note the per-exchange caveats already listed:
-  MEXC may refuse a new key outright, Kraken Futures imports no fees, and KuCoin Futures derives
-  quantity from PnL and prices.
+- The **sixteen newer sources** (Binance, Bybit, OKX, Bitget, Bitget Classic, Kraken Futures, Kraken spot,
+  Gate.io, MEXC, KuCoin Futures, Toobit, Coinbase, Hyperliquid, Aster, Lighter, GRVT) were built against
+  each venue's current official API documentation, with the endpoint, pagination model, symbol format
+  and money semantics verified per exchange before any code was written. Their field mappings are
+  unit-tested against representative payloads — each one asserting that net PnL derives back to the
+  figure that exchange itself publishes — but they have **not yet been reconciled against live accounts**
+  the way Bitunix and BingX have. Check the first sync's totals against the exchange's own UI before
+  trusting them, and note the per-exchange caveats already listed: MEXC may refuse a new key outright,
+  Kraken Futures imports no fees, KuCoin Futures derives quantity from PnL and prices, and Coinbase EU
+  accounts may be blocked by SCA proof_token requirements.
 - The **Quantfury** parser is validated end-to-end against a real report (computed vs printed PnL agree
   to rounding). Re-uploading the same export is safe.
 - **API keys must be read-only.** The app detects and warns on permission errors but cannot enforce

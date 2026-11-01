@@ -7,8 +7,8 @@ import org.junit.jupiter.api.Test
 /** Invariants for every kind: names fit their columns, and no two venues share a label. */
 class SourceKindTest {
 
-    /** `data_sources.kind` and `positions.source` are both VARCHAR(16). */
-    private val kindColumnWidth = 16
+    /** `data_sources.kind` and `positions.source` are both VARCHAR(32). */
+    private val kindColumnWidth = 32
 
     /** `positions.exchange` and `capital_snapshots.exchange` are VARCHAR(64). */
     private val venueColumnWidth = 64
@@ -30,12 +30,16 @@ class SourceKindTest {
     }
 
     @Test
-    fun `each exchange has its own venue label, so no two share a balance`() {
+    fun `each exchange has its own venue label, except generations that intentionally share one`() {
         val labels = SourceKind.entries.mapNotNull { it.venueLabel }
-        assertThat(labels).doesNotHaveDuplicates()
+        // Coinbase Futures and Coinbase EU Futures both map to "Coinbase" so their capital and ROI
+        // are not split across the two API surfaces.
+        val sharedLabels = setOf("Coinbase")
+        val distinct = labels.filter { it !in sharedLabels }
+        assertThat(distinct).doesNotHaveDuplicates()
         // Venues.canonical compares case- and punctuation-insensitively, so the comparison forms must
         // be distinct too — "Gate.io" and "gateio" would otherwise be one venue.
-        assertThat(labels.map { l -> l.lowercase().filter { it.isLetterOrDigit() } }).doesNotHaveDuplicates()
+        assertThat(distinct.map { l -> l.lowercase().filter { it.isLetterOrDigit() } }).doesNotHaveDuplicates()
     }
 
     @Test
@@ -50,7 +54,7 @@ class SourceKindTest {
     }
 
     @Test
-    fun `exactly the three passphrase exchanges require one`() {
+    fun `exactly the four passphrase exchanges require one`() {
         val expected =
             setOf(SourceKind.OKX, SourceKind.BITGET, SourceKind.BITGET_CLASSIC, SourceKind.KUCOIN_FUTURES)
         assertThat(SourceKind.entries.filter { it.requiresPassphrase }).containsExactlyInAnyOrderElementsOf(expected)

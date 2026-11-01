@@ -6,7 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.test.context.ActiveProfiles
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 
 /**
  * Base for integration tests: boots the full Spring context against a real PostgreSQL (Testcontainers)
@@ -20,7 +20,7 @@ abstract class IntegrationTestBase {
     companion object {
         @JvmStatic
         @ServiceConnection
-        val postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:16-alpine")
+        val postgres: PostgreSQLContainer = PostgreSQLContainer("postgres:16-alpine")
             .withDatabaseName("tradelog_test")
             .withUsername("test")
             .withPassword("test")

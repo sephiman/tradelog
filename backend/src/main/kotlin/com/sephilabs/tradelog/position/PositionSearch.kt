@@ -39,7 +39,7 @@ object PositionSpecs {
             c.to?.let { predicates += cb.lessThanOrEqualTo(root.get("closedAt"), it) }
             c.tagId?.let { tagId ->
                 // EXISTS (SELECT 1 FROM position_tags pt WHERE pt.position_id = root.id AND pt.tag_id = :tagId)
-                val sub = query!!.subquery(UUID::class.java)
+                val sub = query.subquery(UUID::class.java)
                 val pt = sub.from(PositionTag::class.java)
                 sub.select(pt.get<PositionTagId>("id").get("positionId"))
                     .where(
@@ -50,7 +50,7 @@ object PositionSpecs {
             }
             c.untaggedGroupId?.let { groupId ->
                 // NOT EXISTS (SELECT 1 FROM position_tags pt WHERE pt.position_id = root.id AND pt.group_id = :groupId)
-                val sub = query!!.subquery(UUID::class.java)
+                val sub = query.subquery(UUID::class.java)
                 val pt = sub.from(PositionTag::class.java)
                 sub.select(pt.get<PositionTagId>("id").get("positionId"))
                     .where(
