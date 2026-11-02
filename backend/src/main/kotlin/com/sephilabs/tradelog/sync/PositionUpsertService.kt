@@ -12,6 +12,7 @@ import com.sephilabs.tradelog.position.PositionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.time.Instant
 import java.util.UUID
 
 data class UpsertCounts(val inserted: Int, val updated: Int)
@@ -43,8 +44,8 @@ class PositionUpsertService(
         for (r in records) {
             val exchange = resolveExchange(r, source, sourceLabel, venues)
             val existing = positions.findByDataSourceIdAndExternalId(dataSourceId, r.externalId)
-            // A soft-deleted position stays deleted: skip it so re-sync never resurrects what the user removed.
-            if (existing != null && existing.deletedAt != null) continue
+            // A soft-deleted position stays deleted; an edited position is protected from overwrite.
+            if (existing != null && (existing.deletedAt != null || existing.editedAt != null)) continue
             val position = if (existing != null) {
                 applySourceFields(existing, r, exchange); updated++; existing
             } else {
@@ -153,5 +154,17 @@ class PositionUpsertService(
                 )
             )
         }
+    }
+
+    /** Applies user edits to an existing position, protecting it against future re-sync overwrites. */
+    @Transactional
+    fun updateManual(existing: Position, record: PositionRecord, sourceLabel: String) {
+        val venues = LinkedHashSet(positions.findDistinctExchanges(existing.profileId))
+        val exchange = resolveExchange(record, existing.source, sourceLabel, venues)
+        applySourceFields(existing, record, exchange)
+        if (!existing.isManual) {
+            existing.editedAt = Instant.now()
+        }
+        positions.save(existing)
     }
 }

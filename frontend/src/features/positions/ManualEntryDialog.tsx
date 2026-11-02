@@ -32,6 +32,7 @@ export function ManualEntryDialog({
   const [chosen, setChosen] = useState<EntryMode>("trade");
   const mode: EntryMode = position ? (position.kind === "GRID_BOT" ? "grid" : "trade") : chosen;
   const titleKey = mode === "grid" ? "grids" : "trades";
+  const isSyncedOrImported = position && !position.manual;
 
   return (
     <Modal
@@ -41,6 +42,18 @@ export function ManualEntryDialog({
       className="max-w-2xl"
     >
       <div className="space-y-3">
+        {isSyncedOrImported && (
+          <div className="flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
+            <span className="shrink-0 text-base leading-none">⚠️</span>
+            <div>
+              <p className="font-medium">{t("positions.editSyncedWarningTitle")}</p>
+              <p className="mt-0.5 text-amber-800 dark:text-amber-300">
+                {t("positions.editSyncedWarningBody")}
+              </p>
+            </div>
+          </div>
+        )}
+
         {!position && (
           <div className="flex flex-wrap gap-2" role="tablist" aria-label={t("trades.entryModes")}>
             {MODES.map((m) => (

@@ -178,25 +178,27 @@ class BackupRoundTripTest @Autowired constructor(
         val profile = profiles.save(Profile(userId = user.id, kind = ProfileKind.PERSONAL, name = "Main"))
         val dsDto = dataSourceService.create(profile.id, CreateDataSourceRequest(SourceKind.JOURNAL_CSV, "journal"))
         val deletedAt = Instant.parse("2026-04-01T00:00:00Z")
+        val editedAt = Instant.parse("2026-04-02T00:00:00Z")
 
-        fun pos(ext: String, del: Instant?) = positions.save(
+        fun pos(ext: String, del: Instant?, edt: Instant? = null) = positions.save(
             Position(
                 profileId = profile.id, dataSourceId = dsDto.id, source = SourceKind.JOURNAL_CSV,
                 externalId = ext, symbolBase = "BTC", symbolQuote = "USDT", side = PositionSide.LONG,
                 openedAt = Instant.parse("2026-02-01T00:00:00Z"), closedAt = Instant.parse("2026-02-02T00:00:00Z"),
                 qty = BigDecimal("1"), entryPrice = BigDecimal("100"), exitPrice = BigDecimal("110"),
                 realizedPnl = BigDecimal("10"), netPnl = BigDecimal("10"), fees = BigDecimal.ZERO, funding = BigDecimal.ZERO,
-                pnlCurrency = "USDT", deletedAt = del,
+                pnlCurrency = "USDT", deletedAt = del, editedAt = edt,
             ),
         )
-        pos("live-1", null)
-        pos("dead-1", deletedAt)
+        pos("live-1", null, editedAt)
+        pos("dead-1", deletedAt, null)
 
-        // Export carries both rows, with the deletion marker on the removed one.
+        // Export carries both rows, with the deletion marker on the removed one and edited on the edited one.
         val envelope = exportService.export(user)
         val backupDs = envelope.profiles[0].dataSources.first { it.kind == SourceKind.JOURNAL_CSV }
         assertThat(backupDs.positions).hasSize(2)
         assertThat(backupDs.positions.first { it.externalId == "dead-1" }.deletedAt).isEqualTo(deletedAt)
+        assertThat(backupDs.positions.first { it.externalId == "live-1" }.editedAt).isEqualTo(editedAt)
 
         importService.replaceAll(user, envelope)
 
@@ -207,6 +209,7 @@ class BackupRoundTripTest @Autowired constructor(
         assertThat(positions.countByDataSourceIdAndDeletedAtIsNull(restoredDs.id)).isEqualTo(1)
         assertThat(positions.findAllByProfileIdAndDeletedAtIsNullOrderByClosedAtAsc(restoredProfile.id)).hasSize(1)
         assertThat(positions.findByDataSourceIdAndExternalId(restoredDs.id, "dead-1")!!.deletedAt).isEqualTo(deletedAt)
+        assertThat(positions.findByDataSourceIdAndExternalId(restoredDs.id, "live-1")!!.editedAt).isEqualTo(editedAt)
     }
 
     @Test

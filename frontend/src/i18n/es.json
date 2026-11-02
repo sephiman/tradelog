@@ -122,7 +122,10 @@
     "confirmBulkDelete": "¿Eliminar {{count}} posiciones?",
     "deleted": "Posición eliminada",
     "bulkDeleted": "{{count}} posiciones eliminadas",
-    "toggleDetails": "Ver detalles"
+    "toggleDetails": "Ver detalles",
+    "editedBadge": "Editada",
+    "editSyncedWarningTitle": "Protección de edición manual",
+    "editSyncedWarningBody": "Guardar cambios fijará esta transacción e impedirá que futuras sincronizaciones o reimportaciones de archivos la sobrescriban."
   },
   "trades": {
     "add": "Añadir operación",

@@ -88,9 +88,10 @@ anyone running a modified version as a network service must publish the source.
     investment and the grid's own ROI are kept as informative detail and never fed into analytics.
 
   Neither form asks for a data source: both land on the profile's Journal CSV source (created on first
-  use), and both suggest **symbols you have already traded** as you type. Hand-entered rows — and only
-  those — stay **editable afterwards**, since every synced row is rewritten by its next sync. Every
-  other statistic (PnL, win rate, streaks, calendar, trader style, pairs, fees) works unchanged.
+  use), and both suggest **symbols you have already traded** as you type. Any closed position — hand-entered,
+  synced from an exchange, or imported from a Quantfury PDF or Journal CSV — is **editable afterwards**.
+  Editing a synced or imported trade marks it as edited so subsequent syncs and re-imports preserve your changes
+  without overwriting them. Every other statistic (PnL, win rate, streaks, calendar, trader style, pairs, fees) works unchanged.
 - **Annotations & management**: a customizable per-user **tag taxonomy** (seeded with an *Origen* group you edit), free-text notes per position, and full position leg operations viewable. Supports **bulk tagging** (apply Origen tags to selected trades or all matching search filters), **tag archiving** (retire a tag from new assignments while every position that already carries it keeps it, and it stays available as a filter), and **soft-deletion** (single or bulk delete/hide trades).
 - **Capital history & real ROI**: a dedicated **Capital** page tracks your trading capital as a
   dated history of **adjustments** (anchors: your real balance per exchange on a date) plus
@@ -448,8 +449,8 @@ A single trade is faster to type than to convert: **Positions → Add by hand** 
 a form. It asks for no data source — it reuses the profile's Journal CSV source, creating one labelled
 *Manual* if there is none, because what decides the venue (and so the capital and ROI grouping) is the
 trade's own **Exchange** field, not which source holds the row. Leave *Realized PnL* blank and it is
-derived from the leg prices, exactly as the CSV does. Those rows — and only those — stay editable
-afterwards.
+derived from the leg prices, exactly as the CSV does. Any closed position stays editable afterwards,
+and editing a synced trade protects it against being overwritten by the next sync.
 
 A **closed grid bot** has its own tab in that dialog rather than being encoded as a trade: it reports the
 PnL figure the venue showed and leaves entry price, exit price and quantity empty, because a run of

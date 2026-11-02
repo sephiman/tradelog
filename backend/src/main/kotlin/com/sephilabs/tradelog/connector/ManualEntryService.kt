@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.sephilabs.tradelog.connector
 
+import com.sephilabs.tradelog.capital.CapitalHistoryService
 import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.datasource.DataSource
 import com.sephilabs.tradelog.datasource.DataSourceRepository
@@ -11,6 +12,7 @@ import com.sephilabs.tradelog.position.PositionKind
 import com.sephilabs.tradelog.position.PositionRepository
 import com.sephilabs.tradelog.position.PositionService
 import com.sephilabs.tradelog.position.PositionSide
+import com.sephilabs.tradelog.sync.PositionUpsertService
 import com.sephilabs.tradelog.sync.RunStatus
 import com.sephilabs.tradelog.sync.SyncService
 import com.sephilabs.tradelog.sync.SyncTrigger
@@ -155,6 +157,8 @@ class ManualEntryService(
     private val positions: PositionRepository,
     private val syncService: SyncService,
     private val positionService: PositionService,
+    private val upsertService: PositionUpsertService,
+    private val capitalHistory: CapitalHistoryService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -175,25 +179,26 @@ class ManualEntryService(
     }
 
     /**
-     * Rewrites a hand-entered record in place. Only those: every other row is re-derived from its
-     * source, so an edit would be silently reverted by the next sync or re-import.
+     * Rewrites a record in place. Hand-entered rows keep their manual identity; synced/imported
+     * rows are marked edited so subsequent syncs or file re-imports skip overwriting them.
      */
     fun update(profileId: UUID, userId: UUID, positionId: UUID, entry: ManualEntry): PositionDto {
         val existing = positions.findByIdAndProfileIdAndDeletedAtIsNull(positionId, profileId)
             ?: throw AppException.notFound("POSITION_NOT_FOUND")
-        if (!existing.isManual) throw AppException.badRequest("POSITION_NOT_MANUAL")
         // A trade and a grid run carry different fields; the wrong form would blank half of them.
         if (existing.kind != entry.kind) throw AppException.badRequest("POSITION_KIND_MISMATCH")
         val ds = dataSources.findByIdAndProfileId(existing.dataSourceId, profileId)
             ?: throw AppException.notFound("DATA_SOURCE_NOT_FOUND")
         validate(entry)
 
-        // Keeping the external id makes this the upsert's update path, so the money math, the venue
-        // resolution and the capital refresh are the same code that writes every other trade.
-        store(ds, entry.toRecord(existing.externalId))
-        // The shared upsert deliberately never touches notes; on a hand-entered row it is editable.
+        val record = entry.toRecord(existing.externalId).let {
+            if (!existing.isManual) it.copy(raw = existing.raw) else it
+        }
+        upsertService.updateManual(existing, record, ds.label)
         positionService.updateNote(profileId, positionId, entry.note)
         applyTag(userId, profileId, positionId, entry)
+        runCatching { capitalHistory.recomputeAutoSnapshots(profileId) }
+            .onFailure { log.warn("Capital snapshot refresh after manual update failed for profile {}", profileId, it) }
         log.info("position_manual_updated positionId={} kind={}", positionId, entry.kind)
         return positionService.get(profileId, positionId).position
     }

@@ -149,6 +149,7 @@ class ExportService(
         note = p.note,
         raw = p.raw,
         deletedAt = p.deletedAt,
+        editedAt = p.editedAt,
         fills = fills.sortedBy { it.seq }.map {
             BackupFill(it.seq, it.action, it.side, it.ts, it.price, it.qty, it.value, it.fee)
         },

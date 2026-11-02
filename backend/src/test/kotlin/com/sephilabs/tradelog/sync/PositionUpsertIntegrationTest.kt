@@ -130,4 +130,27 @@ class PositionUpsertIntegrationTest @Autowired constructor(
         assertThat(reloaded.deletedAt).isNotNull()
         assertThat(reloaded.realizedPnl).isEqualByComparingTo("10") // source fields NOT re-applied
     }
+
+    @Test
+    fun `an edited position is protected from being overwritten on re-sync`() {
+        setup()
+        upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(record("ext-edit", "10", "110", 2)))
+        val p = positions.findByDataSourceIdAndExternalId(dataSourceId, "ext-edit")!!
+
+        // user edits it
+        p.exitPrice = BigDecimal("150")
+        p.realizedPnl = BigDecimal("50")
+        p.editedAt = Instant.parse("2026-01-02T00:00:00Z")
+        positions.save(p)
+
+        // re-sync re-fetches the original data from the exchange
+        val c = upsert.upsert(dataSourceId, profileId, SourceKind.BITUNIX, "Bitunix", listOf(record("ext-edit", "12", "112", 2)))
+
+        assertThat(c.inserted).isEqualTo(0)
+        assertThat(c.updated).isEqualTo(0)
+        val reloaded = positions.findByDataSourceIdAndExternalId(dataSourceId, "ext-edit")!!
+        assertThat(reloaded.realizedPnl).isEqualByComparingTo("50")
+        assertThat(reloaded.exitPrice).isEqualByComparingTo("150")
+        assertThat(reloaded.editedAt).isNotNull()
+    }
 }

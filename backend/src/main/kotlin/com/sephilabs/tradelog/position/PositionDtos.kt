@@ -57,8 +57,10 @@ data class PositionDto(
     val note: String?,
     val tags: List<PositionTagView>,
     val fillCount: Int,
-    /** Hand-entered trades can be edited; synced ones would be overwritten by the next sync. */
-    val editable: Boolean,
+    /** True if this position was originally hand-entered (not synced or imported from a file). */
+    val manual: Boolean,
+    /** True if a synced or imported position was edited by the user. */
+    val edited: Boolean,
 )
 
 data class PositionDetailDto(

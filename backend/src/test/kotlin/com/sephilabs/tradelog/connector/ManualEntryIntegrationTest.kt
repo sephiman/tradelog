@@ -100,7 +100,7 @@ class ManualEntryIntegrationTest @Autowired constructor(
         assertThat(dto.realizedPnl.setScale(2, RoundingMode.HALF_EVEN)).isEqualByComparingTo("26.87")
         assertThat(dto.netPnl.setScale(2, RoundingMode.HALF_EVEN)).isEqualByComparingTo("23.16")
         assertThat(dto.exchange).isEqualTo("BingX Strategy")
-        assertThat(dto.editable).isTrue()
+        assertThat(dto.edited).isFalse()
     }
 
     @Test
@@ -189,7 +189,7 @@ class ManualEntryIntegrationTest @Autowired constructor(
     }
 
     @Test
-    fun `adds a hand-entered trade, derives pnl from prices and marks it editable`() {
+    fun `adds a hand-entered trade, derives pnl from prices and marks it unedited`() {
         val f = fixture()
 
         val dto = service.create(f.profileId, f.userId, request())
@@ -197,7 +197,7 @@ class ManualEntryIntegrationTest @Autowired constructor(
         assertThat(dto.symbolBase).isEqualTo("SOL")
         assertThat(dto.symbolQuote).isEqualTo("USDT")
         assertThat(dto.exchange).isEqualTo("BingX Strategy")
-        assertThat(dto.editable).isTrue()
+        assertThat(dto.edited).isFalse()
         // Gross realized comes from the leg prices: (541.30 − 500) × 1; net takes off fees + funding.
         assertThat(dto.realizedPnl.setScale(2, RoundingMode.HALF_EVEN)).isEqualByComparingTo("41.30")
         assertThat(dto.netPnl.setScale(2, RoundingMode.HALF_EVEN)).isEqualByComparingTo("38.40")
@@ -303,7 +303,7 @@ class ManualEntryIntegrationTest @Autowired constructor(
     }
 
     @Test
-    fun `a synced trade cannot be edited`() {
+    fun `a synced trade can be edited and is marked edited`() {
         val f = fixture()
         val synced = positions.save(
             Position(
@@ -326,9 +326,11 @@ class ManualEntryIntegrationTest @Autowired constructor(
             )
         )
 
-        assertThatThrownBy { service.update(f.profileId, f.userId, synced.id, request()) }
-            .isInstanceOf(AppException::class.java)
-            .hasFieldOrPropertyWithValue("code", "POSITION_NOT_MANUAL")
+        val updated = service.update(f.profileId, f.userId, synced.id, request(symbol = "ETH-USDT", entryPrice = BigDecimal("3000"), exitPrice = BigDecimal("3200")))
+        assertThat(updated.edited).isTrue()
+        assertThat(updated.realizedPnl).isEqualByComparingTo("200")
+        val reloaded = positions.findById(synced.id).orElseThrow()
+        assertThat(reloaded.editedAt).isNotNull()
     }
 
     @Test

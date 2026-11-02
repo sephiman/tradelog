@@ -78,5 +78,18 @@ class QuantfuryImportIntegrationTest @Autowired constructor(
         val eth = positions.findAll().first { it.symbolBase == "ETH" && it.dataSourceId == dsId }
         assertThat(eth.realizedPnl.setScale(2, java.math.RoundingMode.HALF_EVEN)).isEqualByComparingTo("2.81")
         assertThat(eth.fees).isEqualByComparingTo("0")
+
+        // Edit the Quantfury position and re-import
+        eth.realizedPnl = java.math.BigDecimal("99.99")
+        eth.editedAt = java.time.Instant.now()
+        positions.save(eth)
+
+        val run3 = importService.execute(profileId, dsId, bytes.inputStream())
+        assertThat(run3.inserted).isEqualTo(0)
+        assertThat(run3.updated).isEqualTo(1) // the untouched TAO position is updated, ETH is skipped
+
+        val ethAfter = positions.findById(eth.id).orElseThrow()
+        assertThat(ethAfter.realizedPnl.setScale(2, java.math.RoundingMode.HALF_EVEN)).isEqualByComparingTo("99.99")
+        assertThat(ethAfter.editedAt).isNotNull()
     }
 }

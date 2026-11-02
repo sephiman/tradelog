@@ -123,9 +123,15 @@ class Position(
      */
     @Column(name = "deleted_at")
     var deletedAt: Instant? = null,
+
+    /**
+     * Timestamp of manual edit. When set, subsequent syncs or file re-imports skip overwriting this row.
+     */
+    @Column(name = "edited_at")
+    var editedAt: Instant? = null,
 ) : TimestampedEntity() {
 
-    /** Hand-entered rows are the only ones no importer re-derives, so the only ones safe to edit in place. */
+    /** Hand-entered rows are created via manual entry, distinguishable from synced/imported ones. */
     @get:Transient
     val isManual: Boolean get() = externalId.startsWith(MANUAL_EXTERNAL_ID_PREFIX)
 

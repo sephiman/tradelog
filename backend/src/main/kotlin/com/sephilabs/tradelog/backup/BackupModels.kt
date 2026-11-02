@@ -133,6 +133,8 @@ data class BackupPosition(
     val raw: String?,
     /** Soft-delete marker; carried so a deletion survives a backup → restore round-trip. Null = live. */
     val deletedAt: Instant? = null,
+    /** Timestamp of manual edit; carried so edits survive a backup → restore round-trip. */
+    val editedAt: Instant? = null,
     val fills: List<BackupFill>,
     val tags: List<BackupTagRef>,
 )

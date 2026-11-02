@@ -229,5 +229,6 @@ private fun Position.toDto(tags: List<PositionTagView>, fillCount: Int) = Positi
     note = note,
     tags = tags,
     fillCount = fillCount,
-    editable = isManual,
+    manual = isManual,
+    edited = editedAt != null && !isManual,
 )

@@ -63,8 +63,10 @@ export interface Position {
   note: string | null;
   tags: PositionTagView[];
   fillCount: number;
-  /** Hand-added trades can be edited; synced ones would be overwritten by the next sync. */
-  editable: boolean;
+  /** True if this position was originally hand-entered (not synced or imported from a file). */
+  manual: boolean;
+  /** True if a synced or imported position was edited by the user. */
+  edited: boolean;
 }
 
 export interface PositionFill {

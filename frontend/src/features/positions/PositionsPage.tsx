@@ -560,6 +560,7 @@ function PositionRow({ profileId, position, origen, origenWidth, selected, selec
         <td className="whitespace-nowrap font-medium">
           {position.symbolBase}/{position.symbolQuote}
           {position.kind === "GRID_BOT" && <span className="ml-1"><Badge tone="sky">{t("grids.badge")}</Badge></span>}
+          {position.edited && <span className="ml-1"><Badge tone="amber">{t("positions.editedBadge")}</Badge></span>}
         </td>
         <td>
           <Badge tone={position.side === "LONG" ? "green" : "red"}>
@@ -621,6 +622,7 @@ function PositionCard({ profileId, position, origen, origenWidth, selected, sele
             <div className="flex items-center gap-2">
               <span className="font-medium">{position.symbolBase}/{position.symbolQuote}</span>
               {position.kind === "GRID_BOT" && <Badge tone="sky">{t("grids.badge")}</Badge>}
+              {position.edited && <Badge tone="amber">{t("positions.editedBadge")}</Badge>}
               <Badge tone={position.side === "LONG" ? "green" : "red"}>
                 {position.side === "LONG" ? t("positions.long") : t("positions.short")}
               </Badge>
@@ -758,11 +760,9 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
           </>
         ) : (
           <div className="flex items-center gap-2 md:justify-end">
-            {position.editable && (
-              <Button variant="secondary" onClick={() => setEditing(true)}>
-                {t("trades.edit")}
-              </Button>
-            )}
+            <Button variant="secondary" onClick={() => setEditing(true)}>
+              {t("trades.edit")}
+            </Button>
             <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
               {t("positions.delete")}
             </Button>
@@ -770,14 +770,12 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
         )}
       </div>
 
-      {position.editable && (
-        <ManualEntryDialog
-          open={editing}
-          onClose={() => setEditing(false)}
-          profileId={profileId}
-          position={position}
-        />
-      )}
+      <ManualEntryDialog
+        open={editing}
+        onClose={() => setEditing(false)}
+        profileId={profileId}
+        position={position}
+      />
     </div>
   );
 }

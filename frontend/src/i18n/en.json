@@ -122,7 +122,10 @@
     "confirmBulkDelete": "Delete {{count}} positions?",
     "deleted": "Position deleted",
     "bulkDeleted": "Deleted {{count}} positions",
-    "toggleDetails": "Show details"
+    "toggleDetails": "Show details",
+    "editedBadge": "Edited",
+    "editSyncedWarningTitle": "Manual edit protection",
+    "editSyncedWarningBody": "Saving changes will permanently lock this transaction and prevent future syncs or file re-imports from overwriting it."
   },
   "trades": {
     "add": "Add trade",
