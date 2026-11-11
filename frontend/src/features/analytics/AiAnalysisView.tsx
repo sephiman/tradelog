@@ -175,11 +175,49 @@ function RunCard({
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(defaultOpen);
+  const [copied, setCopied] = useState(false);
   const toggle = () => {
     setOpen(!open);
     onToggle?.();
   };
   const ungrounded = run.citationsUngrounded ?? 0;
+
+  const copyReport = () => {
+    const range = run.scope.rangeFrom ? `${run.scope.rangeFrom} → ${run.scope.rangeTo}` : "All time";
+    const origen = run.scope.origenLabel ? (run.tagNames[run.scope.origenLabel] ?? run.scope.origenLabel) : "All";
+    const lines: string[] = [
+      `# AI Trading Analysis (${fmtDateTime(run.createdAt)})`,
+      `**Period:** ${run.scope.periodPreset} (${range}) · **Exchange:** ${run.scope.exchange} · **Origen:** ${origen} · **Trades:** ${run.scope.sampleSize}`,
+      `**Model:** ${run.model}`,
+      "",
+    ];
+    if (run.summary) {
+      lines.push("## Executive Summary", resolveTagLabels(run.summary, run.tagNames), "");
+    }
+    if (run.evolution) {
+      lines.push("## Evolution Since Prior Run", resolveTagLabels(run.evolution, run.tagNames), "");
+    }
+    if (run.improvements?.length) {
+      lines.push("## Points of Improvement");
+      for (const imp of run.improvements) {
+        const severity = imp.severity ? `[${imp.severity.toUpperCase()}] ` : "";
+        lines.push(`- ${severity}**${resolveTagLabels(imp.title, run.tagNames)}**: ${resolveTagLabels(imp.detail, run.tagNames)}`);
+      }
+      lines.push("");
+    }
+    if (run.observations?.length) {
+      lines.push("## Key Observations");
+      for (const obs of run.observations) {
+        const conf = obs.confidence ? ` _(Confidence: ${obs.confidence})_` : "";
+        lines.push(`- ${resolveTagLabels(obs.claim, run.tagNames)}${conf}`);
+      }
+      lines.push("");
+    }
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <Card>
@@ -204,6 +242,17 @@ function RunCard({
             )}
           </button>
           <div className="flex items-center gap-2">
+            {run.status === "COMPLETED" && (
+              <button
+                type="button"
+                onClick={copyReport}
+                title={t("analytics.ai.copyReport")}
+                className="inline-flex items-center gap-1 rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:border-border dark:text-gray-300 dark:hover:bg-surface-raised"
+              >
+                <span>{copied ? "✓" : "📋"}</span>
+                <span>{copied ? t("analytics.ai.copied") : t("analytics.ai.copyReport")}</span>
+              </button>
+            )}
             <span className="text-xs text-gray-400">{run.model}</span>
             <button
               type="button"
@@ -242,6 +291,15 @@ function RunCard({
                 <p className="mt-1">{resolveTagLabels(run.summary, run.tagNames)}</p>
               </div>
             )}
+            {run.evolution && (
+              <div className="rounded-md border border-blue-200 bg-blue-50/60 p-3.5 text-sm leading-relaxed text-blue-950 dark:border-blue-900/40 dark:bg-blue-950/25 dark:text-blue-200">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-blue-800 dark:text-blue-300">
+                  <span aria-hidden="true">📈</span>
+                  <span>{t("analytics.ai.evolutionTitle")}</span>
+                </p>
+                <p className="mt-1">{resolveTagLabels(run.evolution, run.tagNames)}</p>
+              </div>
+            )}
             {run.improvements?.length > 0 && (
               <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
                 <div className="flex items-center gap-2">
@@ -252,14 +310,31 @@ function RunCard({
                 </div>
                 <ul className="mt-3 space-y-3">
                   {run.improvements.map((item, i) => (
-                    <li key={i} className="space-y-1">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {resolveTagLabels(item.title, run.tagNames)}
-                      </p>
-                      <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                    <li
+                      key={i}
+                      className={cn(
+                        "rounded-md border-l-4 bg-white/70 p-3 shadow-xs dark:bg-surface-raised",
+                        item.severity === "critical"
+                          ? "border-red-500"
+                          : item.severity === "warning"
+                            ? "border-amber-500"
+                            : "border-emerald-500",
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        {item.severity && <SeverityBadge severity={item.severity} />}
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {resolveTagLabels(item.title, run.tagNames)}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                         {resolveTagLabels(item.detail, run.tagNames)}
                       </p>
-                      {item.citations?.length > 0 && <Citations citations={item.citations} />}
+                      {item.citations?.length > 0 && (
+                        <div className="mt-2">
+                          <Citations citations={item.citations} />
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -372,6 +447,24 @@ function Citations({ citations }: { citations: AiCitation[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function SeverityBadge({ severity }: { severity: string }) {
+  const { t } = useTranslation();
+  const s = severity.toLowerCase();
+  const config =
+    s === "critical"
+      ? { tone: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 border-red-200 dark:border-red-900", icon: "🚨" }
+      : s === "warning"
+        ? { tone: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-900", icon: "⚠️" }
+        : { tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900", icon: "💡" };
+
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium", config.tone)}>
+      <span aria-hidden="true">{config.icon}</span>
+      <span>{t(`analytics.ai.severity.${s}`, { defaultValue: s })}</span>
+    </span>
   );
 }
 

@@ -34,6 +34,7 @@ export interface AiInsufficientItem {
 export interface AiImprovement {
   title: string;
   detail: string;
+  severity: "critical" | "warning" | "opportunity" | null;
   citations: AiCitation[];
 }
 
@@ -58,6 +59,7 @@ export interface AiRun {
   model: string;
   promptVersion: string;
   summary: string | null;
+  evolution: string | null;
   /** Anonymized label -> the tag's real name; a deleted tag keeps its label. */
   tagNames: Record<string, string>;
   improvements: AiImprovement[];

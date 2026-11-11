@@ -122,6 +122,11 @@ interface AiAnalysisRunRepository : JpaRepository<AiAnalysisRun, UUID> {
 
     fun findAllByProfileIdOrderByCreatedAtDesc(profileId: UUID): List<AiAnalysisRun>
 
+    fun findFirstByProfileIdAndStatusOrderByCreatedAtDesc(
+        profileId: UUID,
+        status: AiAnalysisRunStatus,
+    ): AiAnalysisRun?
+
     fun findByIdAndProfileId(id: UUID, profileId: UUID): AiAnalysisRun?
 
     fun findAllByStatus(status: AiAnalysisRunStatus): List<AiAnalysisRun>

@@ -31,9 +31,17 @@ class AiAnalysisRunner(
             val run = runs.findById(runId).orElse(null) ?: return
             MDC.put("profileId", run.profileId.toString())
             val payload = mapper.readTree(run.payloadJson)
+            val prior = runs.findFirstByProfileIdAndStatusOrderByCreatedAtDesc(run.profileId, AiAnalysisRunStatus.COMPLETED)
+                ?.takeIf { it.id != runId }
+            val priorContext = prior?.let { p ->
+                val prevResult = p.resultJson?.let { r -> runCatching { mapper.readTree(r) }.getOrNull() }
+                val prevSummary = prevResult?.path("summary")?.takeIf { it.isString }?.asString()
+                val date = p.createdAt.toString().take(10)
+                if (!prevSummary.isNullOrBlank()) "Date: $date. Summary: $prevSummary" else null
+            }
             val prompt = ChatPrompt(
                 system = TradingStylePrompt.system(run.locale),
-                user = TradingStylePrompt.user(run.payloadJson),
+                user = TradingStylePrompt.user(run.payloadJson, priorContext),
                 sessionId = UUID.randomUUID(),
             )
             log.info(
@@ -89,7 +97,7 @@ class AiAnalysisRunner(
         parsed.path("observations").isArray &&
             parsed.path("observations").size() > 0 &&
             parsed.path("observations").toList().all { obs ->
-                obs.isObject && obs.path("claim").isTextual && obs.path("claim").asString().isNotBlank()
+                obs.isObject && obs.path("claim").isString && obs.path("claim").asString().isNotBlank()
             }
 
     private fun finish(

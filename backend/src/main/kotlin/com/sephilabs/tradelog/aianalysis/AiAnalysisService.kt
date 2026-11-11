@@ -178,6 +178,7 @@ class AiAnalysisService(
             AiAnalysisImprovementDto(
                 title = item.path("title").asString(""),
                 detail = item.path("detail").asString(""),
+                severity = item.path("severity").takeIf { it.isString }?.asString()?.lowercase(),
                 citations = citationsOf(item, payload),
             )
         } ?: emptyList()
@@ -215,6 +216,7 @@ class AiAnalysisService(
             model = model,
             promptVersion = promptVersion,
             summary = result?.path("summary")?.takeIf { it.isString }?.asString()?.ifBlank { null },
+            evolution = result?.path("evolution")?.takeIf { it.isString }?.asString()?.ifBlank { null },
             tagNames = tagNames,
             improvements = improvements,
             observations = observations,

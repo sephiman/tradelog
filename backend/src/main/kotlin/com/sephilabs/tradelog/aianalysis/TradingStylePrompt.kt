@@ -5,7 +5,7 @@ package com.sephilabs.tradelog.aianalysis
  *  show which prompt produced them. */
 object TradingStylePrompt {
 
-    const val VERSION = "v3"
+    const val VERSION = "v4"
 
     private val OUTPUT_LANGUAGE = mapOf("es" to "Spanish", "en" to "English")
 
@@ -17,12 +17,14 @@ every number is an aggregate the trader's own dashboard shows. You see no indivi
 
 Rules:
 - Provide a concise executive summary (2–3 sentences) synthesizing the trader's overall profile, primary edge, and main risk or friction point in this period.
-- Identify 2 to 4 concrete, actionable points of improvement (areas to refine or stop doing) directly grounded in the data patterns (e.g. eliminating fee drag, addressing negative expectancy time windows or directions, holding losers longer than winners, enforcing sizing limits). Frame each point around rule-based execution and behavioral discipline without predicting markets or recommending specific assets.
+- If a prior analysis summary is provided in the user message, include an "evolution" field (1–2 sentences) assessing whether key metrics, discipline, or leaks have improved or worsened since that prior run. If no prior analysis is provided, set "evolution" to null.
+- Identify 2 to 4 concrete, actionable points of improvement directly grounded in the data patterns (e.g. eliminating revenge trading after losses, stopping fatigue on high-frequency days, fixing loser-vs-winner sizing asymmetry, eliminating fee drag, avoiding negative expectancy time windows). Frame each point around rule-based execution and behavioral discipline without predicting markets or recommending specific assets.
+- For each improvement, assign a severity: "critical" (immediate risk of ruin, heavy loss/fee bleed, active tilt), "warning" (sizing inconsistencies, time/fatigue decay, style mismatches), or "opportunity" (doubling down on what statistically works best).
 - Interpret ONLY the numbers in the payload. Never compute new statistics — no sums, ratios,
   percentages, averages or rankings the payload does not already carry — and never infer trades
   you cannot see.
 - Prefer observations that connect two or more payload sections (e.g. direction x pairs x holding
-  style x capital & risk x streaks x fees) over restating a single figure.
+  style x capital & risk x streaks x fees x behavioral signals) over restating a single figure.
 - Describe the trader's own recorded history only: no predictions, no trade recommendations, no
   generic trading advice.
 - Every number you mention must exist in the payload. For each claim, cite the exact payload path
@@ -33,11 +35,19 @@ Rules:
 
 Answer with exactly one JSON object and nothing else — no prose, no markdown fences:
 {"summary":"<2-3 sentence executive summary>",
- "improvements":[{"title":"<short action title>","detail":"<actionable explanation grounded in the data>","citations":[{"path":"<payload path>","value":<exact value>}]}],
+ "evolution":"<1-2 sentences comparing progress to previous run, or null>",
+ "improvements":[{"title":"<short action title>","detail":"<actionable explanation grounded in the data>","severity":"critical|warning|opportunity","citations":[{"path":"<payload path>","value":<exact value>}]}],
  "observations":[{"claim":"<one observation>","citations":[{"path":"<payload path>","value":<exact value>}],"sampleSize":<n>,"confidence":"high|medium|low"}],
  "insufficientSample":[{"topic":"<what cannot be concluded>","reason":"<why>","citations":[{"path":"<payload path>","value":<exact value>}]}]}
 """.trim()
     }
 
-    fun user(payloadJson: String): String = "Dashboard aggregates of one trader:\n$payloadJson"
+    fun user(payloadJson: String, previousRunContext: String? = null): String = buildString {
+        append("Dashboard aggregates of one trader:\n")
+        append(payloadJson)
+        if (!previousRunContext.isNullOrBlank()) {
+            append("\n\nPrior analysis summary for context:\n")
+            append(previousRunContext)
+        }
+    }
 }

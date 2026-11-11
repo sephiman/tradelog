@@ -126,6 +126,26 @@ export interface AiStylePayload {
     leastProfitable: { pair: string; n: number; totalPnl: number }[];
   };
   fees: { n: number; totalFees: number };
+  behavioralSignals: {
+    postLossReentry: {
+      n: number;
+      winRatePct: number | null;
+      totalPnl: number;
+      expectancy: number | null;
+      sizeMultiplier: number | null;
+    };
+    fatigue: {
+      minSample: number;
+      trades1to3: { n: number; winRatePct: number | null; totalPnl: number; expectancy: number | null };
+      trades4to6: { n: number; winRatePct: number | null; totalPnl: number; expectancy: number | null } | null;
+      trades7plus: { n: number; winRatePct: number | null; totalPnl: number; expectancy: number | null } | null;
+    };
+    sizing: {
+      avgWinVolume: number | null;
+      avgLossVolume: number | null;
+      lossToWinRatio: number | null;
+    };
+  };
   /** Only present when the taxonomy has origen tags and no single tag is filtered. */
   byOrigen?: {
     minSample: number;
@@ -188,6 +208,11 @@ export function buildAiStylePayload(input: AiPayloadInput): AiStylePayload {
     streaks: streaksSection(rows),
     pairs: pairsSection(rows),
     fees: { n: rows.length, totalFees: money(cumulativeFees(rows).at(-1)?.cumulative ?? 0) },
+    behavioralSignals: {
+      postLossReentry: detectRevengeTrading(rows),
+      fatigue: detectFatigueCurve(rows, scope.timeZone),
+      sizing: detectSizingAsymmetry(rows),
+    },
     tagMap: {},
   };
 
@@ -408,6 +433,105 @@ function origenSection(
     else dropped++;
   }
   return { minSample: MIN_BUCKET_SAMPLE, droppedBuckets: dropped, buckets };
+}
+
+export function detectRevengeTrading(rows: ClosedPosition[]): AiStylePayload["behavioralSignals"]["postLossReentry"] {
+  if (rows.length < 2) {
+    return { n: 0, winRatePct: null, totalPnl: 0, expectancy: null, sizeMultiplier: null };
+  }
+  const closedSorted = [...rows].sort((a, b) => new Date(a.closedAt).getTime() - new Date(b.closedAt).getTime());
+  const baselineAvgVol = rows.reduce((acc, r) => acc + Number(r.volume || 0), 0) / rows.length;
+  const WINDOW_MS = 15 * 60 * 1000;
+  const postLossTrades: ClosedPosition[] = [];
+
+  for (const current of rows) {
+    const openTime = new Date(current.openedAt).getTime();
+    const priorLoss = closedSorted.find((prev) => {
+      if (prev.id === current.id) return false;
+      const prevClose = new Date(prev.closedAt).getTime();
+      return prevClose <= openTime && openTime - prevClose <= WINDOW_MS && netOf(prev).lt(0);
+    });
+    if (priorLoss) postLossTrades.push(current);
+  }
+
+  if (postLossTrades.length === 0) {
+    return { n: 0, winRatePct: null, totalPnl: 0, expectancy: null, sizeMultiplier: null };
+  }
+
+  const stats = computeStats(postLossTrades);
+  const avgPostLossVol = postLossTrades.reduce((acc, r) => acc + Number(r.volume || 0), 0) / postLossTrades.length;
+  const sizeMult = baselineAvgVol > 0 ? round(avgPostLossVol / baselineAvgVol, 2) : null;
+
+  return {
+    n: postLossTrades.length,
+    winRatePct: pct(stats.winRate),
+    totalPnl: money(stats.totalPnl.toNumber()),
+    expectancy: moneyOr(stats.expectancy?.toNumber() ?? null),
+    sizeMultiplier: sizeMult,
+  };
+}
+
+export function detectFatigueCurve(rows: ClosedPosition[], timeZone: string): AiStylePayload["behavioralSignals"]["fatigue"] {
+  const byDay = new Map<string, ClosedPosition[]>();
+  for (const row of rows) {
+    const z = zonedParts(row.openedAt, timeZone);
+    const dayKey = `${z.year}-${String(z.month).padStart(2, "0")}-${String(z.day).padStart(2, "0")}`;
+    const list = byDay.get(dayKey) ?? [];
+    list.push(row);
+    byDay.set(dayKey, list);
+  }
+
+  const trades1to3: ClosedPosition[] = [];
+  const trades4to6: ClosedPosition[] = [];
+  const trades7plus: ClosedPosition[] = [];
+
+  for (const dayTrades of byDay.values()) {
+    dayTrades.sort((a, b) => new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime());
+    dayTrades.forEach((trade, idx) => {
+      if (idx < 3) trades1to3.push(trade);
+      else if (idx < 6) trades4to6.push(trade);
+      else trades7plus.push(trade);
+    });
+  }
+
+  const bucket = (list: ClosedPosition[]) => {
+    if (list.length < MIN_BUCKET_SAMPLE) return null;
+    const stats = computeStats(list);
+    return {
+      n: list.length,
+      winRatePct: pct(stats.winRate),
+      totalPnl: money(stats.totalPnl.toNumber()),
+      expectancy: moneyOr(stats.expectancy?.toNumber() ?? null),
+    };
+  };
+
+  const b1 = computeStats(trades1to3);
+  return {
+    minSample: MIN_BUCKET_SAMPLE,
+    trades1to3: {
+      n: trades1to3.length,
+      winRatePct: trades1to3.length ? pct(b1.winRate) : null,
+      totalPnl: money(b1.totalPnl.toNumber()),
+      expectancy: moneyOr(b1.expectancy?.toNumber() ?? null),
+    },
+    trades4to6: bucket(trades4to6),
+    trades7plus: bucket(trades7plus),
+  };
+}
+
+export function detectSizingAsymmetry(rows: ClosedPosition[]): AiStylePayload["behavioralSignals"]["sizing"] {
+  const wins = rows.filter((r) => netOf(r).gt(0));
+  const losses = rows.filter((r) => netOf(r).lt(0));
+  const avgVol = (list: ClosedPosition[]) =>
+    list.length ? round(list.reduce((acc, r) => acc + Number(r.volume || 0), 0) / list.length, 2) : null;
+  const avgWinVol = avgVol(wins);
+  const avgLossVol = avgVol(losses);
+  const ratio = avgWinVol && avgLossVol && avgWinVol > 0 ? round(avgLossVol / avgWinVol, 2) : null;
+  return {
+    avgWinVolume: avgWinVol,
+    avgLossVolume: avgLossVol,
+    lossToWinRatio: ratio,
+  };
 }
 
 /** Replaces the anonymized labels in a model claim with the tags' real names, longest first so

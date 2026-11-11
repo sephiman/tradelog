@@ -135,6 +135,41 @@ describe("buildAiStylePayload", () => {
     expect(p.byOrigen).toBeUndefined();
     expect(p.summary.n).toBe(12);
   });
+
+  it("computes behavioral signals: revenge trading, fatigue and sizing asymmetry", () => {
+    // Trade 1: losing trade closed at 10:00
+    const t1 = position({
+      id: "t1",
+      openedAt: "2026-01-15T09:30:00Z",
+      closedAt: "2026-01-15T10:00:00Z",
+      netPnl: "-50",
+      volume: "1000",
+    });
+    // Trade 2: opened at 10:05 (5 mins after loss -> revenge trade), loses again
+    const t2 = position({
+      id: "t2",
+      openedAt: "2026-01-15T10:05:00Z",
+      closedAt: "2026-01-15T10:20:00Z",
+      netPnl: "-80",
+      volume: "2000",
+    });
+    // Trade 3: normal winner later
+    const t3 = position({
+      id: "t3",
+      openedAt: "2026-01-15T14:00:00Z",
+      closedAt: "2026-01-15T14:30:00Z",
+      netPnl: "100",
+      volume: "1000",
+    });
+    const p = payload([t1, t2, t3]);
+    expect(p.behavioralSignals.postLossReentry.n).toBe(1);
+    expect(p.behavioralSignals.postLossReentry.winRatePct).toBe(0);
+    expect(p.behavioralSignals.postLossReentry.totalPnl).toBe(-80);
+    expect(p.behavioralSignals.sizing.avgWinVolume).toBe(1000);
+    expect(p.behavioralSignals.sizing.avgLossVolume).toBe(1500);
+    expect(p.behavioralSignals.sizing.lossToWinRatio).toBe(1.5);
+    expect(p.style.duration.avgWinMs).toBe(30 * 60 * 1000);
+  });
 });
 
 describe("tag anonymization helpers", () => {

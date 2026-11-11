@@ -721,7 +721,15 @@
       "groundedOk": "All citations verified",
       "groundedOff": "{{off}} of {{total}} citations unverified",
       "summaryTitle": "Executive summary",
+      "evolutionTitle": "Evolution since last analysis",
       "improvementsTitle": "Points of improvement",
+      "copyReport": "Copy report",
+      "copied": "Copied!",
+      "severity": {
+        "critical": "Critical leak",
+        "warning": "Optimization",
+        "opportunity": "Growth area"
+      },
       "insufficientTitle": "Cannot be concluded — sample too small",
       "usage": "{{input}} in / {{output}} out tokens · {{seconds}} s",
       "confidence": {

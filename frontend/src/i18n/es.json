@@ -721,7 +721,15 @@
       "groundedOk": "Todas las citas verificadas",
       "groundedOff": "{{off}} de {{total}} citas sin verificar",
       "summaryTitle": "Resumen ejecutivo",
+      "evolutionTitle": "Evolución respecto al último análisis",
       "improvementsTitle": "Puntos de mejora",
+      "copyReport": "Copiar informe",
+      "copied": "¡Copiado!",
+      "severity": {
+        "critical": "Fuga crítica",
+        "warning": "Optimización",
+        "opportunity": "Área de crecimiento"
+      },
       "insufficientTitle": "No se puede concluir — muestra insuficiente",
       "usage": "{{input}} entrada / {{output}} salida tokens · {{seconds}} s",
       "confidence": {

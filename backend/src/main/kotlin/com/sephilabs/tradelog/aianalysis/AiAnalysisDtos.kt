@@ -28,6 +28,7 @@ data class AiAnalysisCitationDto(
 data class AiAnalysisImprovementDto(
     val title: String,
     val detail: String,
+    val severity: String?,
     val citations: List<AiAnalysisCitationDto>,
 )
 
@@ -53,6 +54,7 @@ data class AiAnalysisRunDto(
     val model: String,
     val promptVersion: String,
     val summary: String?,
+    val evolution: String?,
     /** Anonymized label -> the tag's real name, resolved at read time. Labels may outlive their tag. */
     val tagNames: Map<String, String>,
     val improvements: List<AiAnalysisImprovementDto>,
