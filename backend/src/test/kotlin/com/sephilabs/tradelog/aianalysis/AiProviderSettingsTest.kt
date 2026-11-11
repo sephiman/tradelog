@@ -96,18 +96,20 @@ class GroundingVerifierTest {
     }
 
     @Test
-    fun `verify walks observations and insufficientSample in order`() {
+    fun `verify walks improvements, observations and insufficientSample in order`() {
         val answer = mapper.readTree(
             """
-            {"observations":[
+            {"improvements":[
+               {"title":"p","detail":"d","citations":[${citation("summary.totalPnl", 123.45)}]}],
+             "observations":[
                {"claim":"a","citations":[${citation("summary.n", 12)},${citation("summary.madeUp", 1)}],"sampleSize":12,"confidence":"high"}],
              "insufficientSample":[
                {"topic":"t","reason":"r","citations":[${citation("byHour.buckets.0.n", 11)}]}]}
             """.trimIndent(),
         )
         val result = GroundingVerifier.verify(payload, answer)
-        assertEquals(3, result.total)
+        assertEquals(4, result.total)
         assertEquals(1, result.ungrounded)
-        assertEquals(listOf("summary.n", "summary.madeUp", "byHour.buckets.0.n"), result.checks.map { it.path })
+        assertEquals(listOf("summary.totalPnl", "summary.n", "summary.madeUp", "byHour.buckets.0.n"), result.checks.map { it.path })
     }
 }

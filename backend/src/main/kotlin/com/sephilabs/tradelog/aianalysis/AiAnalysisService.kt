@@ -98,10 +98,10 @@ class AiAnalysisService(
                 promptVersion = TradingStylePrompt.VERSION,
                 locale = user.locale.take(2).lowercase().ifBlank { "en" },
                 periodPreset = scope.path("periodPreset").asString("").ifBlank { "custom" },
-                rangeFrom = scope.path("rangeFrom").takeIf { it.isTextual }?.asString()?.let { parseDate(it) },
-                rangeTo = scope.path("rangeTo").takeIf { it.isTextual }?.asString()?.let { parseDate(it) },
+                rangeFrom = scope.path("rangeFrom").takeIf { it.isString }?.asString()?.let { parseDate(it) },
+                rangeTo = scope.path("rangeTo").takeIf { it.isString }?.asString()?.let { parseDate(it) },
                 exchangeFilter = scope.path("exchange").asString("ALL").ifBlank { "ALL" },
-                origenTagId = scope.path("origen").takeIf { it.isTextual }?.asString()
+                origenTagId = scope.path("origen").takeIf { it.isString }?.asString()
                     ?.let { label -> tagMap?.entries?.firstOrNull { it.key == label }?.value }
                     ?.let { id -> runCatching { UUID.fromString(id) }.getOrNull() },
                 timeZone = scope.path("timeZone").asString("UTC").ifBlank { "UTC" },
@@ -174,11 +174,18 @@ class AiAnalysisService(
         val payload = runCatching { mapper.readTree(payloadJson) }.getOrNull()
         val result = resultJson?.let { runCatching { mapper.readTree(it) }.getOrNull() }
         val tagMap = tagMap?.let { parseTagMap(it) }
+        val improvements = result?.path("improvements")?.takeIf { it.isArray }?.toList()?.map { item ->
+            AiAnalysisImprovementDto(
+                title = item.path("title").asString(""),
+                detail = item.path("detail").asString(""),
+                citations = citationsOf(item, payload),
+            )
+        } ?: emptyList()
         val observations = result?.path("observations")?.takeIf { it.isArray }?.toList()?.map { obs ->
             AiAnalysisObservationDto(
                 claim = obs.path("claim").asString(""),
                 sampleSize = obs.path("sampleSize").takeIf { it.isNumber }?.asInt(),
-                confidence = obs.path("confidence").takeIf { it.isTextual }?.asString(),
+                confidence = obs.path("confidence").takeIf { it.isString }?.asString(),
                 citations = citationsOf(obs, payload),
             )
         } ?: emptyList()
@@ -207,7 +214,9 @@ class AiAnalysisService(
             ),
             model = model,
             promptVersion = promptVersion,
+            summary = result?.path("summary")?.takeIf { it.isString }?.asString()?.ifBlank { null },
             tagNames = tagNames,
+            improvements = improvements,
             observations = observations,
             insufficientSample = insufficient,
             observationsCount = observationsCount,

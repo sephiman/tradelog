@@ -25,6 +25,12 @@ data class AiAnalysisCitationDto(
     val grounded: Boolean,
 )
 
+data class AiAnalysisImprovementDto(
+    val title: String,
+    val detail: String,
+    val citations: List<AiAnalysisCitationDto>,
+)
+
 data class AiAnalysisObservationDto(
     val claim: String,
     val sampleSize: Int?,
@@ -46,8 +52,10 @@ data class AiAnalysisRunDto(
     val scope: AiAnalysisScopeDto,
     val model: String,
     val promptVersion: String,
+    val summary: String?,
     /** Anonymized label -> the tag's real name, resolved at read time. Labels may outlive their tag. */
     val tagNames: Map<String, String>,
+    val improvements: List<AiAnalysisImprovementDto>,
     val observations: List<AiAnalysisObservationDto>,
     val insufficientSample: List<AiAnalysisInsufficientDto>,
     val observationsCount: Int?,

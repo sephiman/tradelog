@@ -31,6 +31,12 @@ export interface AiInsufficientItem {
   citations: AiCitation[];
 }
 
+export interface AiImprovement {
+  title: string;
+  detail: string;
+  citations: AiCitation[];
+}
+
 /** The dashboard filter state a run was produced under; kept on the row so old runs stay interpretable. */
 export interface AiRunScope {
   periodPreset: string;
@@ -51,8 +57,10 @@ export interface AiRun {
   scope: AiRunScope;
   model: string;
   promptVersion: string;
+  summary: string | null;
   /** Anonymized label -> the tag's real name; a deleted tag keeps its label. */
   tagNames: Record<string, string>;
+  improvements: AiImprovement[];
   observations: AiObservation[];
   insufficientSample: AiInsufficientItem[];
   observationsCount: number | null;

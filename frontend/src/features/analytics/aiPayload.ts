@@ -11,6 +11,7 @@ import {
   pairOf,
   pairsRankings,
   pnlByMonth,
+  netOf,
   recoveryRate,
   streaks,
   traderStyle,
@@ -89,7 +90,14 @@ export interface AiStylePayload {
     minSample: number;
     droppedBuckets: number;
     buckets: { style: string; n: number; pnl: number; winRatePct: number | null }[];
-    duration: { avgMs: number; longestMs: number; shortestMs: number; predominant: string | null };
+    duration: {
+      avgMs: number;
+      avgWinMs: number | null;
+      avgLossMs: number | null;
+      longestMs: number;
+      shortestMs: number;
+      predominant: string | null;
+    };
   };
   byHour: { minSample: number; droppedBuckets: number; buckets: { hour: number; n: number; winRatePct: number | null }[] };
   byWeekday: { minSample: number; droppedBuckets: number; buckets: { weekday: number; n: number; winRatePct: number | null }[] };
@@ -241,6 +249,10 @@ function styleSection(rows: ClosedPosition[]): AiStylePayload["style"] {
     { style: "swing", bucket: style.swing },
   ].filter((b) => b.bucket.count > 0);
   const kept = raw.filter((b) => b.bucket.count >= MIN_BUCKET_SAMPLE);
+  const durationOf = (p: ClosedPosition) => new Date(p.closedAt).getTime() - new Date(p.openedAt).getTime();
+  const wins = rows.filter((r) => netOf(r).gt(0));
+  const losses = rows.filter((r) => netOf(r).lt(0));
+  const avg = (list: ClosedPosition[]) => (list.length ? Math.round(list.reduce((acc, p) => acc + durationOf(p), 0) / list.length) : null);
   return {
     minSample: MIN_BUCKET_SAMPLE,
     droppedBuckets: raw.length - kept.length,
@@ -252,6 +264,8 @@ function styleSection(rows: ClosedPosition[]): AiStylePayload["style"] {
     })),
     duration: {
       avgMs: Math.round(style.avgDurationMs ?? 0),
+      avgWinMs: avg(wins),
+      avgLossMs: avg(losses),
       longestMs: Math.round(style.longestMs ?? 0),
       shortestMs: Math.round(style.shortestMs ?? 0),
       predominant: style.predominant,

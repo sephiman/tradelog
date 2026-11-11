@@ -12,11 +12,7 @@ import org.springframework.http.MediaType
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import org.springframework.test.web.servlet.MvcResult
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
@@ -30,7 +26,12 @@ class AiTestConfig {
         object : AiChatClient {
             override fun complete(prompt: ChatPrompt): ChatAnswer = ChatAnswer(
                 content = """
-                    {"observations":[
+                    {"summary":"Operador de sesgo intradiario con buen control de riesgo general.",
+                     "improvements":[
+                       {"title":"Reducir sobreoperativa nocturna",
+                        "detail":"Concentrar las entradas en las sesiones de mayor liquidez.",
+                        "citations":[{"path":"summary.totalPnl","value":123.45}]}],
+                     "observations":[
                        {"claim":"Las pérdidas medias superan el límite por operación.",
                         "citations":[{"path":"summary.totalPnl","value":123.45},{"path":"summary.madeUp.path","value":1}],
                         "sampleSize":12,
@@ -110,12 +111,16 @@ class AiAnalysisEndpointTest : AuthHttpTestBase() {
             .andExpect(jsonPath("$[0].status").value("COMPLETED"))
             .andExpect(jsonPath("$[0].model").value("test-model"))
             .andExpect(jsonPath("$[0].promptVersion").value(TradingStylePrompt.VERSION))
+            .andExpect(jsonPath("$[0].summary").value("Operador de sesgo intradiario con buen control de riesgo general."))
+            .andExpect(jsonPath("$[0].improvements.length()").value(1))
+            .andExpect(jsonPath("$[0].improvements[0].title").value("Reducir sobreoperativa nocturna"))
+            .andExpect(jsonPath("$[0].improvements[0].citations[0].grounded").value(true))
             .andExpect(jsonPath("$[0].observations.length()").value(1))
             .andExpect(jsonPath("$[0].observations[0].citations.length()").value(2))
             .andExpect(jsonPath("$[0].observations[0].citations[0].grounded").value(true))
             .andExpect(jsonPath("$[0].observations[0].citations[1].grounded").value(false))
             .andExpect(jsonPath("$[0].insufficientSample[0].citations[0].grounded").value(true))
-            .andExpect(jsonPath("$[0].citationsTotal").value(3))
+            .andExpect(jsonPath("$[0].citationsTotal").value(4))
             .andExpect(jsonPath("$[0].citationsUngrounded").value(1))
             .andExpect(jsonPath("$[0].inputTokens").value(111))
             .andExpect(jsonPath("$[0].outputTokens").value(22))

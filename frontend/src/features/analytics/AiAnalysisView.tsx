@@ -234,6 +234,37 @@ function RunCard({
 
         {open && run.status === "COMPLETED" && (
           <>
+            {run.summary && (
+              <div className="rounded-md border border-violet-200 bg-violet-50/60 p-3.5 text-sm leading-relaxed text-gray-800 dark:border-violet-900/40 dark:bg-violet-950/25 dark:text-gray-200">
+                <p className="text-xs font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                  {t("analytics.ai.summaryTitle")}
+                </p>
+                <p className="mt-1">{resolveTagLabels(run.summary, run.tagNames)}</p>
+              </div>
+            )}
+            {run.improvements?.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+                <div className="flex items-center gap-2">
+                  <span className="text-base" aria-hidden="true">🎯</span>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                    {t("analytics.ai.improvementsTitle")}
+                  </h4>
+                </div>
+                <ul className="mt-3 space-y-3">
+                  {run.improvements.map((item, i) => (
+                    <li key={i} className="space-y-1">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {resolveTagLabels(item.title, run.tagNames)}
+                      </p>
+                      <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                        {resolveTagLabels(item.detail, run.tagNames)}
+                      </p>
+                      {item.citations?.length > 0 && <Citations citations={item.citations} />}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {run.observations.length > 0 && (
               <ul className="space-y-4">
                 {run.observations.map((obs, i) => (

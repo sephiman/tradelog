@@ -720,6 +720,8 @@
       "interrupted": "This analysis was interrupted by a restart and never finished.",
       "groundedOk": "All citations verified",
       "groundedOff": "{{off}} of {{total}} citations unverified",
+      "summaryTitle": "Executive summary",
+      "improvementsTitle": "Points of improvement",
       "insufficientTitle": "Cannot be concluded — sample too small",
       "usage": "{{input}} in / {{output}} out tokens · {{seconds}} s",
       "confidence": {

@@ -19,9 +19,10 @@ object GroundingVerifier {
 
     data class Result(val total: Int, val ungrounded: Int, val checks: List<CitationCheck>)
 
-    /** Checks the citations of [answer]'s observations and insufficient-sample items, in field order. */
+    /** Checks the citations of [answer]'s improvements, observations and insufficient-sample items, in field order. */
     fun verify(payload: JsonNode, answer: JsonNode): Result {
         val checks = mutableListOf<CitationCheck>()
+        answer.path("improvements").forEach { item -> item.path("citations").forEach { checks += check(payload, it) } }
         answer.path("observations").forEach { obs -> obs.path("citations").forEach { checks += check(payload, it) } }
         answer.path("insufficientSample").forEach { item -> item.path("citations").forEach { checks += check(payload, it) } }
         return Result(checks.size, checks.count { !it.grounded }, checks)
@@ -58,7 +59,7 @@ object GroundingVerifier {
             cited.isNumber && actual.isNumber ->
                 Math.abs(cited.doubleValue() - actual.doubleValue()) <= tolerance(actual.doubleValue())
             cited.isBoolean && actual.isBoolean -> cited.booleanValue() == actual.booleanValue()
-            cited.isTextual && actual.isTextual -> cited.asString().trim() == actual.asString().trim()
+            cited.isString && actual.isString -> cited.asString().trim() == actual.asString().trim()
             else -> false
         }
     }

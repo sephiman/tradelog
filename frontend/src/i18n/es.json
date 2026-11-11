@@ -720,6 +720,8 @@
       "interrupted": "Este análisis quedó interrumpido por un reinicio y no llegó a terminar.",
       "groundedOk": "Todas las citas verificadas",
       "groundedOff": "{{off}} de {{total}} citas sin verificar",
+      "summaryTitle": "Resumen ejecutivo",
+      "improvementsTitle": "Puntos de mejora",
       "insufficientTitle": "No se puede concluir — muestra insuficiente",
       "usage": "{{input}} entrada / {{output}} salida tokens · {{seconds}} s",
       "confidence": {
