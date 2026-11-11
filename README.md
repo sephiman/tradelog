@@ -22,6 +22,7 @@ anyone running a modified version as a network service must publish the source.
 - [Tech stack](#tech-stack)
 - [Running it](#running-it)
   - [Password reset & email change by mail (SMTP)](#password-reset--email-change-by-mail-smtp)
+  - [AI trading-style analysis](#ai-trading-style-analysis)
 - [Connecting your accounts](#connecting-your-accounts)
   - [Exchanges (API)](#exchanges-api)
   - [Quantfury (PDF import)](#quantfury-pdf-import)
@@ -288,6 +289,33 @@ the missing variables, so there is never a link whose mail cannot go out.
   address>` and `MAIL_FROM` set to that same address (or a verified *Send mail as* alias).
 - **Out of scope**: email verification on registration, an admin "reset another user" action, and any
   other outbound mail.
+
+### AI trading-style analysis
+
+Optional, and configured as a **group**: `AI_API_KEY`, `AI_BASE_URL` (default
+`https://opencode.ai/zen/go/v1`), `AI_MODEL` (default `deepseek-v4.1-flash`), `AI_TIMEOUT_MS`
+(default `120000`). Any OpenAI-compatible chat-completions API works by changing env only. Without
+`AI_API_KEY` the feature does not exist: `/api/features` reports `ai=false`, every AI endpoint answers
+404, and the dashboard renders nothing for it. A **partial** group counts as not configured and logs
+one `ai_partially_configured` warning at startup naming the missing variables.
+
+Even with a provider configured, each user turns the feature on themselves (*Settings → AI analysis*).
+The analysis lives in a **"AI analysis" tab on the dashboard**: it sends the aggregates the dashboard
+is already showing for the current Period / Exchange / Origen filters — each figure with its sample
+size, breakdown buckets under 10 trades dropped and counted — to the provider, and the answer is a
+list of observations with the exact payload fields each claim rests on, a confidence level, and a
+separate section for what cannot be concluded because the sample is too small. Every cited value is
+verified against the payload automatically (unverified citations are struck through in the UI and
+counted on the run), and runs are **persisted per profile** so past analyses stay expandable and
+comparable.
+
+Privacy, enforced end to end: **only aggregate numbers travel** — never API keys or credentials,
+wallet addresses, email or user ids, profile names, data-source labels, external trade ids, position
+notes or individual trades. Origen tag names are anonymized **in the browser** (Tag A, Tag B…) before
+anything leaves it, and only this app maps them back when rendering. The user's own prompt language
+(EN/ES) is the answer's language. Runs are rate-limited (10 per user per hour) because each one costs
+provider tokens, and the run rows log token counts and latency for the operator. No analysis is
+triggered automatically: only the user's button press sends anything.
 
 ## Connecting your accounts
 

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useClosedPositions } from "@/api/analytics";
 import { usePositionExchanges } from "@/api/positions";
 import { useTaxonomy } from "@/api/taxonomy";
+import { useAiOn } from "@/api/ai";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { useAuth } from "@/auth/AuthContext";
 import { Card, CardBody } from "@/components/ui/primitives";
@@ -10,7 +11,7 @@ import { QueryError } from "@/components/ui/QueryError";
 import { useAnalyticsFilters, type DateRange } from "./useAnalyticsFilters";
 import { filterRows } from "./applyFilters";
 import { FilterBar } from "./FilterBar";
-import { ViewTabs, type ViewKey } from "./ViewTabs";
+import { ViewTabs, VIEW_KEYS, type ViewKey } from "./ViewTabs";
 import { useMonthNavState } from "./PeriodNav";
 import { StatisticsCard, CumulativeProfitCard } from "./SummaryView";
 import { ActivityCard, PnlPerDayCard, MonthlySummaryCard, MonthlyRoiCard } from "./PerformanceView";
@@ -21,6 +22,7 @@ import { MostTradedCard, MostProfitableCard, LeastProfitableCard } from "./Pairs
 import { FeesCard, CumulativeFeesCard, FeeRatioCard } from "./FeesView";
 import { CapitalRiskView } from "./CapitalRiskView";
 import { CapitalEvolutionCard } from "./CapitalEvolutionCard";
+import { AiAnalysisView } from "./AiAnalysisView";
 import type { ClosedPosition } from "@/api/analytics";
 
 const NO_RANGE: DateRange = { from: null, to: null };
@@ -47,6 +49,7 @@ export function AnalyticsPage() {
   );
   const filters = useAnalyticsFilters();
   const [view, setView] = useState<ViewKey>("all");
+  const aiSettings = useAiOn();
 
   // Two month-navs are shared across paired cards so they stay in sync: Activity ↔ PnL per day, and
   // Fees ↔ Fee ratio. Calendar and Monthly summary own their own period state.
@@ -70,16 +73,35 @@ export function AnalyticsPage() {
   const capitalEvolution = (
     <CapitalEvolutionCard profileId={activeProfileId} range={filters.range} exchange={filters.exchange} />
   );
+  const aiView = (
+    <AiAnalysisView
+      profileId={activeProfileId}
+      rows={filtered}
+      period={filters.period}
+      range={filters.range}
+      exchange={filters.exchange}
+      origenTagId={filters.origenTagId}
+      origenTags={origenTags}
+      timeZone={timeZone}
+    />
+  );
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("analytics.title")}</h1>
       <FilterBar filters={filters} exchanges={exchanges} origenTags={origenTags} />
-      <ViewTabs value={view} onChange={setView} />
+      <ViewTabs
+        value={view}
+        onChange={setView}
+        keys={aiSettings ? [...VIEW_KEYS, "ai"] : VIEW_KEYS}
+      />
 
       {/* Capital & risk is a current balance: independent of trade history and the Period/Origen
-          filters (it uses the Exchange filter only). It renders even with no closed positions. */}
-      {view === "capital" ? (
+          filters (it uses the Exchange filter only). It renders even with no closed positions.
+          The AI tab works off the current filter state, so it renders like capital — first. */}
+      {view === "ai" ? (
+        aiView
+      ) : view === "capital" ? (
         <div className="space-y-6">
           {capital}
           {capitalEvolution}

@@ -178,6 +178,18 @@ app:
     schedule:
       enabled: ${BENCHMARK_SCHEDULE_ENABLED:true}
       cron: ${BENCHMARK_SCHEDULE_CRON:0 30 3 * * *}
+  # Optional AI trading-style analysis (optional, as a GROUP). Any OpenAI-compatible
+  # chat-completions API. Without AI_API_KEY the feature does not exist: /api/features reports
+  # ai=false, every /api/ai and /api/profiles/{id}/ai-analysis endpoint answers 404 and the UI
+  # renders nothing. Only the dashboard's aggregate numbers (with sample sizes) are sent — never
+  # credentials, identifiers, notes, profile names or individual trades. Origen tag names are
+  # anonymized in the browser before the request leaves it.
+  ai:
+    base-url: ${AI_BASE_URL:https://opencode.ai/zen/go/v1}
+    api-key: ${AI_API_KEY:}
+    model: ${AI_MODEL:deepseek-v4.1-flash}
+    # One full-dashboard analysis took tens of seconds against slow providers.
+    timeout-ms: ${AI_TIMEOUT_MS:120000}
   connectors:
     bitunix:
       base-url: ${BITUNIX_BASE_URL:https://fapi.bitunix.com}

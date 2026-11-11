@@ -612,7 +612,15 @@
     "newPassword": "Contraseña nueva",
     "confirmNewPassword": "Confirmar contraseña nueva",
     "changePasswordCta": "Cambiar contraseña",
-    "passwordChanged": "Contraseña actualizada"
+    "passwordChanged": "Contraseña actualizada",
+    "aiFeatures": {
+      "title": "Análisis con IA",
+      "provider": "Proveedor: {{model}} en {{host}}.",
+      "sent": "Qué se envía: los números agregados del panel para los filtros que elijas (resumen, comportamiento, rachas, pares, comisiones, capital y riesgo), cada uno con su tamaño de muestra.",
+      "notSent": "Qué nunca se envía: claves API o credenciales, direcciones de wallet, email, nombres de perfiles, etiquetas de fuentes de datos, IDs externos de operaciones, notas de posiciones ni operaciones individuales.",
+      "tags": "Los nombres de tus etiquetas de Origen se anonimizan en el navegador (Tag A, Tag B…); solo esta app los vuelve a unir.",
+      "enable": "Activar el análisis con IA"
+    }
   },
   "capital": {
     "title": "Capital",
@@ -694,7 +702,40 @@
       "streaks": "Rachas",
       "pairs": "Pares",
       "fees": "Comisiones",
-      "capital": "Capital"
+      "capital": "Capital",
+      "ai": "Análisis IA"
+    },
+    "ai": {
+      "title": "Análisis de tu estilo",
+      "info": "Envía los agregados del panel con tus filtros actuales — con su tamaño de muestra — a {{model}} en {{host}}. Los nombres de tus etiquetas de Origen se anonimizan (Tag A, Tag B…) antes de salir del navegador. Nunca se envían: credenciales, identificadores, notas, nombres de perfiles ni operaciones individuales.",
+      "analyze": "Analizar con IA",
+      "starting": "Iniciando…",
+      "minSample": "Se necesitan al menos {{min}} operaciones cerradas con este filtro (hay {{count}}).",
+      "disabled": "El análisis con IA no está activado en esta cuenta. Actívalo en Ajustes.",
+      "noRuns": "Aún no hay análisis para este perfil.",
+      "historyTitle": "Historial de análisis ({{count}})",
+      "confirmDelete": "¿Eliminar este análisis del historial?",
+      "running": "Analizando los agregados de tu panel…",
+      "failed": "El análisis ha fallado",
+      "interrupted": "Este análisis quedó interrumpido por un reinicio y no llegó a terminar.",
+      "groundedOk": "Todas las citas verificadas",
+      "groundedOff": "{{off}} de {{total}} citas sin verificar",
+      "insufficientTitle": "No se puede concluir — muestra insuficiente",
+      "usage": "{{input}} entrada / {{output}} salida tokens · {{seconds}} s",
+      "confidence": {
+        "alta": "Confianza alta",
+        "high": "Confianza alta",
+        "media": "Confianza media",
+        "medium": "Confianza media",
+        "baja": "Confianza baja",
+        "low": "Confianza baja"
+      },
+      "error": {
+        "MODEL_ERROR": "No se pudo contactar con el proveedor de IA",
+        "UNREADABLE_ANSWER": "No se pudo interpretar la respuesta del proveedor",
+        "INTERNAL_ERROR": "Error inesperado",
+        "INTERRUPTED": "Interrumpido"
+      }
     },
     "capital": {
       "title": "Capital y riesgo",

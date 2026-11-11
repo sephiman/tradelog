@@ -8,6 +8,7 @@ import { DataSourcesCard } from "./DataSourcesCard";
 import { CapitalRiskCard } from "./CapitalRiskCard";
 import { TaxonomyCard } from "./TaxonomyCard";
 import { BackupRestoreCard } from "./BackupRestoreCard";
+import { AiFeaturesCard } from "./AiFeaturesCard";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ export function SettingsPage() {
       {activeProfile && <DataSourcesCard profileId={activeProfile.id} profileName={activeProfile.name} />}
       {activeProfile && <CapitalRiskCard profileId={activeProfile.id} />}
       <TaxonomyCard />
+      <AiFeaturesCard />
       <BackupRestoreCard />
     </div>
   );

@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.sephilabs.tradelog.profile
 
+import com.sephilabs.tradelog.AiExecutorTestDoubleConfig
 import com.sephilabs.tradelog.IntegrationTestBase
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.springframework.context.annotation.Import
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
@@ -21,6 +23,7 @@ import java.net.http.HttpResponse.BodyHandlers
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@Import(AiExecutorTestDoubleConfig::class)
 class ProfileAccessInterceptorTest {
     companion object {
         @JvmStatic

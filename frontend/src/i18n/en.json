@@ -612,7 +612,15 @@
     "newPassword": "New password",
     "confirmNewPassword": "Confirm new password",
     "changePasswordCta": "Change password",
-    "passwordChanged": "Password updated"
+    "passwordChanged": "Password updated",
+    "aiFeatures": {
+      "title": "AI analysis",
+      "provider": "Provider: {{model}} at {{host}}.",
+      "sent": "What is sent: the dashboard's aggregate numbers for the filters you choose (summary, behavior, streaks, pairs, fees, capital & risk), each with its sample size.",
+      "notSent": "What is never sent: API keys or any credentials, wallet addresses, email, profile names, data-source labels, external trade IDs, position notes or individual trades.",
+      "tags": "Your Origen tag names are anonymized in the browser (Tag A, Tag B…); only this app maps them back.",
+      "enable": "Enable AI analysis"
+    }
   },
   "capital": {
     "title": "Capital",
@@ -694,7 +702,40 @@
       "streaks": "Streaks",
       "pairs": "Pairs",
       "fees": "Fees",
-      "capital": "Capital"
+      "capital": "Capital",
+      "ai": "AI analysis"
+    },
+    "ai": {
+      "title": "Trading style analysis",
+      "info": "Sends the dashboard aggregates for the current filters — with sample sizes — to {{model}} at {{host}}. Your Origen tag names are anonymized (Tag A, Tag B…) before anything leaves the browser. Never sent: credentials, identifiers, notes, profile names or individual trades.",
+      "analyze": "Analyze with AI",
+      "starting": "Starting…",
+      "minSample": "At least {{min}} closed trades are needed with this filter (currently {{count}}).",
+      "disabled": "AI analysis is not enabled for this account. Turn it on in Settings.",
+      "noRuns": "No analyses yet for this profile.",
+      "historyTitle": "Analysis history ({{count}})",
+      "confirmDelete": "Delete this analysis from the history?",
+      "running": "Analyzing your dashboard aggregates…",
+      "failed": "The analysis failed",
+      "interrupted": "This analysis was interrupted by a restart and never finished.",
+      "groundedOk": "All citations verified",
+      "groundedOff": "{{off}} of {{total}} citations unverified",
+      "insufficientTitle": "Cannot be concluded — sample too small",
+      "usage": "{{input}} in / {{output}} out tokens · {{seconds}} s",
+      "confidence": {
+        "alta": "High confidence",
+        "high": "High confidence",
+        "media": "Medium confidence",
+        "medium": "Medium confidence",
+        "baja": "Low confidence",
+        "low": "Low confidence"
+      },
+      "error": {
+        "MODEL_ERROR": "The AI provider could not be reached",
+        "UNREADABLE_ANSWER": "The provider's answer could not be parsed",
+        "INTERNAL_ERROR": "Unexpected error",
+        "INTERRUPTED": "Interrupted"
+      }
     },
     "capital": {
       "title": "Trading capital & risk",

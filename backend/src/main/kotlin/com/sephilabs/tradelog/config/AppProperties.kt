@@ -17,6 +17,7 @@ data class AppProperties(
     val connectors: Connectors = Connectors(),
     val capital: Capital = Capital(),
     val benchmark: Benchmark = Benchmark(),
+    val ai: Ai = Ai(),
 ) {
     data class Security(
         val cookieSecure: Boolean = true,
@@ -191,4 +192,18 @@ data class AppProperties(
         val baseUrl: String = "",
         val timeoutMs: Long = 10000,
     )
+
+    /** Optional OpenAI-compatible chat-completions provider for the AI style analysis; resolved into an
+     *  `AiProviderSettings` by `AiConfig`. No key keeps the whole feature absent (as with SMTP). */
+    data class Ai(
+        val baseUrl: String = DEFAULT_AI_BASE_URL,
+        val apiKey: String = "",
+        val model: String = DEFAULT_AI_MODEL,
+        // One full-dashboard analysis took tens of seconds against slow providers in testing.
+        val timeoutMs: Long = 120000,
+    )
 }
+
+const val DEFAULT_AI_BASE_URL = "https://opencode.ai/zen/go/v1"
+// deepseek-v4-flash answers 410 ModelDeprecated (2026-10-26); the default is its successor.
+const val DEFAULT_AI_MODEL = "deepseek-v4.1-flash"

@@ -26,7 +26,7 @@ import java.net.http.HttpResponse.BodyHandlers
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@Import(MailTestDoublesConfig::class)
+@Import(MailTestDoublesConfig::class, com.sephilabs.tradelog.AiExecutorTestDoubleConfig::class)
 class SessionPersistenceIntegrationTest @Autowired constructor(
     private val jdbc: JdbcTemplate,
 ) {

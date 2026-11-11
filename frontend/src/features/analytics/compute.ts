@@ -209,23 +209,25 @@ export function pnlByDayOfMonth(rows: ClosedPosition[], year: number, month: num
 export interface MonthPnl {
   month: number; // 1–12
   pnl: number;
+  trades: number;
   winRate: number | null; // 0–100
 }
 
 export function pnlByMonth(rows: ClosedPosition[], year: number, tz: string): MonthPnl[] {
-  const acc = Array.from({ length: 12 }, () => ({ pnl: ZERO, wins: 0, decided: 0 }));
+  const acc = Array.from({ length: 12 }, () => ({ pnl: ZERO, trades: 0, wins: 0, decided: 0 }));
   for (const p of rows) {
     const z = zonedParts(p.closedAt, tz);
     if (z.year !== year) continue;
     const b = acc[z.month - 1];
     const n = netOf(p);
     b.pnl = b.pnl.plus(n);
+    b.trades++;
     if (!n.isZero()) {
       b.decided++;
       if (n.gt(0)) b.wins++;
     }
   }
-  return acc.map((b, i) => ({ month: i + 1, pnl: b.pnl.toNumber(), winRate: pct(b.wins, b.decided) }));
+  return acc.map((b, i) => ({ month: i + 1, pnl: b.pnl.toNumber(), trades: b.trades, winRate: pct(b.wins, b.decided) }));
 }
 
 // ---------------------------------------------------------------------------

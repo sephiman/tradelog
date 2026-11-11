@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.sephilabs.tradelog.sync
 
+import com.sephilabs.tradelog.AiExecutorTestDoubleConfig
 import com.sephilabs.tradelog.IntegrationTestBase
 import com.sephilabs.tradelog.datasource.CreateDataSourceRequest
 import com.sephilabs.tradelog.datasource.DataSourceRepository
@@ -15,6 +16,7 @@ import com.sephilabs.tradelog.profile.ProfileRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Import
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
@@ -33,6 +35,7 @@ import java.util.UUID
     properties = ["app.connectors.bitunix.base-url=http://127.0.0.1:1"],
 )
 @ActiveProfiles("test")
+@Import(AiExecutorTestDoubleConfig::class)
 class TransientOutageIntegrationTest @Autowired constructor(
     private val syncService: SyncService,
     private val dataSourceService: DataSourceService,

@@ -14,7 +14,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Import(MailTestDoublesConfig::class)
+@Import(MailTestDoublesConfig::class, AiExecutorTestDoubleConfig::class)
 abstract class IntegrationTestBase {
 
     companion object {
