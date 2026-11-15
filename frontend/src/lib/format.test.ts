@@ -5,6 +5,7 @@ import {
   fmtDateTime,
   fmtNum,
   fmtPrice,
+  fmtTradeDuration,
   fmtUsd,
   dateTimeInputToIso,
   isoToDateInput,
@@ -113,5 +114,30 @@ describe("dates in the account timezone", () => {
     expect(fmtDateTime("not-a-date")).toBe("not-a-date");
     expect(dateInputToIso("")).toBeUndefined();
     expect(isoToDateInput("garbage")).toBe("");
+  });
+});
+
+describe("fmtTradeDuration", () => {
+  const span = (ms: number) => fmtTradeDuration("2026-07-12T00:00:00.000Z", new Date(Date.parse("2026-07-12T00:00:00.000Z") + ms).toISOString());
+
+  it("formats days, hours and minutes compactly without seconds", () => {
+    expect(span(((24 + 3) * 60 + 2) * 60_000 + 45_000)).toBe("1d3h2m");
+    expect(span((3 * 60 + 5) * 60_000 + 12_000)).toBe("3h5m");
+    expect(span(6 * 60_000 + 59_000)).toBe("6m");
+    expect(span(24 * 60 * 60_000)).toBe("1d");
+    expect(span(2 * 60 * 60_000)).toBe("2h");
+    expect(span((24 * 60 + 5) * 60_000)).toBe("1d5m");
+  });
+
+  it("renders sub-minute trades as <1m", () => {
+    expect(span(0)).toBe("<1m");
+    expect(span(45_000)).toBe("<1m");
+    expect(span(59_999)).toBe("<1m");
+    expect(span(60_000)).toBe("1m");
+  });
+
+  it("returns a dash for invalid or reversed timestamps", () => {
+    expect(fmtTradeDuration("bad", "2026-07-12T00:00:00Z")).toBe("—");
+    expect(fmtTradeDuration("2026-07-12T01:00:00Z", "2026-07-12T00:00:00Z")).toBe("—");
   });
 });

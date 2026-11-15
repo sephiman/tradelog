@@ -147,3 +147,20 @@ export function pnlTone(value: string | number): string {
   if (d.lt(0)) return "text-red-600 dark:text-red-400";
   return "text-gray-500 dark:text-gray-400";
 }
+
+/** Elapsed hold time from first entry to last exit (e.g. "1d3h2m", "3h5m", "6m", "<1m"). */
+export function fmtTradeDuration(openedAt: string, closedAt: string): string {
+  const start = new Date(openedAt).getTime();
+  const end = new Date(closedAt).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return "—";
+  const totalMin = Math.floor((end - start) / 60_000);
+  if (totalMin < 1) return "<1m";
+  const d = Math.floor(totalMin / 1440);
+  const h = Math.floor((totalMin % 1440) / 60);
+  const m = totalMin % 60;
+  const parts: string[] = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  if (m) parts.push(`${m}m`);
+  return parts.join("");
+}

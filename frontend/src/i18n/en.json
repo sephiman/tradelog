@@ -80,6 +80,7 @@
     "exchange": "Exchange",
     "allExchanges": "All exchanges",
     "closed": "Closed",
+    "duration": "Duration",
     "qty": "Quantity",
     "volume": "Volume",
     "entry": "Entry",

@@ -22,7 +22,7 @@ import { SOURCE_KINDS, SOURCE_LABELS } from "@/lib/sourceKinds";
 import { Badge, Button, Card, CardBody, Input, Select, Textarea } from "@/components/ui/primitives";
 import { QueryError } from "@/components/ui/QueryError";
 import { cn } from "@/lib/cn";
-import { dateInputToIso, fmtDateTime, fmtNum, fmtPrice, fmtUsd, isoToDateInput, pnlTone, toDecimal } from "@/lib/format";
+import { dateInputToIso, fmtDateTime, fmtNum, fmtPrice, fmtTradeDuration, fmtUsd, isoToDateInput, pnlTone, toDecimal } from "@/lib/format";
 import { volumeOf } from "@/features/analytics/compute";
 import { gridRoi } from "./entryMath";
 import { useTagLabel } from "@/lib/tagLabel";
@@ -335,6 +335,7 @@ export function PositionsPage() {
                   />
                 </th>
                 <th className="py-2">{t("positions.closed")}</th>
+                <th>{t("positions.duration")}</th>
                 <th>{t("positions.symbol")}</th>
                 <th>{t("positions.side")}</th>
                 <th className="hidden @min-[1200px]:table-cell">{t("positions.source")}</th>
@@ -349,11 +350,11 @@ export function PositionsPage() {
             </thead>
             <tbody>
               {isError ? (
-                <tr><td colSpan={12}><QueryError onRetry={() => void refetch()} /></td></tr>
+                <tr><td colSpan={13}><QueryError onRetry={() => void refetch()} /></td></tr>
               ) : isLoading ? (
-                <tr><td colSpan={12} className="py-8 text-center text-gray-500">{t("common.loading")}</td></tr>
+                <tr><td colSpan={13} className="py-8 text-center text-gray-500">{t("common.loading")}</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={12} className="py-8 text-center text-gray-500 dark:text-gray-400">{t("positions.noPositions")}</td></tr>
+                <tr><td colSpan={13} className="py-8 text-center text-gray-500 dark:text-gray-400">{t("positions.noPositions")}</td></tr>
               ) : (
                 items.map((p) => (
                   <PositionRow
@@ -571,6 +572,12 @@ function PositionRow({ profileId, position, origen, origenWidth, selected, selec
           />
         </td>
         <td className="whitespace-nowrap py-2 text-gray-600 dark:text-gray-300">{fmtDateTime(position.closedAt)}</td>
+        <td
+          className="whitespace-nowrap tabular-nums text-gray-600 dark:text-gray-300"
+          title={`${fmtDateTime(position.openedAt)} → ${fmtDateTime(position.closedAt)}`}
+        >
+          {fmtTradeDuration(position.openedAt, position.closedAt)}
+        </td>
         <td className="whitespace-nowrap font-medium">
           {position.symbolBase}/{position.symbolQuote}
           {position.kind === "GRID_BOT" && <span className="ml-1"><Badge tone="sky">{t("grids.badge")}</Badge></span>}
@@ -606,7 +613,7 @@ function PositionRow({ profileId, position, origen, origenWidth, selected, selec
       </tr>
       {expanded && (
         <tr className="bg-gray-50 dark:bg-surface-inset">
-          <td colSpan={12} className="p-4">
+          <td colSpan={13} className="p-4">
             <ExpandedPanel profileId={profileId} position={position} />
           </td>
         </tr>
@@ -646,7 +653,11 @@ function PositionCard({ profileId, position, origen, origenWidth, selected, sele
             </span>
           </div>
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {fmtDateTime(position.closedAt)} · {SOURCE_LABELS[position.source]}
+            {fmtDateTime(position.closedAt)} ·{" "}
+            <span className="tabular-nums" title={`${fmtDateTime(position.openedAt)} → ${fmtDateTime(position.closedAt)}`}>
+              {fmtTradeDuration(position.openedAt, position.closedAt)}
+            </span>{" "}
+            · {SOURCE_LABELS[position.source]}
             {position.exchange ? ` · ${position.exchange}` : ""}
           </div>
           <div className="mt-1 text-xs tabular-nums text-gray-500 dark:text-gray-400">
