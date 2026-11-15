@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useAiAnalysisRuns, useAiOn, useDeleteAiAnalysisRun, useMonthlyRoiYears, useStartAiAnalysis } from "@/api/ai";
-import type { AiCitation, AiInsufficientItem, AiObservation, AiRun } from "@/api/ai";
+import { useNavigate } from "react-router-dom";
+import { useAiAnalysisRuns, useAiOn, useAskAiFollowup, useDeleteAiAnalysisRun, useMonthlyRoiYears, useStartAiAnalysis } from "@/api/ai";
+import type { AiCitation, AiInsufficientItem, AiObservation, AiRun, AiRunScope } from "@/api/ai";
 import { useBenchmarkDaily, useBenchmarks } from "@/api/benchmarks";
 import { useCapital, useRoi } from "@/api/capital";
 import { asApiError } from "@/api/client";
@@ -10,7 +11,7 @@ import { fmtDateTime, isoToDateInput } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { zonedParts } from "./compute";
 import { anonymizeTags, buildAiStylePayload, clampScopeEndDate, MIN_BUCKET_SAMPLE, resolveTagLabels, type BenchmarkReturnInput } from "./aiPayload";
-import { formatCitationPath } from "./citationLabel";
+import { citationPositionsQuery, formatCitationPath } from "./citationLabel";
 import { InfoTooltip } from "./InfoTooltip";
 import type { ClosedPosition } from "@/api/analytics";
 import type { Tag, TagGroup } from "@/api/taxonomy";
@@ -170,7 +171,7 @@ export function AiAnalysisView({
         </CardBody>
       </Card>
 
-      {latest && <RunCard run={latest} defaultOpen onDelete={del.mutate} />}
+      {latest && <RunCard profileId={profileId} run={latest} defaultOpen onDelete={del.mutate} />}
       {history.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400">
@@ -179,6 +180,7 @@ export function AiAnalysisView({
           {history.map((r) => (
             <RunCard
               key={r.id}
+              profileId={profileId}
               run={r}
               defaultOpen={openIds.has(r.id)}
               onToggle={() =>
@@ -212,11 +214,13 @@ export function AiAnalysisView({
 
 /** One persisted analysis: collapsed summary row in history, expanded observations when open. */
 function RunCard({
+  profileId,
   run,
   defaultOpen,
   onToggle,
   onDelete,
 }: {
+  profileId: string | null;
   run: AiRun;
   defaultOpen: boolean;
   onToggle?: () => void;
@@ -225,6 +229,8 @@ function RunCard({
   const { t } = useTranslation();
   const [open, setOpen] = useState(defaultOpen);
   const [copied, setCopied] = useState(false);
+  const [question, setQuestion] = useState("");
+  const ask = useAskAiFollowup(profileId);
   const toggle = () => {
     setOpen(!open);
     onToggle?.();
@@ -276,6 +282,12 @@ function RunCard({
         lines.push(`- ${resolveTagLabels(obs.claim, run.tagNames)}${conf}`);
       }
       lines.push("");
+    }
+    if (run.followups?.length) {
+      lines.push("## Follow-up Q&A");
+      for (const f of run.followups) {
+        lines.push(`**Q:** ${f.question}`, `**A:** ${resolveTagLabels(f.answer, run.tagNames)}`, "");
+      }
     }
     navigator.clipboard.writeText(lines.join("\n")).then(() => {
       setCopied(true);
@@ -383,7 +395,7 @@ function RunCard({
                       </p>
                       {item.citations?.length > 0 && (
                         <div className="mt-2">
-                          <Citations citations={item.citations} tagNames={run.tagNames} />
+                          <Citations citations={item.citations} tagNames={run.tagNames} scope={run.scope} />
                         </div>
                       )}
                     </li>
@@ -423,7 +435,7 @@ function RunCard({
                       </p>
                       {item.citations?.length > 0 && (
                         <div className="mt-2">
-                          <Citations citations={item.citations} tagNames={run.tagNames} />
+                          <Citations citations={item.citations} tagNames={run.tagNames} scope={run.scope} />
                         </div>
                       )}
                     </li>
@@ -457,7 +469,7 @@ function RunCard({
                       )}
                       {item.citations?.length > 0 && (
                         <div className="mt-2">
-                          <Citations citations={item.citations} tagNames={run.tagNames} />
+                          <Citations citations={item.citations} tagNames={run.tagNames} scope={run.scope} />
                         </div>
                       )}
                     </li>
@@ -468,7 +480,7 @@ function RunCard({
             {run.observations.length > 0 && (
               <ul className="space-y-4">
                 {run.observations.map((obs, i) => (
-                  <Observation key={i} obs={obs} tagNames={run.tagNames} />
+                  <Observation key={i} obs={obs} tagNames={run.tagNames} scope={run.scope} />
                 ))}
               </ul>
             )}
@@ -479,11 +491,24 @@ function RunCard({
                 </p>
                 <ul className="mt-2 space-y-2">
                   {run.insufficientSample.map((item, i) => (
-                    <InsufficientItemView key={i} item={item} tagNames={run.tagNames} />
+                    <InsufficientItemView key={i} item={item} tagNames={run.tagNames} scope={run.scope} />
                   ))}
                 </ul>
               </div>
             )}
+            <FollowupSection
+              run={run}
+              question={question}
+              onQuestionChange={setQuestion}
+              onAsk={(q) => {
+                ask.mutate(
+                  { runId: run.id, question: q },
+                  { onSuccess: () => setQuestion("") },
+                );
+              }}
+              isPending={ask.isPending}
+              errorMessage={ask.error ? asApiError(ask.error).message : null}
+            />
             {(run.inputTokens !== null || run.latencyMs !== null) && (
               <p className="text-xs text-gray-400">
                 {t("analytics.ai.usage", {
@@ -526,7 +551,7 @@ function Badge({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Observation({ obs, tagNames }: { obs: AiObservation; tagNames: Record<string, string> }) {
+function Observation({ obs, tagNames, scope }: { obs: AiObservation; tagNames: Record<string, string>; scope: AiRunScope }) {
   const { t } = useTranslation();
   return (
     <li className="space-y-1">
@@ -539,44 +564,154 @@ function Observation({ obs, tagNames }: { obs: AiObservation; tagNames: Record<s
           </span>
         )}
       </div>
-      {obs.citations.length > 0 && <Citations citations={obs.citations} tagNames={tagNames} />}
+      {obs.citations.length > 0 && <Citations citations={obs.citations} tagNames={tagNames} scope={scope} />}
     </li>
   );
 }
 
-function InsufficientItemView({ item, tagNames }: { item: AiInsufficientItem; tagNames: Record<string, string> }) {
+function InsufficientItemView({ item, tagNames, scope }: { item: AiInsufficientItem; tagNames: Record<string, string>; scope: AiRunScope }) {
   return (
     <li className="space-y-1">
       <p className="text-sm font-medium">{resolveTagLabels(item.topic, tagNames)}</p>
       <p className="text-xs text-gray-500 dark:text-gray-400">{resolveTagLabels(item.reason, tagNames)}</p>
-      {item.citations.length > 0 && <Citations citations={item.citations} tagNames={tagNames} />}
+      {item.citations.length > 0 && <Citations citations={item.citations} tagNames={tagNames} scope={scope} />}
     </li>
   );
 }
 
-function Citations({ citations, tagNames }: { citations: AiCitation[]; tagNames: Record<string, string> }) {
+function Citations({
+  citations,
+  tagNames,
+  scope,
+}: {
+  citations: AiCitation[];
+  tagNames: Record<string, string>;
+  scope: AiRunScope;
+}) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   return (
     <ul className="flex flex-wrap gap-1.5">
       {citations.map((c, i) => {
         const label = formatCitationPath(c.path, t, c.context);
         const value = resolveTagLabels(fmtValue(c.value), tagNames);
+        const query = citationPositionsQuery(c, scope);
+        const baseTitle = c.grounded ? c.path : `${c.path} — ${t("analytics.ai.citationMismatch")}`;
+        const cls = cn(
+          "rounded border px-1.5 py-0.5 text-xs tabular-nums",
+          c.grounded
+            ? "border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+            : "border-red-300 text-red-600 line-through dark:border-red-800 dark:text-red-400",
+        );
         return (
-          <li
-            key={i}
-            title={c.grounded ? c.path : `${c.path} — ${t("analytics.ai.citationMismatch")}`}
-            className={cn(
-              "rounded border px-1.5 py-0.5 text-xs tabular-nums",
-              c.grounded
-                ? "border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
-                : "border-red-300 text-red-600 line-through dark:border-red-800 dark:text-red-400",
+          <li key={i}>
+            {query ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/positions?${query}`)}
+                title={`${baseTitle} — ${t("analytics.ai.citationInspect")}`}
+                className={cn(cls, "inline-flex items-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 cursor-pointer")}
+              >
+                <span>{label}</span> = {value}
+                <span aria-hidden="true" className="opacity-70">↗</span>
+              </button>
+            ) : (
+              <span title={baseTitle} className={cn(cls, "inline-block")}>
+                <span>{label}</span> = {value}
+              </span>
             )}
-          >
-            <span>{label}</span> = {value}
           </li>
         );
       })}
     </ul>
+  );
+}
+
+function FollowupSection({
+  run,
+  question,
+  onQuestionChange,
+  onAsk,
+  isPending,
+  errorMessage,
+}: {
+  run: AiRun;
+  question: string;
+  onQuestionChange: (v: string) => void;
+  onAsk: (q: string) => void;
+  isPending: boolean;
+  errorMessage: string | null;
+}) {
+  const { t } = useTranslation();
+  const starters = [
+    t("analytics.ai.followup.starterLosses"),
+    t("analytics.ai.followup.starterVenues"),
+    t("analytics.ai.followup.starterTiming"),
+  ];
+  const entries = run.followups ?? [];
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = question.trim();
+    if (!trimmed || isPending) return;
+    onAsk(trimmed);
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-gray-50/70 p-3.5 space-y-3 dark:bg-surface-raised/60">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+          {t("analytics.ai.followup.title")}
+        </h4>
+      </div>
+      {entries.length > 0 && (
+        <ul className="space-y-3">
+          {entries.map((item) => (
+            <li key={item.id} className="rounded-md border border-border bg-white/80 p-3 space-y-2 dark:bg-surface">
+              <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">{item.question}</p>
+              <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-line">
+                {resolveTagLabels(item.answer, run.tagNames)}
+              </p>
+              {item.citations.length > 0 && (
+                <Citations citations={item.citations} tagNames={run.tagNames} scope={run.scope} />
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap gap-1.5">
+        {starters.map((s) => (
+          <button
+            key={s}
+            type="button"
+            disabled={isPending}
+            onClick={() => onQuestionChange(s)}
+            className="rounded-full border border-border bg-white px-2.5 py-1 text-xs text-gray-600 hover:border-violet-400 hover:text-violet-700 disabled:opacity-50 dark:bg-surface dark:text-gray-300 dark:hover:border-violet-500 dark:hover:text-violet-300"
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+      <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row">
+        <input
+          type="text"
+          maxLength={500}
+          value={question}
+          disabled={isPending}
+          onChange={(e) => onQuestionChange(e.target.value)}
+          placeholder={t("analytics.ai.followup.placeholder")}
+          aria-label={t("analytics.ai.followup.placeholder")}
+          className="flex-1 rounded-md border border-border bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-violet-500 focus:outline-none dark:bg-surface dark:text-gray-100"
+        />
+        <button
+          type="submit"
+          disabled={isPending || question.trim().length === 0}
+          className="inline-flex items-center justify-center rounded-md bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isPending ? t("analytics.ai.followup.asking") : t("analytics.ai.followup.ask")}
+        </button>
+      </form>
+      {errorMessage && <p className="text-xs text-red-600 dark:text-red-400">{errorMessage}</p>}
+    </div>
   );
 }
 

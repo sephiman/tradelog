@@ -32,6 +32,13 @@ class AiAnalysisController(
         @RequestBody body: AiAnalysisStartRequest,
     ): AiAnalysisRunDto = service.start(profileId, currentUser.requireUser(), body)
 
+    @PostMapping("/{runId}/followups")
+    fun askFollowup(
+        @PathVariable profileId: UUID,
+        @PathVariable runId: UUID,
+        @RequestBody body: AiAnalysisFollowupRequest,
+    ): AiAnalysisFollowupDto = service.askFollowup(profileId, runId, currentUser.requireUser(), body)
+
     @DeleteMapping("/{runId}")
     fun delete(@PathVariable profileId: UUID, @PathVariable runId: UUID) {
         service.delete(profileId, runId)

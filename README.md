@@ -306,8 +306,8 @@ size, breakdown buckets under 10 trades dropped and counted — to the provider,
 list of observations with the exact payload fields each claim rests on, a confidence level, and a
 separate section for what cannot be concluded because the sample is too small. Every cited value is
 verified against the payload automatically (unverified citations are struck through in the UI and
-counted on the run), and runs are **persisted per profile** so past analyses stay expandable and
-comparable.
+counted on the run; matching citations link straight to the filtered **Positions** view), and runs
+plus persisted **follow-up Q&A** stay expandable and comparable per profile.
 
 Privacy, enforced end to end: **only aggregate numbers and anonymized closed trade rows travel** — never API keys or credentials,
 wallet addresses, email or user ids, profile names, data-source labels, external or internal trade ids, or position

@@ -122,12 +122,68 @@ interface AiAnalysisRunRepository : JpaRepository<AiAnalysisRun, UUID> {
 
     fun findAllByProfileIdOrderByCreatedAtDesc(profileId: UUID): List<AiAnalysisRun>
 
-    fun findFirstByProfileIdAndStatusOrderByCreatedAtDesc(
+    fun findAllByProfileIdAndStatusOrderByCreatedAtDesc(
         profileId: UUID,
         status: AiAnalysisRunStatus,
-    ): AiAnalysisRun?
+    ): List<AiAnalysisRun>
 
     fun findByIdAndProfileId(id: UUID, profileId: UUID): AiAnalysisRun?
 
     fun findAllByStatus(status: AiAnalysisRunStatus): List<AiAnalysisRun>
+}
+
+/** One persisted follow-up Q&A message anchored to a completed [AiAnalysisRun]. */
+@Entity
+@Table(name = "ai_analysis_followups")
+class AiAnalysisFollowup(
+    @Id
+    @Column(name = "id", nullable = false, updatable = false)
+    var id: UUID = UUID.randomUUID(),
+
+    @Column(name = "run_id", nullable = false, updatable = false)
+    var runId: UUID,
+
+    @Column(name = "profile_id", nullable = false, updatable = false)
+    var profileId: UUID,
+
+    @Column(name = "user_id", nullable = false, updatable = false)
+    var userId: UUID,
+
+    @Column(name = "question", nullable = false)
+    var question: String,
+
+    @Column(name = "answer", nullable = false)
+    var answer: String,
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "citations_json", nullable = false, columnDefinition = "jsonb")
+    var citationsJson: String = "[]",
+
+    @Column(name = "citations_total", nullable = false)
+    var citationsTotal: Int = 0,
+
+    @Column(name = "citations_ungrounded", nullable = false)
+    var citationsUngrounded: Int = 0,
+
+    @Column(name = "input_tokens")
+    var inputTokens: Int? = null,
+
+    @Column(name = "output_tokens")
+    var outputTokens: Int? = null,
+
+    @Column(name = "reasoning_tokens")
+    var reasoningTokens: Int? = null,
+
+    @Column(name = "latency_ms")
+    var latencyMs: Long? = null,
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    var createdAt: Instant = Instant.now(),
+)
+
+interface AiAnalysisFollowupRepository : JpaRepository<AiAnalysisFollowup, UUID> {
+
+    fun findAllByProfileIdOrderByCreatedAtAsc(profileId: UUID): List<AiAnalysisFollowup>
+
+    fun findAllByRunIdOrderByCreatedAtAsc(runId: UUID): List<AiAnalysisFollowup>
 }

@@ -52,6 +52,19 @@ export interface AiTradingRule {
   citations: AiCitation[];
 }
 
+export interface AiFollowup {
+  id: string;
+  question: string;
+  answer: string;
+  citations: AiCitation[];
+  citationsTotal: number;
+  citationsUngrounded: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  latencyMs: number | null;
+  createdAt: string;
+}
+
 /** The dashboard filter state a run was produced under; kept on the row so old runs stay interpretable. */
 export interface AiRunScope {
   periodPreset: string;
@@ -89,6 +102,7 @@ export interface AiRun {
   reasoningTokens: number | null;
   latencyMs: number | null;
   errorCode: string | null;
+  followups?: AiFollowup[];
 }
 
 const settingsKey = ["ai-settings"];
@@ -150,6 +164,16 @@ export function useDeleteAiAnalysisRun(profileId: string | null) {
     mutationFn: async (runId: string) => {
       await apiClient.delete(`/profiles/${profileId}/ai-analysis/${runId}`);
     },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["ai-analysis", profileId] }),
+    meta: { silentSuccess: true },
+  });
+}
+
+export function useAskAiFollowup(profileId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ runId, question }: { runId: string; question: string }) =>
+      (await apiClient.post<AiFollowup>(`/profiles/${profileId}/ai-analysis/${runId}/followups`, { question })).data,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["ai-analysis", profileId] }),
     meta: { silentSuccess: true },
   });

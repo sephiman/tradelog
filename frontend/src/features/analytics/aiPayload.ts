@@ -37,6 +37,8 @@ import {
  */
 
 export const MIN_BUCKET_SAMPLE = 10;
+/** Coarse structural dimensions (dayType, session, exchange, kind, style, concurrency) surface splits at >= 3 trades. */
+export const MIN_COARSE_BUCKET_SAMPLE = 3;
 export const MAX_INLINE_TRADES = 80;
 const SAMPLED_RECENT_COUNT = 40;
 const SAMPLED_OUTLIER_COUNT = 10;
@@ -100,6 +102,8 @@ export interface AnonymizedTradeRow {
   fees: number;
   funding: number;
   netPnl: number;
+  returnOnVolumePct?: number | null;
+  priceMovePct?: number | null;
   tags?: string[];
 }
 
@@ -228,6 +232,14 @@ export interface AiStylePayload {
     mostTraded: ({ pair: string } & GroupBucketStats)[];
     mostProfitable: ({ pair: string } & GroupBucketStats)[];
     leastProfitable: ({ pair: string } & GroupBucketStats)[];
+  };
+  portfolioHeat: {
+    minSample: number;
+    maxConcurrentOpen: number;
+    avgConcurrentAtEntry: number;
+    isolated: GroupBucketStats | null;
+    overlapping: GroupBucketStats | null;
+    sameSideOverlap: GroupBucketStats | null;
   };
   fees: {
     n: number;
@@ -364,6 +376,7 @@ export function buildAiStylePayload(input: AiPayloadInput): AiStylePayload {
     byMonth: monthSection(rows, scope.timeZone, monthlyRoi),
     streaks: streaksSection(rows),
     pairs,
+    portfolioHeat: portfolioHeatSection(rows),
     fees: {
       n: rows.length,
       totalFees: money(totalFees),
@@ -572,7 +585,7 @@ function styleSection(rows: ClosedPosition[]): AiStylePayload["style"] {
     { style: "day", bucket: style.day },
     { style: "swing", bucket: style.swing },
   ].filter((b) => b.bucket.count > 0);
-  const kept = raw.filter((b) => b.bucket.count >= MIN_BUCKET_SAMPLE);
+  const kept = raw.filter((b) => b.bucket.count >= MIN_COARSE_BUCKET_SAMPLE);
   const durationOf = (p: ClosedPosition) => new Date(p.closedAt).getTime() - new Date(p.openedAt).getTime();
   const wins = rows.filter((r) => netOf(r).gt(0));
   const losses = rows.filter((r) => netOf(r).lt(0));
@@ -585,7 +598,7 @@ function styleSection(rows: ClosedPosition[]): AiStylePayload["style"] {
   const msToHours = (ms: number | null): number | null => (ms === null ? null : round(ms / 3_600_000, 1));
   const lossToWinDurationRatio = avgWinMs && avgLossMs && avgWinMs > 0 ? round(avgLossMs / avgWinMs, 2) : null;
   return {
-    minSample: MIN_BUCKET_SAMPLE,
+    minSample: MIN_COARSE_BUCKET_SAMPLE,
     droppedBuckets: raw.length - kept.length,
     buckets: kept.map(({ style, bucket }) => ({
       style,
@@ -652,17 +665,18 @@ function weekdaySection(rows: ClosedPosition[], timeZone: string): AiStylePayloa
 
 function keyedBuckets<K extends string>(
   grouped: Map<K, ClosedPosition[]>,
+  minSample: number = MIN_BUCKET_SAMPLE,
 ): { minSample: number; droppedBuckets: number; buckets: { key: K; stats: GroupBucketStats }[] } {
   const buckets: { key: K; stats: GroupBucketStats }[] = [];
   let dropped = 0;
   for (const [key, list] of [...grouped.entries()].sort((a, b) => b[1].length - a[1].length)) {
-    if (list.length >= MIN_BUCKET_SAMPLE) {
+    if (list.length >= minSample) {
       buckets.push({ key, stats: bucketStatsOf(list) });
     } else {
       dropped++;
     }
   }
-  return { minSample: MIN_BUCKET_SAMPLE, droppedBuckets: dropped, buckets };
+  return { minSample, droppedBuckets: dropped, buckets };
 }
 
 function sessionSection(rows: ClosedPosition[]): AiStylePayload["bySession"] {
@@ -673,7 +687,7 @@ function sessionSection(rows: ClosedPosition[]): AiStylePayload["bySession"] {
     if (h < 21) return "us";
     return "late";
   };
-  const res = keyedBuckets(groupRows(rows, (r) => sessionOf(r.openedAt)));
+  const res = keyedBuckets(groupRows(rows, (r) => sessionOf(r.openedAt)), MIN_COARSE_BUCKET_SAMPLE);
   return {
     minSample: res.minSample,
     droppedBuckets: res.droppedBuckets,
@@ -684,7 +698,7 @@ function sessionSection(rows: ClosedPosition[]): AiStylePayload["bySession"] {
 function dayTypeSection(rows: ClosedPosition[], timeZone: string): AiStylePayload["byDayType"] {
   const dayTypeOf = (iso: string): "weekday" | "weekend" =>
     zonedParts(iso, timeZone).weekday >= 5 ? "weekend" : "weekday";
-  const res = keyedBuckets(groupRows(rows, (r) => dayTypeOf(r.openedAt)));
+  const res = keyedBuckets(groupRows(rows, (r) => dayTypeOf(r.openedAt)), MIN_COARSE_BUCKET_SAMPLE);
   return {
     minSample: res.minSample,
     droppedBuckets: res.droppedBuckets,
@@ -697,7 +711,7 @@ function directionStyleSection(rows: ClosedPosition[]): AiStylePayload["directio
     const ms = new Date(r.closedAt).getTime() - new Date(r.openedAt).getTime();
     return `${r.side}_${styleOf(ms)}`;
   };
-  const res = keyedBuckets(groupRows(rows, comboOf));
+  const res = keyedBuckets(groupRows(rows, comboOf), MIN_BUCKET_SAMPLE);
   return {
     minSample: res.minSample,
     droppedBuckets: res.droppedBuckets,
@@ -711,13 +725,13 @@ function exchangeSection(rows: ClosedPosition[]): AiStylePayload["byExchange"] |
   const buckets: ({ exchange: string } & GroupBucketStats)[] = [];
   let dropped = 0;
   for (const [exchange, list] of [...grouped.entries()].sort((a, b) => b[1].length - a[1].length)) {
-    if (list.length >= MIN_BUCKET_SAMPLE) {
+    if (list.length >= MIN_COARSE_BUCKET_SAMPLE) {
       buckets.push({ exchange, ...bucketStatsOf(list) });
     } else {
       dropped++;
     }
   }
-  return { minSample: MIN_BUCKET_SAMPLE, droppedBuckets: dropped, buckets };
+  return { minSample: MIN_COARSE_BUCKET_SAMPLE, droppedBuckets: dropped, buckets };
 }
 
 function kindSection(rows: ClosedPosition[]): AiStylePayload["byKind"] | null {
@@ -726,13 +740,80 @@ function kindSection(rows: ClosedPosition[]): AiStylePayload["byKind"] | null {
   const buckets: ({ kind: PositionKind } & GroupBucketStats)[] = [];
   let dropped = 0;
   for (const [kind, list] of grouped.entries()) {
-    if (list.length >= MIN_BUCKET_SAMPLE) {
+    if (list.length >= MIN_COARSE_BUCKET_SAMPLE) {
       buckets.push({ kind, ...bucketStatsOf(list) });
     } else {
       dropped++;
     }
   }
-  return { minSample: MIN_BUCKET_SAMPLE, droppedBuckets: dropped, buckets };
+  return { minSample: MIN_COARSE_BUCKET_SAMPLE, droppedBuckets: dropped, buckets };
+}
+
+function portfolioHeatSection(rows: ClosedPosition[]): AiStylePayload["portfolioHeat"] {
+  if (rows.length === 0) {
+    return {
+      minSample: MIN_COARSE_BUCKET_SAMPLE,
+      maxConcurrentOpen: 0,
+      avgConcurrentAtEntry: 0,
+      isolated: null,
+      overlapping: null,
+      sameSideOverlap: null,
+    };
+  }
+
+  const intervals = rows.map((r) => ({
+    row: r,
+    open: new Date(r.openedAt).getTime(),
+    close: Math.max(new Date(r.openedAt).getTime(), new Date(r.closedAt).getTime()),
+  }));
+
+  // Closes before opens at the exact same timestamp so instant sequential flips do not count as overlapping.
+  const events: { t: number; delta: number }[] = [];
+  for (const iv of intervals) {
+    events.push({ t: iv.open, delta: 1 });
+    events.push({ t: iv.close, delta: -1 });
+  }
+  events.sort((a, b) => a.t - b.t || a.delta - b.delta);
+
+  let active = 0;
+  let maxConcurrentOpen = 0;
+  for (const ev of events) {
+    active += ev.delta;
+    if (active > maxConcurrentOpen) maxConcurrentOpen = active;
+  }
+
+  const isolatedRows: ClosedPosition[] = [];
+  const overlappingRows: ClosedPosition[] = [];
+  const sameSideOverlapRows: ClosedPosition[] = [];
+  let concurrentSum = 0;
+
+  for (const current of intervals) {
+    let otherOpen = 0;
+    let otherSameSide = 0;
+    for (const other of intervals) {
+      if (other.row === current.row) continue;
+      if (other.open <= current.open && other.close > current.open) {
+        otherOpen++;
+        if (other.row.side === current.row.side) otherSameSide++;
+      }
+    }
+    concurrentSum += 1 + otherOpen;
+    if (otherOpen === 0) isolatedRows.push(current.row);
+    else overlappingRows.push(current.row);
+    if (otherSameSide > 0) sameSideOverlapRows.push(current.row);
+  }
+
+  const bucketOrNull = (list: ClosedPosition[]) =>
+    list.length >= MIN_COARSE_BUCKET_SAMPLE ? bucketStatsOf(list) : null;
+
+  return {
+    minSample: MIN_COARSE_BUCKET_SAMPLE,
+    maxConcurrentOpen,
+    avgConcurrentAtEntry: round(concurrentSum / rows.length, 2),
+    isolated: bucketOrNull(isolatedRows),
+    overlapping: bucketOrNull(overlappingRows),
+    sameSideOverlap: bucketOrNull(sameSideOverlapRows),
+  };
 }
 
 function monthSection(
@@ -927,7 +1008,15 @@ function tradesSection(
   const toRow = (r: ClosedPosition, seq: number): AnonymizedTradeRow => {
     const holdMs = Math.max(0, new Date(r.closedAt).getTime() - new Date(r.openedAt).getTime());
     const vol = volumeOf(r);
+    const volNum = vol ? money(vol.toNumber()) : null;
+    const netNum = money(netOf(r).toNumber());
     const anonTags = r.tags.map((t) => labelById.get(t.tagId)).filter((x): x is string => Boolean(x));
+    const entry = r.entryPrice ? Number(r.entryPrice) : null;
+    const exit = r.exitPrice ? Number(r.exitPrice) : null;
+    const priceMovePct =
+      entry && exit && Number.isFinite(entry) && Number.isFinite(exit) && entry > 0
+        ? round(((r.side === "LONG" ? exit - entry : entry - exit) / entry) * 100, 2)
+        : null;
     const row: AnonymizedTradeRow = {
       seq,
       pair: pairOf(r),
@@ -935,12 +1024,14 @@ function tradesSection(
       openedAt: formatZonedTimestamp(r.openedAt, scope.timeZone),
       closedAt: formatZonedTimestamp(r.closedAt, scope.timeZone),
       holdHours: round(holdMs / 3_600_000, 1),
-      volume: vol ? money(vol.toNumber()) : null,
+      volume: volNum,
       grossPnl: money(toDecimal(r.realizedPnl).toNumber()),
       fees: money(toDecimal(r.fees).toNumber()),
       funding: money(toDecimal(r.funding).toNumber()),
-      netPnl: money(netOf(r).toNumber()),
+      netPnl: netNum,
+      returnOnVolumePct: volNum && volNum > 0 ? round((netNum / volNum) * 100, 2) : null,
     };
+    if (priceMovePct !== null) row.priceMovePct = priceMovePct;
     if (r.kind && r.kind !== "TRADE") row.kind = r.kind;
     if (scope.exchange === "ALL" && r.exchange) row.exchange = r.exchange;
     if (anonTags.length > 0) row.tags = anonTags;

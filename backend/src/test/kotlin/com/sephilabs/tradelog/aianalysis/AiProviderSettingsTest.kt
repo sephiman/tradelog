@@ -52,7 +52,9 @@ class GroundingVerifierTest {
         """
         {"scope":{"exchange":"Bybit"},
          "summary":{"n":12,"totalPnl":123.45},
-         "byHour":{"buckets":[{"hour":14,"n":11,"winRatePct":63.6}]}}
+         "byHour":{"buckets":[{"hour":14,"n":11,"winRatePct":63.6}]},
+         "emptyBuckets":[],
+         "behavioralSignals":{"fatigue":{"trades4to6":null}}}
         """.trimIndent(),
     )
 
@@ -91,8 +93,17 @@ class GroundingVerifierTest {
     fun `missing paths and malformed citations are ungrounded`() {
         assertFalse(grounded("summary.madeUp", 1))
         assertFalse(grounded("summary.totalPnl.extra", 1))
+        assertFalse(grounded("summary.madeUp", "null"))
         val malformed = mapper.readTree("""{"path":"","value":1}""")
         assertFalse(GroundingVerifier.check(payload, malformed).grounded)
+    }
+
+    @Test
+    fun `explicit nulls and empty arrays match when present in payload`() {
+        assertTrue(grounded("behavioralSignals.fatigue.trades4to6", "null"))
+        assertTrue(grounded("emptyBuckets", "[]"))
+        assertFalse(grounded("emptyBuckets", "[1]"))
+        assertFalse(grounded("byHour.buckets", "[]"))
     }
 
     @Test

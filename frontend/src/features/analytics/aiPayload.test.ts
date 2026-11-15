@@ -3,8 +3,16 @@ import type { CapitalOverview } from "@/api/capital";
 import type { PositionTagView, PositionSide } from "@/api/positions";
 import type { ClosedPosition } from "@/api/analytics";
 import type { Tag, TagGroup } from "@/api/taxonomy";
-import { anonymizeTags, buildAiStylePayload, clampScopeEndDate, MAX_INLINE_TRADES, MIN_BUCKET_SAMPLE, resolveTagLabels } from "./aiPayload";
-import { formatCitationPath } from "./citationLabel";
+import {
+  anonymizeTags,
+  buildAiStylePayload,
+  clampScopeEndDate,
+  MAX_INLINE_TRADES,
+  MIN_BUCKET_SAMPLE,
+  MIN_COARSE_BUCKET_SAMPLE,
+  resolveTagLabels,
+} from "./aiPayload";
+import { citationPositionsQuery, formatCitationPath } from "./citationLabel";
 import i18n from "@/i18n";
 
 const TZ = "UTC";
@@ -214,7 +222,7 @@ describe("buildAiStylePayload", () => {
     expect(p.behavioralSignals.whatIf.skipPostWinReentryPnl).toBe(95);
     expect(p.benchmarks).toEqual([{ key: "BTC", returnPct: 12.35, from: "2026-01-01", to: "2026-01-03" }]);
     expect(p.byExchange?.droppedBuckets).toBe(2);
-    expect(p.byKind?.droppedBuckets).toBe(2);
+    expect(p.byKind?.droppedBuckets).toBe(1);
     expect(p.byTagGroups).toHaveLength(1);
     expect(p.byTagGroups?.[0].group).toBe("Group A");
     expect(p.tagMap["Group A"]).toBe("g-setup");
@@ -222,12 +230,47 @@ describe("buildAiStylePayload", () => {
     expect(p.tradesIncluded).toEqual({ total: 4, mode: "all" });
     expect(p.trades).toHaveLength(4);
     expect(p.trades?.[0].tags).toEqual(["Tag A-1"]);
+    expect(p.trades?.[0].returnOnVolumePct).toBe(9);
+    expect(p.trades?.[0].priceMovePct).toBe(10);
     expect(p.trades?.[0]).not.toHaveProperty("id");
-    expect(p.bySession.minSample).toBe(10);
-    expect(p.byDayType.minSample).toBe(10);
-    expect(p.directionStyle.minSample).toBe(10);
+    expect(p.bySession.minSample).toBe(MIN_COARSE_BUCKET_SAMPLE);
+    expect(p.byDayType.minSample).toBe(MIN_COARSE_BUCKET_SAMPLE);
+    expect(p.directionStyle.minSample).toBe(MIN_BUCKET_SAMPLE);
+    expect(p.portfolioHeat.maxConcurrentOpen).toBe(1);
+    expect(p.portfolioHeat.isolated?.n).toBe(4);
+    expect(p.portfolioHeat.overlapping).toBeNull();
     expect(JSON.stringify(p)).not.toContain("Breakout");
     expect(JSON.stringify(p)).not.toContain("Setup");
+  });
+
+  it("keeps coarse weekday/weekend splits >= 3 and computes portfolioHeat concurrent overlaps", () => {
+    const weekdayRows = Array.from({ length: 5 }, (_, i) =>
+      // Thursday 2026-01-15: 3 isolated (12:00, 13:00, 14:00), 2 overlapping same-side LONGs (10:00..11:30)
+      position({
+        id: `wd-${i}`,
+        openedAt: i < 2 ? "2026-01-15T10:00:00Z" : `2026-01-15T${10 + i}:00:00Z`,
+        closedAt: i < 2 ? "2026-01-15T11:30:00Z" : `2026-01-15T${10 + i}:30:00Z`,
+        netPnl: i === 0 ? "-20" : "15",
+      }),
+    );
+    const weekendRows = Array.from({ length: 3 }, (_, i) =>
+      // Saturday 2026-01-17: 3 concurrent overlapping LONGs all losing
+      position({
+        id: `we-${i}`,
+        openedAt: "2026-01-17T10:00:00Z",
+        closedAt: "2026-01-17T12:00:00Z",
+        netPnl: "-30",
+      }),
+    );
+    const p = payload([...weekdayRows, ...weekendRows]);
+    expect(p.byDayType.buckets.map((b) => [b.dayType, b.n, b.totalPnl])).toEqual([
+      ["weekday", 5, 40],
+      ["weekend", 3, -90],
+    ]);
+    expect(p.portfolioHeat.maxConcurrentOpen).toBe(3);
+    expect(p.portfolioHeat.overlapping?.n).toBe(5);
+    expect(p.portfolioHeat.sameSideOverlap?.n).toBe(5);
+    expect(p.portfolioHeat.isolated?.n).toBe(3);
   });
 
   it("switches to sampled mode with recentTrades, topLosers and topWinners when rows exceed MAX_INLINE_TRADES", () => {
@@ -258,6 +301,43 @@ describe("formatCitationPath", () => {
       "What-if: skip post-loss reentry",
     );
     expect(formatCitationPath("summary.madeUp.path", t)).toBe("summary.madeUp.path");
+    expect(formatCitationPath("portfolioHeat.sameSideOverlap.winRatePct", t)).toBe(
+      "Concurrency (sameSideOverlap) · win rate (%)",
+    );
+  });
+});
+
+describe("citationPositionsQuery", () => {
+  const scope = {
+    periodPreset: "month",
+    rangeFrom: "2026-11-01",
+    rangeTo: "2026-11-15",
+    exchange: "ALL",
+    origenLabel: null,
+    timeZone: "UTC",
+    sampleSize: 25,
+  };
+
+  it("maps grounded trade, pair, direction, exchange, and month citations to /positions params", () => {
+    expect(
+      citationPositionsQuery({ path: "trades.3.netPnl", value: -85.55, grounded: true, context: "#4 ETH/USDT" }, scope),
+    ).toBe("from=2026-11-01&to=2026-11-15&symbol=ETH");
+    expect(
+      citationPositionsQuery({ path: "direction.long.winRatePct", value: 26.3, grounded: true }, scope),
+    ).toBe("from=2026-11-01&to=2026-11-15&side=LONG");
+    expect(
+      citationPositionsQuery({ path: "capitalAndRisk.byExchange.0.capital", value: 26.55, grounded: true, context: "BingX" }, scope),
+    ).toBe("from=2026-11-01&to=2026-11-15&exchange=BingX");
+    expect(
+      citationPositionsQuery({ path: "byMonth.0.pnl", value: -315.47, grounded: true, context: "2026-11" }, scope),
+    ).toBe("from=2026-11-01&to=2026-11-30");
+  });
+
+  it("returns null for ungrounded or non-filterable citations", () => {
+    expect(citationPositionsQuery({ path: "summary.totalPnl", value: -315.47, grounded: true }, scope)).toBeNull();
+    expect(
+      citationPositionsQuery({ path: "trades.3.netPnl", value: -85.55, grounded: false, context: "#4 ETH/USDT" }, scope),
+    ).toBeNull();
   });
 });
 

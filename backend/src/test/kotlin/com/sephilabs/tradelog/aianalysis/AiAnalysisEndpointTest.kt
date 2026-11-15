@@ -27,8 +27,10 @@ class AiTestConfig {
         object : AiChatClient {
             override fun complete(prompt: ChatPrompt): ChatAnswer {
                 lastPrompt = prompt
-                return ChatAnswer(
-                content = """
+                val body = if (prompt.system.contains("follow-up")) {
+                    """{"answer":"El peor resultado en BTC/USDT fue de -45.0.","citations":[{"path":"trades.0.netPnl","value":-45.0}]}"""
+                } else {
+                    """
                     {"summary":"Operador de sesgo intradiario con buen control de riesgo general.",
                      "evolution":"Mejora notable en el control de pérdidas respecto a periodos previos.",
                      "strengths":[
@@ -53,13 +55,16 @@ class AiTestConfig {
                      "insufficientSample":[
                        {"topic":"Horas del día","reason":"Se descartaron tramos con menos de 10 operaciones.",
                         "citations":[{"path":"summary.n","value":12}]}]}
-                """.trimIndent(),
-                inputTokens = 111,
-                outputTokens = 22,
-                reasoningTokens = 3,
-                latencyMs = 456,
-                attempts = 1,
-            )
+                """.trimIndent()
+                }
+                return ChatAnswer(
+                    content = body,
+                    inputTokens = 111,
+                    outputTokens = 22,
+                    reasoningTokens = 3,
+                    latencyMs = 456,
+                    attempts = 1,
+                )
             }
         }
 }
@@ -156,14 +161,55 @@ class AiAnalysisEndpointTest : AuthHttpTestBase() {
 
         val runId = com.jayway.jsonpath.JsonPath.read<String>(started.response.contentAsString, "$.id")
 
-        // Second run receives prior metrics, summary, and prior improvement titles in prompt.user.
+        // Follow-up Q&A validates input, grounds citations, persists history, and resolves citation context.
+        mockMvc.perform(
+            post("/api/profiles/$profileId/ai-analysis/$runId/followups").cookie(session).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"question":"   "}"""),
+        ).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("AI_ANALYSIS_QUESTION_INVALID"))
+
+        mockMvc.perform(
+            post("/api/profiles/$profileId/ai-analysis/$runId/followups").cookie(session).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"question":"¿Qué pasó con BTC/USDT?"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.question").value("¿Qué pasó con BTC/USDT?"))
+            .andExpect(jsonPath("$.answer").value("El peor resultado en BTC/USDT fue de -45.0."))
+            .andExpect(jsonPath("$.citations[0].grounded").value(true))
+            .andExpect(jsonPath("$.citations[0].context").value("#1 BTC/USDT"))
+            .andExpect(jsonPath("$.citationsTotal").value(1))
+            .andExpect(jsonPath("$.citationsUngrounded").value(0))
+
+        mockMvc.perform(get("/api/profiles/$profileId/ai-analysis").cookie(session))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].followups.length()").value(1))
+            .andExpect(jsonPath("$[0].followups[0].question").value("¿Qué pasó con BTC/USDT?"))
+
+        // Prior run prefers differing sampleSize over differing rangeTo with same sampleSize.
+        val month19 = """{"scope":{"periodPreset":"month","rangeFrom":"2026-11-01","rangeTo":"2026-11-15","exchange":"ALL","origen":null,"timeZone":"UTC"},"summary":{"n":19,"totalPnl":-100.0}}"""
         mockMvc.perform(
             post("/api/profiles/$profileId/ai-analysis").cookie(session).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"payload": $payload}"""),
+                .content("""{"payload": $month19}"""),
+        ).andExpect(status().isAccepted)
+
+        val month25Full = """{"scope":{"periodPreset":"month","rangeFrom":"2026-11-01","rangeTo":"2026-11-30","exchange":"ALL","origen":null,"timeZone":"UTC"},"summary":{"n":25,"totalPnl":10.0}}"""
+        mockMvc.perform(
+            post("/api/profiles/$profileId/ai-analysis").cookie(session).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"payload": $month25Full}"""),
+        ).andExpect(status().isAccepted)
+
+        val month25Clamped = """{"scope":{"periodPreset":"month","rangeFrom":"2026-11-01","rangeTo":"2026-11-15","exchange":"ALL","origen":null,"timeZone":"UTC"},"summary":{"n":25,"totalPnl":10.0}}"""
+        mockMvc.perform(
+            post("/api/profiles/$profileId/ai-analysis").cookie(session).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"payload": $month25Clamped}"""),
         ).andExpect(status().isAccepted)
         val userPrompt = aiTestConfig.lastPrompt?.user ?: ""
-        org.junit.jupiter.api.Assertions.assertTrue(userPrompt.contains("totalPnl=123.45"))
+        org.junit.jupiter.api.Assertions.assertTrue(userPrompt.contains("n=19"))
         org.junit.jupiter.api.Assertions.assertTrue(userPrompt.contains("Prior improvements: Reducir sobreoperativa nocturna"))
 
         mockMvc.perform(
@@ -171,7 +217,7 @@ class AiAnalysisEndpointTest : AuthHttpTestBase() {
         )
             .andExpect(status().isOk)
         mockMvc.perform(get("/api/profiles/$profileId/ai-analysis").cookie(session))
-            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$.length()").value(3))
     }
 
     @Test

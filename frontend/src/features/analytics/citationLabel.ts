@@ -1,6 +1,9 @@
+import type { AiCitation, AiRunScope } from "@/api/ai";
 import type { TFunction } from "i18next";
 
 const EXACT_KEYS: Record<string, string> = {
+  "portfolioHeat.maxConcurrentOpen": "analytics.ai.citations.maxConcurrentOpen",
+  "portfolioHeat.avgConcurrentAtEntry": "analytics.ai.citations.avgConcurrentAtEntry",
   "summary.n": "analytics.ai.citations.summaryN",
   "summary.wins": "analytics.ai.citations.summaryWins",
   "summary.losses": "analytics.ai.citations.summaryLosses",
@@ -96,12 +99,15 @@ const FIELD_KEYS: Record<string, string> = {
   volume: "analytics.ai.citations.fieldVolume",
   grossPnl: "analytics.ai.citations.fieldGrossPnl",
   netPnl: "analytics.ai.citations.fieldPnl",
+  returnOnVolumePct: "analytics.ai.citations.fieldReturnOnVolumePct",
+  priceMovePct: "analytics.ai.citations.fieldPriceMovePct",
   funding: "analytics.ai.citations.fieldFunding",
   side: "analytics.ai.citations.fieldSide",
 };
 
 const PREFIX_KEYS: [RegExp, string][] = [
   [/^direction\.(long|short)\.(.+)$/, "analytics.ai.citations.prefixDirection"],
+  [/^portfolioHeat\.(isolated|overlapping|sameSideOverlap)\.(.+)$/, "analytics.ai.citations.prefixPortfolioHeat"],
   [/^bySession\.buckets\.\d+\.(.+)$/, "analytics.ai.citations.prefixSession"],
   [/^byDayType\.buckets\.\d+\.(.+)$/, "analytics.ai.citations.prefixDayType"],
   [/^directionStyle\.buckets\.\d+\.(.+)$/, "analytics.ai.citations.prefixDirectionStyle"],
@@ -151,4 +157,68 @@ export function formatCitationPath(path: string, t: TFunction, context?: string 
   }
 
   return path;
+}
+
+const baseSymbol = (pair: string): string => pair.split("/")[0]?.trim() || pair;
+
+const monthBounds = (ym: string): { from: string; to: string } | null => {
+  const m = /^(\d{4})-(\d{2})$/.exec(ym);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  if (month < 1 || month > 12) return null;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return { from: `${m[1]}-${m[2]}-01`, to: `${m[1]}-${m[2]}-${String(lastDay).padStart(2, "0")}` };
+};
+
+/** Maps a grounded citation to `/positions` search query parameters when it pinpoints filterable trades. */
+export function citationPositionsQuery(citation: AiCitation, scope: AiRunScope): string | null {
+  if (!citation.grounded) return null;
+  const normalized = citation.path.replace(/\[(\d+)]/g, ".$1");
+  const params = new URLSearchParams();
+  let matched = false;
+
+  if (scope.rangeFrom) params.set("from", scope.rangeFrom);
+  if (scope.rangeTo) params.set("to", scope.rangeTo);
+  if (scope.exchange && scope.exchange !== "ALL") params.set("exchange", scope.exchange);
+
+  const ctx = citation.context?.trim() ?? "";
+
+  if (/^(trades|recentTrades|topLosers|topWinners)\.\d+\./.test(normalized)) {
+    const m = /^#\d+\s+([^\s]+)$/.exec(ctx);
+    if (m) {
+      params.set("symbol", baseSymbol(m[1]));
+      matched = true;
+    }
+  } else if (/^pairs\./.test(normalized)) {
+    const pair = ctx || (typeof citation.value === "string" ? citation.value.trim() : "");
+    if (pair.includes("/")) {
+      params.set("symbol", baseSymbol(pair));
+      matched = true;
+    }
+  } else if (/^direction\.long\./.test(normalized)) {
+    params.set("side", "LONG");
+    matched = true;
+  } else if (/^direction\.short\./.test(normalized)) {
+    params.set("side", "SHORT");
+    matched = true;
+  } else if (/^directionStyle\.buckets\.\d+\./.test(normalized)) {
+    const side = ctx.startsWith("LONG_") ? "LONG" : ctx.startsWith("SHORT_") ? "SHORT" : null;
+    if (side) {
+      params.set("side", side);
+      matched = true;
+    }
+  } else if (/^(byExchange\.buckets|capitalAndRisk\.byExchange)\.\d+\./.test(normalized) && ctx) {
+    params.set("exchange", ctx);
+    matched = true;
+  } else if (/^byMonth\.\d+\./.test(normalized)) {
+    const bounds = monthBounds(ctx);
+    if (bounds) {
+      params.set("from", bounds.from);
+      params.set("to", bounds.to);
+      matched = true;
+    }
+  }
+
+  return matched ? params.toString() : null;
 }

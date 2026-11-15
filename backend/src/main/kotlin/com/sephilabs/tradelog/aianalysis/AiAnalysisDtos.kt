@@ -7,6 +7,21 @@ import java.util.UUID
 
 data class AiAnalysisStartRequest(val payload: JsonNode?)
 
+data class AiAnalysisFollowupRequest(val question: String?)
+
+data class AiAnalysisFollowupDto(
+    val id: UUID,
+    val question: String,
+    val answer: String,
+    val citations: List<AiAnalysisCitationDto>,
+    val citationsTotal: Int,
+    val citationsUngrounded: Int,
+    val inputTokens: Int?,
+    val outputTokens: Int?,
+    val latencyMs: Long?,
+    val createdAt: Instant,
+)
+
 /** The dashboard filter state the run was produced under. */
 data class AiAnalysisScopeDto(
     val periodPreset: String,
@@ -85,4 +100,5 @@ data class AiAnalysisRunDto(
     val reasoningTokens: Int?,
     val latencyMs: Long?,
     val errorCode: String?,
+    val followups: List<AiAnalysisFollowupDto> = emptyList(),
 )

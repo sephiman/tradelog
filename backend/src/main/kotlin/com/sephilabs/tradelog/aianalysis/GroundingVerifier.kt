@@ -30,6 +30,12 @@ object GroundingVerifier {
         return Result(checks.size, checks.count { !it.grounded }, checks)
     }
 
+    /** Checks a standalone array of citations (e.g. a follow-up Q&A answer). */
+    fun verifyCitations(payload: JsonNode, citations: JsonNode): Result {
+        val checks = if (citations.isArray) citations.toList().map { check(payload, it) } else emptyList()
+        return Result(checks.size, checks.count { !it.grounded }, checks)
+    }
+
     fun check(payload: JsonNode, citation: JsonNode): CitationCheck {
         val path = citation.path("path").asString(null)
         val cited = citation.path("value").takeIf { !it.isMissingNode }
@@ -40,7 +46,7 @@ object GroundingVerifier {
         return CitationCheck(path, matches(cited, actual), cited, actual)
     }
 
-    /** Walks [path] against [payload]; null when any segment is missing. */
+    /** Walks [path] against [payload]; null when any segment is missing (preserves explicit JSON nulls). */
     fun resolve(payload: JsonNode, path: String): JsonNode? {
         var node: JsonNode = payload
         for (rawSegment in path.replace("[", ".").replace("]", "").split('.')) {
@@ -52,16 +58,24 @@ object GroundingVerifier {
             }
             if (node.isMissingNode) return null
         }
-        return node.takeIf { !it.isNull }
+        return node
     }
 
     private fun matches(cited: JsonNode, actual: JsonNode?): Boolean {
         if (actual == null) return false
         return when {
+            cited.isNull && actual.isNull -> true
             cited.isNumber && actual.isNumber ->
                 Math.abs(cited.doubleValue() - actual.doubleValue()) <= tolerance(actual.doubleValue())
             cited.isBoolean && actual.isBoolean -> cited.booleanValue() == actual.booleanValue()
             cited.isString && actual.isString -> cited.asString().trim() == actual.asString().trim()
+            cited.isArray && actual.isArray ->
+                cited.size() == actual.size() && (0 until cited.size()).all { matches(cited[it], actual[it]) }
+            cited.isObject && actual.isObject -> {
+                val citedKeys = cited.properties().asSequence().map { it.key }.toSet()
+                val actualKeys = actual.properties().asSequence().map { it.key }.toSet()
+                citedKeys == actualKeys && citedKeys.all { matches(cited.path(it), actual.path(it)) }
+            }
             else -> false
         }
     }

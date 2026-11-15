@@ -98,11 +98,10 @@ class AiAnalysisRunner(
                 it.exchangeFilter == current.exchangeFilter &&
                 it.origenTagId == current.origenTagId
         }
-        return sameScope.firstOrNull {
-            it.sampleSize != current.sampleSize ||
-                it.rangeFrom != current.rangeFrom ||
-                it.rangeTo != current.rangeTo
-        } ?: sameScope.firstOrNull() ?: candidates.first()
+        return sameScope.firstOrNull { it.sampleSize != current.sampleSize }
+            ?: sameScope.firstOrNull { it.rangeFrom != current.rangeFrom || it.rangeTo != current.rangeTo }
+            ?: sameScope.firstOrNull()
+            ?: candidates.first()
     }
 
     private fun buildPriorContext(prior: AiAnalysisRun): String? {

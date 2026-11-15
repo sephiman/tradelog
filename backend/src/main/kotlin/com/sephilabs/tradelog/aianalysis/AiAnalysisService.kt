@@ -25,6 +25,7 @@ const val AI_ANALYSIS_MIN_SAMPLE = 10
 
 /** Defense against a runaway client: the aggregates are a few KB, never megabytes. */
 const val AI_ANALYSIS_MAX_PAYLOAD_CHARS = 100_000
+const val AI_FOLLOWUP_MAX_QUESTION_CHARS = 500
 
 /**
  * Starts and lists style analysis runs. The frontend builds the aggregate payload with the same
@@ -36,8 +37,10 @@ class AiAnalysisService(
     private val availability: AiAvailability,
     private val aiSettings: AiSettingsService,
     private val runs: AiAnalysisRunRepository,
+    private val followups: AiAnalysisFollowupRepository,
     private val tags: TagRepository,
     private val tagGroups: TagGroupRepository,
+    private val chatClient: AiChatClient,
     private val runner: AiAnalysisRunner,
     private val limiter: AiAnalysisRateLimiter,
     transactionManager: PlatformTransactionManager,
@@ -54,7 +57,74 @@ class AiAnalysisService(
         availability.requireConfigured()
         val stored = runs.findAllByProfileIdOrderByCreatedAtDesc(profileId)
         val tagNames = resolveTagNames(stored)
-        return stored.map { it.toDto(tagNames) }
+        val byRun = followups.findAllByProfileIdOrderByCreatedAtAsc(profileId).groupBy { it.runId }
+        return stored.map { it.toDto(tagNames, byRun[it.id].orEmpty()) }
+    }
+
+    /** Answers a follow-up question against one completed run's persisted payload and persists it. */
+    fun askFollowup(
+        profileId: UUID,
+        runId: UUID,
+        user: User,
+        request: AiAnalysisFollowupRequest,
+    ): AiAnalysisFollowupDto {
+        availability.requireConfigured()
+        aiSettings.requireEnabled(user.id)
+        val question = request.question?.trim() ?: ""
+        if (question.isBlank() || question.length > AI_FOLLOWUP_MAX_QUESTION_CHARS) {
+            throw AppException.badRequest("AI_ANALYSIS_QUESTION_INVALID", AI_FOLLOWUP_MAX_QUESTION_CHARS)
+        }
+        if (!limiter.tryAcquire(user.id)) throw AppException.tooManyRequests()
+
+        val run = runs.findByIdAndProfileId(runId, profileId)
+            ?: throw AppException.notFound("AI_ANALYSIS_RUN_NOT_FOUND")
+        if (run.status != AiAnalysisRunStatus.COMPLETED) {
+            throw AppException.conflict("AI_ANALYSIS_RUN_NOT_COMPLETED")
+        }
+        val payloadNode = mapper.readTree(run.payloadJson)
+        val summary = run.resultJson?.let { runCatching { mapper.readTree(it) }.getOrNull() }
+            ?.path("summary")?.takeIf { it.isString }?.asString()
+        val prior = followups.findAllByRunIdOrderByCreatedAtAsc(runId).map { it.question to it.answer }
+
+        val prompt = ChatPrompt(
+            system = TradingStylePrompt.followupSystem(run.locale),
+            user = TradingStylePrompt.followupUser(run.payloadJson, summary, prior, question),
+            sessionId = UUID.randomUUID(),
+        )
+        val rawAnswer = try {
+            chatClient.complete(prompt)
+        } catch (ex: AiChatException) {
+            log.warn("ai_analysis_followup run={} profile={} outcome=failed error={}", runId, profileId, ex.message)
+            throw AppException(code = "AI_ANALYSIS_FOLLOWUP_FAILED", httpStatus = 502, cause = ex)
+        }
+        val parsed = JsonObjectReader.first(rawAnswer.content)
+        val answerText = parsed?.path("answer")?.takeIf { it.isString }?.asString()?.trim()?.ifBlank { null }
+            ?: throw AppException(code = "AI_ANALYSIS_FOLLOWUP_FAILED", httpStatus = 502)
+
+        val citationsNode = parsed.path("citations").takeIf { it.isArray } ?: mapper.createArrayNode()
+        val grounding = GroundingVerifier.verifyCitations(payloadNode, citationsNode)
+        val saved = followups.save(
+            AiAnalysisFollowup(
+                runId = run.id,
+                profileId = profileId,
+                userId = user.id,
+                question = question,
+                answer = answerText,
+                citationsJson = mapper.writeValueAsString(citationsNode),
+                citationsTotal = grounding.total,
+                citationsUngrounded = grounding.ungrounded,
+                inputTokens = rawAnswer.inputTokens,
+                outputTokens = rawAnswer.outputTokens,
+                reasoningTokens = rawAnswer.reasoningTokens,
+                latencyMs = rawAnswer.latencyMs,
+            ),
+        )
+        log.info(
+            "ai_analysis_followup run={} followup={} profile={} citations={} ungrounded={} latency_ms={}",
+            run.id, saved.id, profileId, grounding.total, grounding.ungrounded, rawAnswer.latencyMs,
+        )
+        val tagNames = resolveTagNames(listOf(run))
+        return saved.toDto(payloadNode, tagNames)
     }
 
     @Transactional
@@ -173,7 +243,10 @@ class AiAnalysisService(
             ?.takeIf { it.isObject }
             ?.let { node -> node.properties().associate { it.key to it.value.asString("") } }
 
-    private fun AiAnalysisRun.toDto(tagNames: Map<String, String>): AiAnalysisRunDto {
+    private fun AiAnalysisRun.toDto(
+        tagNames: Map<String, String>,
+        runFollowups: List<AiAnalysisFollowup> = emptyList(),
+    ): AiAnalysisRunDto {
         val payload = runCatching { mapper.readTree(payloadJson) }.getOrNull()
         val result = resultJson?.let { runCatching { mapper.readTree(it) }.getOrNull() }
         val tagMap = tagMap?.let { parseTagMap(it) }
@@ -250,6 +323,27 @@ class AiAnalysisService(
             reasoningTokens = reasoningTokens,
             latencyMs = latencyMs,
             errorCode = errorCode,
+            followups = runFollowups.map { it.toDto(payload, tagNames) },
+        )
+    }
+
+    private fun AiAnalysisFollowup.toDto(
+        payload: JsonNode?,
+        tagNames: Map<String, String>,
+    ): AiAnalysisFollowupDto {
+        val citationsNode = runCatching { mapper.readTree(citationsJson) }.getOrNull()
+        val citations = citationsFromArray(citationsNode, payload, tagNames)
+        return AiAnalysisFollowupDto(
+            id = id,
+            question = question,
+            answer = answer,
+            citations = citations,
+            citationsTotal = citations.size,
+            citationsUngrounded = citations.count { !it.grounded },
+            inputTokens = inputTokens,
+            outputTokens = outputTokens,
+            latencyMs = latencyMs,
+            createdAt = createdAt,
         )
     }
 
@@ -258,7 +352,14 @@ class AiAnalysisService(
         payload: JsonNode?,
         tagNames: Map<String, String>,
     ): List<AiAnalysisCitationDto> =
-        node.path("citations").takeIf { it.isArray }?.toList()?.map { cite ->
+        citationsFromArray(node.path("citations"), payload, tagNames)
+
+    private fun citationsFromArray(
+        node: JsonNode?,
+        payload: JsonNode?,
+        tagNames: Map<String, String>,
+    ): List<AiAnalysisCitationDto> =
+        node?.takeIf { it.isArray }?.toList()?.map { cite ->
             val path = cite.path("path").asString("")
             val grounded = payload?.let { GroundingVerifier.check(it, cite).grounded } ?: false
             AiAnalysisCitationDto(

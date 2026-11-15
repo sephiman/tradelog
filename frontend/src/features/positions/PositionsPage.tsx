@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { NoActiveProfile } from "@/features/profiles/NoActiveProfile";
 import {
@@ -36,10 +37,22 @@ const optional = (value: string | null, format: (v: string) => string) => (value
 /** Beyond this the column would eat the table; longer tag names get an ellipsis in the closed select. */
 const ORIGEN_SELECT_MAX_PX = 192;
 
+function initialFilters(params: URLSearchParams): PositionFilters {
+  const symbol = params.get("symbol")?.trim() || undefined;
+  const rawSide = params.get("side");
+  const side = rawSide === "LONG" || rawSide === "SHORT" ? rawSide : undefined;
+  const exchange = params.get("exchange")?.trim() || undefined;
+  const from = dateInputToIso(params.get("from") ?? "");
+  const to = dateInputToIso(params.get("to") ?? "", true);
+  const sort = params.get("sort")?.trim() || "closed_desc";
+  return { symbol, side, exchange, from, to, sort, page: 0, size: 50 };
+}
+
 export function PositionsPage() {
   const { t } = useTranslation();
   const { activeProfileId } = useActiveProfile();
-  const [filters, setFilters] = useState<PositionFilters>({ sort: "closed_desc", page: 0, size: 50 });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState<PositionFilters>(() => initialFilters(searchParams));
   const { data, isLoading, isError, refetch } = usePositions(activeProfileId, filters);
   const { data: exchanges = [] } = usePositionExchanges(activeProfileId);
   const { data: taxonomy = [] } = useTaxonomy();
@@ -245,6 +258,7 @@ export function PositionsPage() {
                 variant="ghost"
                 onClick={() => {
                   setFilters({ sort: "closed_desc", page: 0, size: 50 });
+                  if (searchParams.size > 0) setSearchParams({}, { replace: true });
                   clearSelection();
                 }}
               >
