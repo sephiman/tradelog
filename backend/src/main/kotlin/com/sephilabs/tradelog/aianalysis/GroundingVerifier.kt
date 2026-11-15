@@ -19,10 +19,12 @@ object GroundingVerifier {
 
     data class Result(val total: Int, val ungrounded: Int, val checks: List<CitationCheck>)
 
-    /** Checks the citations of [answer]'s improvements, observations and insufficient-sample items, in field order. */
+    /** Checks the citations of [answer]'s strengths, improvements, trading rules, observations and insufficient-sample items, in field order. */
     fun verify(payload: JsonNode, answer: JsonNode): Result {
         val checks = mutableListOf<CitationCheck>()
+        answer.path("strengths").forEach { item -> item.path("citations").forEach { checks += check(payload, it) } }
         answer.path("improvements").forEach { item -> item.path("citations").forEach { checks += check(payload, it) } }
+        answer.path("tradingRules").forEach { item -> item.path("citations").forEach { checks += check(payload, it) } }
         answer.path("observations").forEach { obs -> obs.path("citations").forEach { checks += check(payload, it) } }
         answer.path("insufficientSample").forEach { item -> item.path("citations").forEach { checks += check(payload, it) } }
         return Result(checks.size, checks.count { !it.grounded }, checks)

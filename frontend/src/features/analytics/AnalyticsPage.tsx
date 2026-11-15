@@ -82,6 +82,7 @@ export function AnalyticsPage() {
       exchange={filters.exchange}
       origenTagId={filters.origenTagId}
       origenTags={origenTags}
+      tagGroups={taxonomy}
       timeZone={timeZone}
     />
   );

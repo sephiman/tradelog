@@ -23,12 +23,26 @@ data class AiAnalysisCitationDto(
     val path: String,
     val value: JsonNode?,
     val grounded: Boolean,
+    val context: String? = null,
+)
+
+data class AiAnalysisStrengthDto(
+    val title: String,
+    val detail: String,
+    val citations: List<AiAnalysisCitationDto>,
 )
 
 data class AiAnalysisImprovementDto(
     val title: String,
     val detail: String,
     val severity: String?,
+    val citations: List<AiAnalysisCitationDto>,
+)
+
+data class AiAnalysisTradingRuleDto(
+    val rule: String,
+    val trigger: String,
+    val expectedImpact: String?,
     val citations: List<AiAnalysisCitationDto>,
 )
 
@@ -57,7 +71,9 @@ data class AiAnalysisRunDto(
     val evolution: String?,
     /** Anonymized label -> the tag's real name, resolved at read time. Labels may outlive their tag. */
     val tagNames: Map<String, String>,
+    val strengths: List<AiAnalysisStrengthDto>,
     val improvements: List<AiAnalysisImprovementDto>,
+    val tradingRules: List<AiAnalysisTradingRuleDto>,
     val observations: List<AiAnalysisObservationDto>,
     val insufficientSample: List<AiAnalysisInsufficientDto>,
     val observationsCount: Int?,

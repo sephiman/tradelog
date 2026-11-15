@@ -68,6 +68,7 @@ class PositionService(
                 symbolBase = it.symbolBase,
                 symbolQuote = it.symbolQuote,
                 side = it.side,
+                kind = it.kind,
                 openedAt = it.openedAt,
                 closedAt = it.closedAt,
                 qty = it.qty,

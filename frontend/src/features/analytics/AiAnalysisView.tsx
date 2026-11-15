@@ -2,16 +2,18 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAiAnalysisRuns, useAiOn, useDeleteAiAnalysisRun, useMonthlyRoiYears, useStartAiAnalysis } from "@/api/ai";
 import type { AiCitation, AiInsufficientItem, AiObservation, AiRun } from "@/api/ai";
+import { useBenchmarkDaily, useBenchmarks } from "@/api/benchmarks";
 import { useCapital, useRoi } from "@/api/capital";
 import { asApiError } from "@/api/client";
 import { Card, CardBody } from "@/components/ui/primitives";
 import { fmtDateTime, isoToDateInput } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { zonedParts } from "./compute";
-import { anonymizeTags, buildAiStylePayload, MIN_BUCKET_SAMPLE, resolveTagLabels } from "./aiPayload";
+import { anonymizeTags, buildAiStylePayload, clampScopeEndDate, MIN_BUCKET_SAMPLE, resolveTagLabels, type BenchmarkReturnInput } from "./aiPayload";
+import { formatCitationPath } from "./citationLabel";
 import { InfoTooltip } from "./InfoTooltip";
 import type { ClosedPosition } from "@/api/analytics";
-import type { Tag } from "@/api/taxonomy";
+import type { Tag, TagGroup } from "@/api/taxonomy";
 import type { DateRange } from "./useAnalyticsFilters";
 
 /**
@@ -27,6 +29,7 @@ export function AiAnalysisView({
   exchange,
   origenTagId,
   origenTags,
+  tagGroups,
   timeZone,
 }: {
   profileId: string | null;
@@ -36,6 +39,7 @@ export function AiAnalysisView({
   exchange: string;
   origenTagId: string;
   origenTags: Tag[];
+  tagGroups?: TagGroup[];
   timeZone: string;
 }) {
   const { t } = useTranslation();
@@ -48,6 +52,51 @@ export function AiAnalysisView({
     [rows, timeZone],
   );
   const monthlyRoi = useMonthlyRoiYears(profileId, years, exchange);
+  const scopeFrom = range.from ? isoToDateInput(range.from.toISOString()) : null;
+  const rawScopeTo = range.to ? isoToDateInput(range.to.toISOString()) : null;
+  const scopeTo = clampScopeEndDate(rawScopeTo, scopeFrom, timeZone);
+  const { benchFrom, benchTo } = useMemo(() => {
+    if (scopeFrom && scopeTo) return { benchFrom: scopeFrom, benchTo: scopeTo };
+    if (rows.length === 0) return { benchFrom: undefined, benchTo: undefined };
+    let minIso = rows[0].closedAt;
+    let maxIso = rows[0].closedAt;
+    for (const r of rows) {
+      if (r.closedAt < minIso) minIso = r.closedAt;
+      if (r.closedAt > maxIso) maxIso = r.closedAt;
+    }
+    return { benchFrom: scopeFrom ?? isoToDateInput(minIso), benchTo: scopeTo ?? isoToDateInput(maxIso) };
+  }, [rows, scopeFrom, scopeTo]);
+  const { data: availableBenchmarks = [] } = useBenchmarks();
+  const usableBenchmarkKeys = useMemo(
+    () =>
+      benchFrom && benchTo
+        ? availableBenchmarks
+            .filter((b) => b.hasData && b.availableFrom && b.availableTo && b.availableFrom <= benchTo && b.availableTo >= benchFrom)
+            .map((b) => b.key)
+        : [],
+    [availableBenchmarks, benchFrom, benchTo],
+  );
+  const { data: benchmarkDaily } = useBenchmarkDaily(benchFrom, benchTo, usableBenchmarkKeys);
+  const benchmarkReturns = useMemo<BenchmarkReturnInput[]>(() => {
+    if (!benchmarkDaily) return [];
+    const out: BenchmarkReturnInput[] = [];
+    for (const series of benchmarkDaily) {
+      const valid = series.points.filter((p) => p.close !== null && Number(p.close) > 0);
+      if (valid.length < 2) continue;
+      const first = valid[0];
+      const last = valid[valid.length - 1];
+      const startPrice = Number(first.close);
+      const endPrice = Number(last.close);
+      if (!Number.isFinite(startPrice) || !Number.isFinite(endPrice) || startPrice <= 0) continue;
+      out.push({
+        key: series.key,
+        returnPct: ((endPrice - startPrice) / startPrice) * 100,
+        from: first.date,
+        to: last.date,
+      });
+    }
+    return out;
+  }, [benchmarkDaily]);
   const start = useStartAiAnalysis(profileId);
   const del = useDeleteAiAnalysisRun(profileId);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
@@ -63,8 +112,6 @@ export function AiAnalysisView({
   }
 
   const enough = rows.length >= MIN_BUCKET_SAMPLE;
-  const scopeFrom = range.from ? isoToDateInput(range.from.toISOString()) : null;
-  const scopeTo = range.to ? isoToDateInput(range.to.toISOString()) : null;
 
   const run = () => {
     const payload = buildAiStylePayload({
@@ -78,9 +125,11 @@ export function AiAnalysisView({
         timeZone,
       },
       origenTags,
+      tagGroups,
       capital,
       roi,
       monthlyRoi,
+      benchmarks: benchmarkReturns,
     });
     start.mutate(payload);
   };
@@ -197,11 +246,26 @@ function RunCard({
     if (run.evolution) {
       lines.push("## Evolution Since Prior Run", resolveTagLabels(run.evolution, run.tagNames), "");
     }
+    if (run.strengths?.length) {
+      lines.push("## Strengths");
+      for (const s of run.strengths) {
+        lines.push(`- **${resolveTagLabels(s.title, run.tagNames)}**: ${resolveTagLabels(s.detail, run.tagNames)}`);
+      }
+      lines.push("");
+    }
     if (run.improvements?.length) {
       lines.push("## Points of Improvement");
       for (const imp of run.improvements) {
         const severity = imp.severity ? `[${imp.severity.toUpperCase()}] ` : "";
         lines.push(`- ${severity}**${resolveTagLabels(imp.title, run.tagNames)}**: ${resolveTagLabels(imp.detail, run.tagNames)}`);
+      }
+      lines.push("");
+    }
+    if (run.tradingRules?.length) {
+      lines.push("## Suggested Trading Rules");
+      for (const tr of run.tradingRules) {
+        const impact = tr.expectedImpact ? ` _(${resolveTagLabels(tr.expectedImpact, run.tagNames)})_` : "";
+        lines.push(`- **${resolveTagLabels(tr.rule, run.tagNames)}** — ${resolveTagLabels(tr.trigger, run.tagNames)}${impact}`);
       }
       lines.push("");
     }
@@ -300,6 +364,33 @@ function RunCard({
                 <p className="mt-1">{resolveTagLabels(run.evolution, run.tagNames)}</p>
               </div>
             )}
+            {run.strengths?.length > 0 && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                <div className="flex items-center gap-2">
+                  <span className="text-base" aria-hidden="true">🛡️</span>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                    {t("analytics.ai.strengthsTitle")}
+                  </h4>
+                </div>
+                <ul className="mt-3 space-y-2.5">
+                  {run.strengths.map((item, i) => (
+                    <li key={i} className="rounded-md border-l-4 border-emerald-500 bg-white/70 p-3 shadow-xs dark:bg-surface-raised">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {resolveTagLabels(item.title, run.tagNames)}
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                        {resolveTagLabels(item.detail, run.tagNames)}
+                      </p>
+                      {item.citations?.length > 0 && (
+                        <div className="mt-2">
+                          <Citations citations={item.citations} tagNames={run.tagNames} />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {run.improvements?.length > 0 && (
               <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
                 <div className="flex items-center gap-2">
@@ -332,7 +423,41 @@ function RunCard({
                       </p>
                       {item.citations?.length > 0 && (
                         <div className="mt-2">
-                          <Citations citations={item.citations} />
+                          <Citations citations={item.citations} tagNames={run.tagNames} />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {run.tradingRules?.length > 0 && (
+              <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-900/40 dark:bg-indigo-950/20">
+                <div className="flex items-center gap-2">
+                  <span className="text-base" aria-hidden="true">📏</span>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-indigo-800 dark:text-indigo-300">
+                    {t("analytics.ai.tradingRulesTitle")}
+                  </h4>
+                </div>
+                <ul className="mt-3 space-y-2.5">
+                  {run.tradingRules.map((item, i) => (
+                    <li key={i} className="rounded-md border-l-4 border-indigo-500 bg-white/70 p-3 shadow-xs dark:bg-surface-raised">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {resolveTagLabels(item.rule, run.tagNames)}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                        <span className="font-medium">{t("analytics.ai.ruleTrigger")}:</span>{" "}
+                        {resolveTagLabels(item.trigger, run.tagNames)}
+                      </p>
+                      {item.expectedImpact && (
+                        <p className="mt-0.5 text-xs text-indigo-700 dark:text-indigo-300">
+                          <span className="font-medium">{t("analytics.ai.expectedImpact")}:</span>{" "}
+                          {resolveTagLabels(item.expectedImpact, run.tagNames)}
+                        </p>
+                      )}
+                      {item.citations?.length > 0 && (
+                        <div className="mt-2">
+                          <Citations citations={item.citations} tagNames={run.tagNames} />
                         </div>
                       )}
                     </li>
@@ -414,7 +539,7 @@ function Observation({ obs, tagNames }: { obs: AiObservation; tagNames: Record<s
           </span>
         )}
       </div>
-      {obs.citations.length > 0 && <Citations citations={obs.citations} />}
+      {obs.citations.length > 0 && <Citations citations={obs.citations} tagNames={tagNames} />}
     </li>
   );
 }
@@ -424,28 +549,33 @@ function InsufficientItemView({ item, tagNames }: { item: AiInsufficientItem; ta
     <li className="space-y-1">
       <p className="text-sm font-medium">{resolveTagLabels(item.topic, tagNames)}</p>
       <p className="text-xs text-gray-500 dark:text-gray-400">{resolveTagLabels(item.reason, tagNames)}</p>
-      {item.citations.length > 0 && <Citations citations={item.citations} />}
+      {item.citations.length > 0 && <Citations citations={item.citations} tagNames={tagNames} />}
     </li>
   );
 }
 
-function Citations({ citations }: { citations: AiCitation[] }) {
+function Citations({ citations, tagNames }: { citations: AiCitation[]; tagNames: Record<string, string> }) {
+  const { t } = useTranslation();
   return (
     <ul className="flex flex-wrap gap-1.5">
-      {citations.map((c, i) => (
-        <li
-          key={i}
-          title={c.grounded ? undefined : "This value does not match the payload"}
-          className={cn(
-            "rounded border px-1.5 py-0.5 text-xs tabular-nums",
-            c.grounded
-              ? "border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
-              : "border-red-300 text-red-600 line-through dark:border-red-800 dark:text-red-400",
-          )}
-        >
-          <code>{c.path}</code> = {fmtValue(c.value)}
-        </li>
-      ))}
+      {citations.map((c, i) => {
+        const label = formatCitationPath(c.path, t, c.context);
+        const value = resolveTagLabels(fmtValue(c.value), tagNames);
+        return (
+          <li
+            key={i}
+            title={c.grounded ? c.path : `${c.path} — ${t("analytics.ai.citationMismatch")}`}
+            className={cn(
+              "rounded border px-1.5 py-0.5 text-xs tabular-nums",
+              c.grounded
+                ? "border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                : "border-red-300 text-red-600 line-through dark:border-red-800 dark:text-red-400",
+            )}
+          >
+            <span>{label}</span> = {value}
+          </li>
+        );
+      })}
     </ul>
   );
 }

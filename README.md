@@ -309,9 +309,9 @@ verified against the payload automatically (unverified citations are struck thro
 counted on the run), and runs are **persisted per profile** so past analyses stay expandable and
 comparable.
 
-Privacy, enforced end to end: **only aggregate numbers travel** — never API keys or credentials,
-wallet addresses, email or user ids, profile names, data-source labels, external trade ids, position
-notes or individual trades. Origen tag names are anonymized **in the browser** (Tag A, Tag B…) before
+Privacy, enforced end to end: **only aggregate numbers and anonymized closed trade rows travel** — never API keys or credentials,
+wallet addresses, email or user ids, profile names, data-source labels, external or internal trade ids, or position
+notes. Tag and group names are anonymized **in the browser** (Tag A, Tag B…) before
 anything leaves it, and only this app maps them back when rendering. The user's own prompt language
 (EN/ES) is the answer's language. Runs are rate-limited (10 per user per hour) because each one costs
 provider tokens, and the run rows log token counts and latency for the operator. No analysis is

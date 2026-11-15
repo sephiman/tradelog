@@ -79,6 +79,7 @@ data class ClosedPositionSummaryDto(
     val symbolBase: String,
     val symbolQuote: String,
     val side: PositionSide,
+    val kind: PositionKind,
     val openedAt: Instant,
     val closedAt: Instant,
     @JsonFormat(shape = JsonFormat.Shape.STRING) val qty: BigDecimal?,

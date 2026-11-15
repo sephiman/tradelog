@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { CapitalOverview } from "@/api/capital";
 import type { PositionTagView, PositionSide } from "@/api/positions";
 import type { ClosedPosition } from "@/api/analytics";
-import type { Tag } from "@/api/taxonomy";
-import { anonymizeTags, buildAiStylePayload, MIN_BUCKET_SAMPLE, resolveTagLabels } from "./aiPayload";
+import type { Tag, TagGroup } from "@/api/taxonomy";
+import { anonymizeTags, buildAiStylePayload, clampScopeEndDate, MAX_INLINE_TRADES, MIN_BUCKET_SAMPLE, resolveTagLabels } from "./aiPayload";
+import { formatCitationPath } from "./citationLabel";
+import i18n from "@/i18n";
 
 const TZ = "UTC";
 
@@ -80,7 +82,7 @@ describe("buildAiStylePayload", () => {
     const p = payload([...rowsWithHours(Array(10).fill(14)), ...rowsWithHours(Array(3).fill(3))]);
     expect(MIN_BUCKET_SAMPLE).toBe(10);
     expect(p.byHour.minSample).toBe(10);
-    expect(p.byHour.buckets).toEqual([{ hour: 14, n: 10, winRatePct: 100 }]);
+    expect(p.byHour.buckets).toEqual([{ hour: 14, n: 10, winRatePct: 100, totalPnl: 80, expectancy: 8 }]);
     expect(p.byHour.droppedBuckets).toBe(1);
     // Empty buckets (no trades at all) are neither kept nor counted as dropped.
     expect(p.byHour.buckets.every((b) => b.n >= MIN_BUCKET_SAMPLE)).toBe(true);
@@ -168,7 +170,111 @@ describe("buildAiStylePayload", () => {
     expect(p.behavioralSignals.sizing.avgWinVolume).toBe(1000);
     expect(p.behavioralSignals.sizing.avgLossVolume).toBe(1500);
     expect(p.behavioralSignals.sizing.lossToWinRatio).toBe(1.5);
+    expect(p.behavioralSignals.whatIf.skipPostLossReentryPnl).toBe(50);
     expect(p.style.duration.avgWinMs).toBe(30 * 60 * 1000);
+    expect(p.style.duration.avgWinHours).toBe(0.5);
+  });
+
+  it("computes drawdown, tail concentration, fees/funding, post-win reentry, streak sizing, benchmarks, and extra tag groups", () => {
+    const setupGroup: TagGroup = {
+      id: "g-setup",
+      code: "setup",
+      name: "Setup",
+      sortOrder: 20,
+      tags: [{ id: "tag-breakout", code: "breakout", name: "Breakout", sortOrder: 1, archivedAt: null }],
+    };
+    const rows = [
+      position({ id: "1", openedAt: "2026-01-01T10:00:00Z", closedAt: "2026-01-01T11:00:00Z", realizedPnl: "100", netPnl: "90", fees: "8", funding: "2", volume: "1000", exchange: "Bybit", kind: "TRADE", tags: [{ groupId: "g-setup", groupCode: "setup", groupName: "Setup", tagId: "tag-breakout", tagName: "Breakout" }] }),
+      // Post-win reentry within 15 min
+      position({ id: "2", openedAt: "2026-01-01T11:05:00Z", closedAt: "2026-01-01T11:30:00Z", realizedPnl: "-30", netPnl: "-35", fees: "4", funding: "1", volume: "1500", exchange: "Bybit", kind: "TRADE" }),
+      position({ id: "3", openedAt: "2026-01-02T10:00:00Z", closedAt: "2026-01-02T11:00:00Z", realizedPnl: "-40", netPnl: "-45", fees: "4", funding: "1", volume: "1500", exchange: "OKX", kind: "GRID_BOT" }),
+      // After 2 consecutive losses -> volume 3000
+      position({ id: "4", openedAt: "2026-01-03T10:00:00Z", closedAt: "2026-01-03T11:00:00Z", realizedPnl: "60", netPnl: "50", fees: "8", funding: "2", volume: "3000", exchange: "OKX", kind: "TRADE" }),
+    ];
+    const p = payload(rows, {
+      tagGroups: [{ id: "g1", code: "origen", groupName: "Origen", name: "Origen", sortOrder: 10, tags: origenTags } as unknown as TagGroup, setupGroup],
+      benchmarks: [{ key: "BTC", returnPct: 12.345, from: "2026-01-01", to: "2026-01-03" }],
+    });
+
+    expect(p.summary.grossPnl).toBe(90);
+    expect(p.summary.totalFunding).toBe(6);
+    expect(p.summary.profitFactor).toBe(1.75);
+    expect(p.drawdown.maxUsd).toBe(80);
+    expect(p.drawdown.currentUsd).toBe(30);
+    expect(p.drawdown.maxPctOfStartCapital).toBe(8);
+    expect(p.tailAndConcentration.pnlWithoutWorstTrade).toBe(105);
+    expect(p.tailAndConcentration.largestLossPctOfCapital).toBe(4.5);
+    expect(p.fees.totalFees).toBe(24);
+    expect(p.fees.totalFunding).toBe(6);
+    expect(p.fees.totalCosts).toBe(30);
+    expect(p.fees.feeToGrossProfitPct).toBe(33.3);
+    expect(p.behavioralSignals.postWinReentry.n).toBe(1);
+    expect(p.behavioralSignals.postWinReentry.totalPnl).toBe(-35);
+    expect(p.behavioralSignals.sizing.after2LossesSizeMultiplier).toBe(1.71);
+    expect(p.behavioralSignals.whatIf.skipPostWinReentryPnl).toBe(95);
+    expect(p.benchmarks).toEqual([{ key: "BTC", returnPct: 12.35, from: "2026-01-01", to: "2026-01-03" }]);
+    expect(p.byExchange?.droppedBuckets).toBe(2);
+    expect(p.byKind?.droppedBuckets).toBe(2);
+    expect(p.byTagGroups).toHaveLength(1);
+    expect(p.byTagGroups?.[0].group).toBe("Group A");
+    expect(p.tagMap["Group A"]).toBe("g-setup");
+    expect(p.tagMap["Tag A-1"]).toBe("tag-breakout");
+    expect(p.tradesIncluded).toEqual({ total: 4, mode: "all" });
+    expect(p.trades).toHaveLength(4);
+    expect(p.trades?.[0].tags).toEqual(["Tag A-1"]);
+    expect(p.trades?.[0]).not.toHaveProperty("id");
+    expect(p.bySession.minSample).toBe(10);
+    expect(p.byDayType.minSample).toBe(10);
+    expect(p.directionStyle.minSample).toBe(10);
+    expect(JSON.stringify(p)).not.toContain("Breakout");
+    expect(JSON.stringify(p)).not.toContain("Setup");
+  });
+
+  it("switches to sampled mode with recentTrades, topLosers and topWinners when rows exceed MAX_INLINE_TRADES", () => {
+    const many = Array.from({ length: MAX_INLINE_TRADES + 5 }, (_, i) =>
+      position({
+        id: `trade-${i}`,
+        closedAt: `2026-01-${String((i % 28) + 1).padStart(2, "0")}T12:00:00Z`,
+        netPnl: i === 2 ? "-500" : i === 5 ? "750" : String(i - 10),
+      }),
+    );
+    const p = payload(many);
+    expect(p.tradesIncluded).toEqual({ total: MAX_INLINE_TRADES + 5, mode: "sampled" });
+    expect(p.trades).toBeUndefined();
+    expect(p.recentTrades).toHaveLength(40);
+    expect(p.topLosers?.[0].netPnl).toBe(-500);
+    expect(p.topWinners?.[0].netPnl).toBe(750);
+    expect(JSON.stringify(p)).not.toContain("trade-2");
+  });
+});
+
+describe("formatCitationPath", () => {
+  it("formats known paths into human-readable labels and falls back for unknown paths", () => {
+    const t = i18n.getFixedT("en");
+    expect(formatCitationPath("summary.totalPnl", t)).toBe("Net PnL");
+    expect(formatCitationPath("byHour.buckets.3.winRatePct", t)).toBe("Hour bucket · win rate (%)");
+    expect(formatCitationPath("trades.3.netPnl", t, "#4 BTC/USDT")).toBe("#4 BTC/USDT · PnL");
+    expect(formatCitationPath("behavioralSignals.whatIf.skipPostLossReentryPnl", t)).toBe(
+      "What-if: skip post-loss reentry",
+    );
+    expect(formatCitationPath("summary.madeUp.path", t)).toBe("summary.madeUp.path");
+  });
+});
+
+describe("clampScopeEndDate", () => {
+  const now = new Date("2026-11-15T12:30:00Z");
+
+  it("clamps a future month-end date to today in the user's time zone", () => {
+    expect(clampScopeEndDate("2026-11-30", "2026-11-01", "Europe/Madrid", now)).toBe("2026-11-15");
+  });
+
+  it("keeps past ranges untouched and handles null", () => {
+    expect(clampScopeEndDate("2026-10-31", "2026-10-01", "Europe/Madrid", now)).toBe("2026-10-31");
+    expect(clampScopeEndDate(null, null, "Europe/Madrid", now)).toBeNull();
+  });
+
+  it("does not invert an explicitly future custom range", () => {
+    expect(clampScopeEndDate("2026-12-31", "2026-12-01", "Europe/Madrid", now)).toBe("2026-12-31");
   });
 });
 

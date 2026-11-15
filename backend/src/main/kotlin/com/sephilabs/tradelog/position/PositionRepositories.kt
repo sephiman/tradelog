@@ -32,6 +32,7 @@ interface ClosedPositionSummary {
     val symbolBase: String
     val symbolQuote: String
     val side: PositionSide
+    val kind: PositionKind
     val openedAt: Instant
     val closedAt: Instant
     val qty: BigDecimal?

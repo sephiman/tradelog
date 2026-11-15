@@ -3,6 +3,7 @@ package com.sephilabs.tradelog.aianalysis
 
 import com.sephilabs.tradelog.common.errors.AppException
 import com.sephilabs.tradelog.identity.user.User
+import com.sephilabs.tradelog.taxonomy.TagGroupRepository
 import com.sephilabs.tradelog.taxonomy.TagRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
@@ -36,6 +37,7 @@ class AiAnalysisService(
     private val aiSettings: AiSettingsService,
     private val runs: AiAnalysisRunRepository,
     private val tags: TagRepository,
+    private val tagGroups: TagGroupRepository,
     private val runner: AiAnalysisRunner,
     private val limiter: AiAnalysisRateLimiter,
     transactionManager: PlatformTransactionManager,
@@ -157,11 +159,12 @@ class AiAnalysisService(
         val ids = stored.mapNotNull { it.tagMap }.mapNotNull { parseTagMap(it) }
             .flatMap { it.values }.mapNotNull { runCatching { UUID.fromString(it) }.getOrNull() }
         if (ids.isEmpty()) return emptyMap()
-        val names = tags.findAllById(ids).associateBy { it.id }
+        val tagNames = tags.findAllById(ids).associateBy { it.id }
+        val groupNames = tagGroups.findAllById(ids).associateBy { it.id }
         return stored.mapNotNull { it.tagMap }.mapNotNull { parseTagMap(it) }
             .flatMap { it.entries }.associate { (label, id) ->
                 val uuid = runCatching { UUID.fromString(id) }.getOrNull()
-                label to (uuid?.let { names[it]?.name } ?: label)
+                label to (uuid?.let { tagNames[it]?.name ?: groupNames[it]?.name } ?: label)
             }
     }
 
@@ -174,12 +177,27 @@ class AiAnalysisService(
         val payload = runCatching { mapper.readTree(payloadJson) }.getOrNull()
         val result = resultJson?.let { runCatching { mapper.readTree(it) }.getOrNull() }
         val tagMap = tagMap?.let { parseTagMap(it) }
+        val strengths = result?.path("strengths")?.takeIf { it.isArray }?.toList()?.map { item ->
+            AiAnalysisStrengthDto(
+                title = item.path("title").asString(""),
+                detail = item.path("detail").asString(""),
+                citations = citationsOf(item, payload, tagNames),
+            )
+        } ?: emptyList()
         val improvements = result?.path("improvements")?.takeIf { it.isArray }?.toList()?.map { item ->
             AiAnalysisImprovementDto(
                 title = item.path("title").asString(""),
                 detail = item.path("detail").asString(""),
                 severity = item.path("severity").takeIf { it.isString }?.asString()?.lowercase(),
-                citations = citationsOf(item, payload),
+                citations = citationsOf(item, payload, tagNames),
+            )
+        } ?: emptyList()
+        val tradingRules = result?.path("tradingRules")?.takeIf { it.isArray }?.toList()?.map { item ->
+            AiAnalysisTradingRuleDto(
+                rule = item.path("rule").asString(""),
+                trigger = item.path("trigger").asString(""),
+                expectedImpact = item.path("expectedImpact").takeIf { it.isString }?.asString()?.ifBlank { null },
+                citations = citationsOf(item, payload, tagNames),
             )
         } ?: emptyList()
         val observations = result?.path("observations")?.takeIf { it.isArray }?.toList()?.map { obs ->
@@ -187,14 +205,14 @@ class AiAnalysisService(
                 claim = obs.path("claim").asString(""),
                 sampleSize = obs.path("sampleSize").takeIf { it.isNumber }?.asInt(),
                 confidence = obs.path("confidence").takeIf { it.isString }?.asString(),
-                citations = citationsOf(obs, payload),
+                citations = citationsOf(obs, payload, tagNames),
             )
         } ?: emptyList()
         val insufficient = result?.path("insufficientSample")?.takeIf { it.isArray }?.toList()?.map { item ->
             AiAnalysisInsufficientDto(
                 topic = item.path("topic").asString(""),
                 reason = item.path("reason").asString(""),
-                citations = citationsOf(item, payload),
+                citations = citationsOf(item, payload, tagNames),
             )
         } ?: emptyList()
         return AiAnalysisRunDto(
@@ -218,7 +236,9 @@ class AiAnalysisService(
             summary = result?.path("summary")?.takeIf { it.isString }?.asString()?.ifBlank { null },
             evolution = result?.path("evolution")?.takeIf { it.isString }?.asString()?.ifBlank { null },
             tagNames = tagNames,
+            strengths = strengths,
             improvements = improvements,
+            tradingRules = tradingRules,
             observations = observations,
             insufficientSample = insufficient,
             observationsCount = observationsCount,
@@ -233,12 +253,49 @@ class AiAnalysisService(
         )
     }
 
-    private fun citationsOf(node: JsonNode, payload: JsonNode?): List<AiAnalysisCitationDto> =
+    private fun citationsOf(
+        node: JsonNode,
+        payload: JsonNode?,
+        tagNames: Map<String, String>,
+    ): List<AiAnalysisCitationDto> =
         node.path("citations").takeIf { it.isArray }?.toList()?.map { cite ->
+            val path = cite.path("path").asString("")
+            val grounded = payload?.let { GroundingVerifier.check(it, cite).grounded } ?: false
             AiAnalysisCitationDto(
-                path = cite.path("path").asString(""),
+                path = path,
                 value = cite.path("value").takeIf { !it.isMissingNode },
-                grounded = payload?.let { GroundingVerifier.check(it, cite).grounded } ?: false,
+                grounded = grounded,
+                context = if (payload != null && grounded) citationContext(payload, path, tagNames) else null,
             )
         } ?: emptyList()
+
+    /** Extracts a human-readable bucket/trade label from the citation's parent object when indexed. */
+    private fun citationContext(payload: JsonNode, path: String, tagNames: Map<String, String>): String? {
+        val normalized = path.replace("[", ".").replace("]", "")
+        val segments = normalized.split('.').filter { it.isNotEmpty() }
+        if (segments.size < 2 || segments.none { it.toIntOrNull() != null }) return null
+        val parent = GroundingVerifier.resolve(payload, segments.dropLast(1).joinToString(".")) ?: return null
+        if (!parent.isObject) return null
+
+        val seq = parent.path("seq").takeIf { it.isNumber }?.asInt()
+        val pair = parent.path("pair").takeIf { it.isString }?.asString()
+        if (seq != null && pair != null) return "#$seq $pair"
+        if (pair != null) return pair
+
+        val rawTag = parent.path("tag").takeIf { it.isString }?.asString()
+        if (rawTag != null) return tagNames[rawTag] ?: rawTag
+
+        val year = parent.path("year").takeIf { it.isNumber }?.asInt()
+        val month = parent.path("month").takeIf { it.isNumber }?.asInt()
+        if (year != null && month != null) return "%04d-%02d".format(year, month)
+
+        val hour = parent.path("hour").takeIf { it.isNumber }?.asInt()
+        if (hour != null) return "%02d:00".format(hour)
+
+        for (key in listOf("exchange", "style", "session", "dayType", "combo", "kind", "key")) {
+            val v = parent.path(key).takeIf { it.isString }?.asString()
+            if (!v.isNullOrBlank()) return v
+        }
+        return null
+    }
 }

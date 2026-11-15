@@ -96,11 +96,15 @@ class GroundingVerifierTest {
     }
 
     @Test
-    fun `verify walks improvements, observations and insufficientSample in order`() {
+    fun `verify walks strengths, improvements, tradingRules, observations and insufficientSample in order`() {
         val answer = mapper.readTree(
             """
-            {"improvements":[
+            {"strengths":[
+               {"title":"s","detail":"d","citations":[${citation("scope.exchange", "\"Bybit\"")}]}],
+             "improvements":[
                {"title":"p","detail":"d","citations":[${citation("summary.totalPnl", 123.45)}]}],
+             "tradingRules":[
+               {"rule":"r","trigger":"t","citations":[${citation("byHour.buckets.0.winRatePct", 63.6)}]}],
              "observations":[
                {"claim":"a","citations":[${citation("summary.n", 12)},${citation("summary.madeUp", 1)}],"sampleSize":12,"confidence":"high"}],
              "insufficientSample":[
@@ -108,8 +112,18 @@ class GroundingVerifierTest {
             """.trimIndent(),
         )
         val result = GroundingVerifier.verify(payload, answer)
-        assertEquals(4, result.total)
+        assertEquals(6, result.total)
         assertEquals(1, result.ungrounded)
-        assertEquals(listOf("summary.totalPnl", "summary.n", "summary.madeUp", "byHour.buckets.0.n"), result.checks.map { it.path })
+        assertEquals(
+            listOf(
+                "scope.exchange",
+                "summary.totalPnl",
+                "byHour.buckets.0.winRatePct",
+                "summary.n",
+                "summary.madeUp",
+                "byHour.buckets.0.n",
+            ),
+            result.checks.map { it.path },
+        )
     }
 }

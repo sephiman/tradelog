@@ -31,14 +31,8 @@ class AiAnalysisRunner(
             val run = runs.findById(runId).orElse(null) ?: return
             MDC.put("profileId", run.profileId.toString())
             val payload = mapper.readTree(run.payloadJson)
-            val prior = runs.findFirstByProfileIdAndStatusOrderByCreatedAtDesc(run.profileId, AiAnalysisRunStatus.COMPLETED)
-                ?.takeIf { it.id != runId }
-            val priorContext = prior?.let { p ->
-                val prevResult = p.resultJson?.let { r -> runCatching { mapper.readTree(r) }.getOrNull() }
-                val prevSummary = prevResult?.path("summary")?.takeIf { it.isString }?.asString()
-                val date = p.createdAt.toString().take(10)
-                if (!prevSummary.isNullOrBlank()) "Date: $date. Summary: $prevSummary" else null
-            }
+            val prior = selectPriorRun(run)
+            val priorContext = prior?.let { buildPriorContext(it) }
             val prompt = ChatPrompt(
                 system = TradingStylePrompt.system(run.locale),
                 user = TradingStylePrompt.user(run.payloadJson, priorContext),
@@ -89,6 +83,63 @@ class AiAnalysisRunner(
             finish(runId, AiAnalysisRunStatus.FAILED, errorCode = "INTERNAL_ERROR")
         } finally {
             if (previous != null) MDC.setContextMap(previous) else MDC.clear()
+        }
+    }
+
+    /** Prefer the most recent completed run under the same filter scope with a different sample or date end. */
+    private fun selectPriorRun(current: AiAnalysisRun): AiAnalysisRun? {
+        val candidates = runs.findAllByProfileIdAndStatusOrderByCreatedAtDesc(
+            current.profileId,
+            AiAnalysisRunStatus.COMPLETED,
+        ).filter { it.id != current.id }
+        if (candidates.isEmpty()) return null
+        val sameScope = candidates.filter {
+            it.periodPreset == current.periodPreset &&
+                it.exchangeFilter == current.exchangeFilter &&
+                it.origenTagId == current.origenTagId
+        }
+        return sameScope.firstOrNull {
+            it.sampleSize != current.sampleSize ||
+                it.rangeFrom != current.rangeFrom ||
+                it.rangeTo != current.rangeTo
+        } ?: sameScope.firstOrNull() ?: candidates.first()
+    }
+
+    private fun buildPriorContext(prior: AiAnalysisRun): String? {
+        val prevResult = prior.resultJson?.let { runCatching { mapper.readTree(it) }.getOrNull() } ?: return null
+        val prevSummary = prevResult.path("summary").takeIf { it.isString }?.asString()?.trim()
+        if (prevSummary.isNullOrBlank()) return null
+
+        val prevPayload = runCatching { mapper.readTree(prior.payloadJson) }.getOrNull()
+        val summaryNode = prevPayload?.path("summary")
+        val metrics = buildList {
+            fun addNum(label: String, node: JsonNode?) {
+                if (node != null && node.isNumber) add("$label=${node.asString()}")
+            }
+            addNum("totalPnl", summaryNode?.path("totalPnl"))
+            addNum("winRatePct", summaryNode?.path("winRatePct"))
+            addNum("expectancy", summaryNode?.path("expectancy"))
+            addNum("avgRR", summaryNode?.path("avgRR"))
+            addNum("profitFactor", summaryNode?.path("profitFactor"))
+            addNum("maxDrawdownUsd", prevPayload?.path("drawdown")?.path("maxUsd"))
+            addNum("totalFees", prevPayload?.path("fees")?.path("totalFees"))
+            addNum("postLossReentryN", prevPayload?.path("behavioralSignals")?.path("postLossReentry")?.path("n"))
+            addNum("postLossReentryPnl", prevPayload?.path("behavioralSignals")?.path("postLossReentry")?.path("totalPnl"))
+        }
+        val prevImprovements = prevResult.path("improvements").takeIf { it.isArray }?.toList()
+            ?.mapNotNull { it.path("title").takeIf { t -> t.isString }?.asString()?.trim()?.takeIf { s -> s.isNotBlank() } }
+            ?: emptyList()
+        val range = if (prior.rangeFrom != null || prior.rangeTo != null) {
+            "${prior.rangeFrom ?: "..."}..${prior.rangeTo ?: "..."}"
+        } else {
+            "all"
+        }
+        return buildString {
+            append("Date: ${prior.createdAt.toString().take(10)}")
+            append(" | Scope: ${prior.periodPreset} ($range, exchange=${prior.exchangeFilter}, n=${prior.sampleSize})")
+            if (metrics.isNotEmpty()) append("\nMetrics: ${metrics.joinToString(", ")}")
+            append("\nSummary: $prevSummary")
+            if (prevImprovements.isNotEmpty()) append("\nPrior improvements: ${prevImprovements.joinToString("; ")}")
         }
     }
 

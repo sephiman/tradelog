@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "./client";
-import type { PositionSide, PositionTagView, SourceKind } from "./positions";
+import type { PositionKind, PositionSide, PositionTagView, SourceKind } from "./positions";
 
 /**
  * One closed position as served by the analytics endpoint. Money fields are decimal strings.
@@ -14,6 +14,7 @@ export interface ClosedPosition {
   symbolBase: string;
   symbolQuote: string;
   side: PositionSide;
+  kind?: PositionKind;
   openedAt: string;
   closedAt: string;
   /** Null on a grid-bot run, which has no single size or leg price. */

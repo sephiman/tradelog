@@ -16,6 +16,7 @@ export interface AiCitation {
   path: string;
   value: unknown;
   grounded: boolean;
+  context?: string | null;
 }
 
 export interface AiObservation {
@@ -31,10 +32,23 @@ export interface AiInsufficientItem {
   citations: AiCitation[];
 }
 
+export interface AiStrength {
+  title: string;
+  detail: string;
+  citations: AiCitation[];
+}
+
 export interface AiImprovement {
   title: string;
   detail: string;
   severity: "critical" | "warning" | "opportunity" | null;
+  citations: AiCitation[];
+}
+
+export interface AiTradingRule {
+  rule: string;
+  trigger: string;
+  expectedImpact: string | null;
   citations: AiCitation[];
 }
 
@@ -62,7 +76,9 @@ export interface AiRun {
   evolution: string | null;
   /** Anonymized label -> the tag's real name; a deleted tag keeps its label. */
   tagNames: Record<string, string>;
+  strengths: AiStrength[];
   improvements: AiImprovement[];
+  tradingRules: AiTradingRule[];
   observations: AiObservation[];
   insufficientSample: AiInsufficientItem[];
   observationsCount: number | null;

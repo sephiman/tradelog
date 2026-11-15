@@ -10,8 +10,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -20,19 +19,32 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 @TestConfiguration(proxyBeanMethods = false)
 class AiTestConfig {
 
+    var lastPrompt: ChatPrompt? = null
+
     @Bean
     @Primary
     fun stubChatClient(): AiChatClient =
         object : AiChatClient {
-            override fun complete(prompt: ChatPrompt): ChatAnswer = ChatAnswer(
+            override fun complete(prompt: ChatPrompt): ChatAnswer {
+                lastPrompt = prompt
+                return ChatAnswer(
                 content = """
                     {"summary":"Operador de sesgo intradiario con buen control de riesgo general.",
                      "evolution":"Mejora notable en el control de pérdidas respecto a periodos previos.",
+                     "strengths":[
+                       {"title":"Expectativa positiva en largos",
+                        "detail":"Los largos sostienen el resultado neto del periodo.",
+                        "citations":[{"path":"summary.totalPnl","value":123.45}]}],
                      "improvements":[
                        {"title":"Reducir sobreoperativa nocturna",
                         "detail":"Concentrar las entradas en las sesiones de mayor liquidez.",
                         "severity":"critical",
                         "citations":[{"path":"summary.totalPnl","value":123.45}]}],
+                     "tradingRules":[
+                       {"rule":"Máximo 3 operaciones por día",
+                        "trigger":"Tras cerrar la tercera operación diaria",
+                        "expectedImpact":"Evita la caída por fatiga.",
+                        "citations":[{"path":"trades.0.netPnl","value":-45.0}]}],
                      "observations":[
                        {"claim":"Las pérdidas medias superan el límite por operación.",
                         "citations":[{"path":"summary.totalPnl","value":123.45},{"path":"summary.madeUp.path","value":1}],
@@ -48,22 +60,23 @@ class AiTestConfig {
                 latencyMs = 456,
                 attempts = 1,
             )
+            }
         }
 }
 
 /** Endpoint behaviour with a configured provider: features, settings gate, run lifecycle and grounding. */
 @Import(AiTestConfig::class)
+@TestPropertySource(
+    properties = [
+        "app.ai.api-key=test-key",
+        "app.ai.base-url=http://localhost:9/v1",
+        "app.ai.model=test-model",
+    ],
+)
 class AiAnalysisEndpointTest : AuthHttpTestBase() {
 
-    companion object {
-        @JvmStatic
-        @DynamicPropertySource
-        fun aiProvider(registry: DynamicPropertyRegistry) {
-            registry.add("app.ai.api-key") { "test-key" }
-            registry.add("app.ai.base-url") { "http://localhost:9/v1" }
-            registry.add("app.ai.model") { "test-model" }
-        }
-    }
+    @org.springframework.beans.factory.annotation.Autowired
+    lateinit var aiTestConfig: AiTestConfig
 
     @Test
     fun `features report the provider and the setting can be turned on`() {
@@ -87,13 +100,14 @@ class AiAnalysisEndpointTest : AuthHttpTestBase() {
         val session = sessionOf(register(newEmail("ai-run")))
         enableAi(session)
         val profileId = createProfile(session)
-        val tagId = firstTagId(session)
+        val (groupId, tagId) = firstGroupAndTagId(session)
 
         val payload = """
             {
               "scope": {"periodPreset":"all","rangeFrom":null,"rangeTo":null,"exchange":"ALL","origen":null,"timeZone":"UTC"},
               "summary": {"n":12,"totalPnl":123.45},
-              "tagMap": {"Tag A": "$tagId"}
+              "trades": [{"seq":1,"pair":"BTC/USDT","netPnl":-45.0}],
+              "tagMap": {"Tag A": "$tagId", "Group A": "$groupId"}
             }
         """.trimIndent()
 
@@ -115,30 +129,49 @@ class AiAnalysisEndpointTest : AuthHttpTestBase() {
             .andExpect(jsonPath("$[0].promptVersion").value(TradingStylePrompt.VERSION))
             .andExpect(jsonPath("$[0].summary").value("Operador de sesgo intradiario con buen control de riesgo general."))
             .andExpect(jsonPath("$[0].evolution").value("Mejora notable en el control de pérdidas respecto a periodos previos."))
+            .andExpect(jsonPath("$[0].strengths.length()").value(1))
+            .andExpect(jsonPath("$[0].strengths[0].title").value("Expectativa positiva en largos"))
+            .andExpect(jsonPath("$[0].strengths[0].citations[0].grounded").value(true))
             .andExpect(jsonPath("$[0].improvements.length()").value(1))
             .andExpect(jsonPath("$[0].improvements[0].title").value("Reducir sobreoperativa nocturna"))
             .andExpect(jsonPath("$[0].improvements[0].severity").value("critical"))
             .andExpect(jsonPath("$[0].improvements[0].citations[0].grounded").value(true))
+            .andExpect(jsonPath("$[0].tradingRules.length()").value(1))
+            .andExpect(jsonPath("$[0].tradingRules[0].rule").value("Máximo 3 operaciones por día"))
+            .andExpect(jsonPath("$[0].tradingRules[0].citations[0].grounded").value(true))
+            .andExpect(jsonPath("$[0].tradingRules[0].citations[0].context").value("#1 BTC/USDT"))
             .andExpect(jsonPath("$[0].observations.length()").value(1))
             .andExpect(jsonPath("$[0].observations[0].citations.length()").value(2))
             .andExpect(jsonPath("$[0].observations[0].citations[0].grounded").value(true))
             .andExpect(jsonPath("$[0].observations[0].citations[1].grounded").value(false))
             .andExpect(jsonPath("$[0].insufficientSample[0].citations[0].grounded").value(true))
-            .andExpect(jsonPath("$[0].citationsTotal").value(4))
+            .andExpect(jsonPath("$[0].citationsTotal").value(6))
             .andExpect(jsonPath("$[0].citationsUngrounded").value(1))
             .andExpect(jsonPath("$[0].inputTokens").value(111))
             .andExpect(jsonPath("$[0].outputTokens").value(22))
             .andExpect(jsonPath("$[0].tagNames['Tag A']").value("Discrecional"))
+            .andExpect(jsonPath("$[0].tagNames['Group A']").value("Origen"))
             .andExpect(jsonPath("$[0].scope.periodPreset").value("all"))
             .andExpect(jsonPath("$[0].scope.timeZone").value("UTC"))
 
         val runId = com.jayway.jsonpath.JsonPath.read<String>(started.response.contentAsString, "$.id")
+
+        // Second run receives prior metrics, summary, and prior improvement titles in prompt.user.
+        mockMvc.perform(
+            post("/api/profiles/$profileId/ai-analysis").cookie(session).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"payload": $payload}"""),
+        ).andExpect(status().isAccepted)
+        val userPrompt = aiTestConfig.lastPrompt?.user ?: ""
+        org.junit.jupiter.api.Assertions.assertTrue(userPrompt.contains("totalPnl=123.45"))
+        org.junit.jupiter.api.Assertions.assertTrue(userPrompt.contains("Prior improvements: Reducir sobreoperativa nocturna"))
+
         mockMvc.perform(
             delete("/api/profiles/$profileId/ai-analysis/$runId").cookie(session).with(csrf()),
         )
             .andExpect(status().isOk)
         mockMvc.perform(get("/api/profiles/$profileId/ai-analysis").cookie(session))
-            .andExpect(jsonPath("$.length()").value(0))
+            .andExpect(jsonPath("$.length()").value(1))
     }
 
     @Test
@@ -187,11 +220,13 @@ class AiAnalysisEndpointTest : AuthHttpTestBase() {
         return com.jayway.jsonpath.JsonPath.read<String>(result.response.contentAsString, "$.id")
     }
 
-    /** GET /taxonomy/groups seeds the default taxonomy; the first origen tag is the anonymized "Tag A". */
-    private fun firstTagId(session: Cookie): String {
+    /** GET /taxonomy/groups seeds the default taxonomy; returns first group id and its first tag id. */
+    private fun firstGroupAndTagId(session: Cookie): Pair<String, String> {
         val result = mockMvc.perform(get("/api/taxonomy/groups").cookie(session))
             .andExpect(status().isOk)
             .andReturn()
-        return com.jayway.jsonpath.JsonPath.read<String>(result.response.contentAsString, "$[0].tags[0].id")
+        val body = result.response.contentAsString
+        return com.jayway.jsonpath.JsonPath.read<String>(body, "$[0].id") to
+            com.jayway.jsonpath.JsonPath.read<String>(body, "$[0].tags[0].id")
     }
 }
