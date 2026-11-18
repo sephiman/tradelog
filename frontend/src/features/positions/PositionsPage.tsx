@@ -35,7 +35,8 @@ const ORIGEN_UNSET = "__unset__";
 const optional = (value: string | null, format: (v: string) => string) => (value === null ? "—" : format(value));
 
 /** Beyond this the column would eat the table; longer tag names get an ellipsis in the closed select. */
-const ORIGEN_SELECT_MAX_PX = 192;
+const ORIGEN_SELECT_MAX_PX = 144;
+const ORIGEN_SELECT_CLASS = "w-auto px-2 py-1 truncate";
 
 function initialFilters(params: URLSearchParams): PositionFilters {
   const symbol = params.get("symbol")?.trim() || undefined;
@@ -56,15 +57,25 @@ export function PositionsPage() {
   const { data, isLoading, isError, refetch } = usePositions(activeProfileId, filters);
   const { data: exchanges = [] } = usePositionExchanges(activeProfileId);
   const { data: taxonomy = [] } = useTaxonomy();
+  const items = data?.items ?? [];
   const origen = useMemo(() => taxonomy.find((g) => g.code === "origen") ?? taxonomy[0], [taxonomy]);
   // Bulk assignment is always new, so archived tags are never offered here — unlike the filter above,
   // which keeps them so historical positions stay reachable.
   const assignableTags = useMemo(() => (origen?.tags ?? []).filter((tag) => !isArchived(tag)), [origen]);
   const tagLabel = useTagLabel();
-  // Archived tags count too: they carry the "(archived)" suffix and can still show up in a row.
+  // Measure active tags plus any archived tag still present on this page so unused long archived tags
+  // do not bloat every row's select box.
+  const usedTagIds = useMemo(
+    () => new Set(items.flatMap((p) => p.tags.map((tg) => tg.tagId))),
+    [items],
+  );
+  const visibleOrigenTags = useMemo(
+    () => (origen?.tags ?? []).filter((tag) => !isArchived(tag) || usedTagIds.has(tag.id)),
+    [origen, usedTagIds],
+  );
   const { origenWidth, origenSizer } = useOrigenSelectWidth([
     t("common.none"),
-    ...(origen?.tags ?? []).map(tagLabel),
+    ...visibleOrigenTags.map(tagLabel),
   ]);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -106,7 +117,6 @@ export function PositionsPage() {
   const pageCount = Math.max(1, Math.ceil(total / size));
   const goToPage = (p: number) => setFilters((f) => ({ ...f, page: p }));
 
-  const items = data?.items ?? [];
   const visibleIds = items.map((p) => p.id);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
   const someVisibleSelected = visibleIds.some((id) => selected.has(id));
@@ -323,7 +333,7 @@ export function PositionsPage() {
         )}
         {origenSizer}
         <div className="@container hidden overflow-x-auto md:block">
-          <table className="w-full text-sm [&>tbody>tr>td:first-child]:pl-3 [&>tbody>tr>td:last-child]:pr-3 [&>thead>tr>th:first-child]:pl-3 [&>thead>tr>th:last-child]:pr-3">
+          <table className="w-full text-sm [&>tbody>tr>td]:px-1.5 [&>thead>tr>th]:px-1.5 [&>tbody>tr>td:first-child]:pl-3 [&>tbody>tr>td:last-child]:pr-3 [&>thead>tr>th:first-child]:pl-3 [&>thead>tr>th:last-child]:pr-3">
             <thead className="border-b border-border text-left text-xs uppercase text-gray-500 dark:text-gray-400">
               <tr>
                 <th className="w-8 py-2">
@@ -334,18 +344,18 @@ export function PositionsPage() {
                     onChange={toggleAllVisible}
                   />
                 </th>
-                <th className="py-2">{t("positions.closed")}</th>
-                <th>{t("positions.duration")}</th>
-                <th>{t("positions.symbol")}</th>
-                <th>{t("positions.side")}</th>
-                <th className="hidden @min-[1200px]:table-cell">{t("positions.source")}</th>
-                <th className="hidden @min-[760px]:table-cell">{t("positions.exchange")}</th>
-                <th className="hidden text-right @min-[1010px]:table-cell">{t("positions.qty")}</th>
-                <th className="hidden text-right @min-[880px]:table-cell">{t("positions.entry")}</th>
-                <th className="hidden text-right @min-[880px]:table-cell">{t("positions.exit")}</th>
-                <th className="text-right">{t("positions.netPnl")}</th>
+                <th className="whitespace-nowrap py-2">{t("positions.closed")}</th>
+                <th className="whitespace-nowrap">{t("positions.duration")}</th>
+                <th className="whitespace-nowrap">{t("positions.symbol")}</th>
+                <th className="whitespace-nowrap">{t("positions.side")}</th>
+                <th className="hidden whitespace-nowrap @min-[1220px]:table-cell">{t("positions.source")}</th>
+                <th className="hidden whitespace-nowrap @min-[830px]:table-cell">{t("positions.exchange")}</th>
+                <th className="hidden whitespace-nowrap text-right @min-[1090px]:table-cell">{t("positions.qty")}</th>
+                <th className="hidden whitespace-nowrap text-right @min-[1010px]:table-cell">{t("positions.entry")}</th>
+                <th className="hidden whitespace-nowrap text-right @min-[1010px]:table-cell">{t("positions.exit")}</th>
+                <th className="whitespace-nowrap text-right">{t("positions.netPnl")}</th>
                 <th className="w-[1%] whitespace-nowrap">{t("positions.origen")}</th>
-                <th className="sticky right-0 w-[1%] bg-white dark:bg-surface"></th>
+                <th className="w-[1%]"></th>
               </tr>
             </thead>
             <tbody>
@@ -515,7 +525,7 @@ function OrigenSelect({
   const options = origen.tags.filter((tag) => !isArchived(tag) || tag.id === value);
   return (
     <Select
-      className={cn("truncate", className)}
+      className={cn(ORIGEN_SELECT_CLASS, className)}
       style={{ width: width ?? "auto" }}
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -543,7 +553,7 @@ function useOrigenSelectWidth(labels: string[]) {
   }, [sizerNode, labelKey]);
 
   const sizer = (
-    <Select ref={setSizerNode} aria-hidden tabIndex={-1} className="invisible fixed -left-[9999px] top-0 w-auto">
+    <Select ref={setSizerNode} aria-hidden tabIndex={-1} className={cn(ORIGEN_SELECT_CLASS, "invisible fixed -left-[9999px] top-0")}>
       {labels.map((label, i) => (
         <option key={i}>{label}</option>
       ))}
@@ -559,8 +569,7 @@ function PositionRow({ profileId, position, origen, origenWidth, selected, selec
 
   return (
     <>
-      {/* An explicit row background gives the pinned last cell something opaque to inherit. */}
-      <tr className={cn("border-b border-border bg-white last:border-0 dark:bg-surface", selected && "bg-highlight")}>
+      <tr className={cn("border-b border-border last:border-0", selected && "bg-highlight")}>
         <td className="py-2 text-center">
           <input
             type="checkbox"
@@ -578,28 +587,30 @@ function PositionRow({ profileId, position, origen, origenWidth, selected, selec
         >
           {fmtTradeDuration(position.openedAt, position.closedAt)}
         </td>
-        <td className="whitespace-nowrap font-medium">
-          {position.symbolBase}/{position.symbolQuote}
-          {position.kind === "GRID_BOT" && <span className="ml-1"><Badge tone="sky">{t("grids.badge")}</Badge></span>}
-          {position.edited && <span className="ml-1"><Badge tone="amber">{t("positions.editedBadge")}</Badge></span>}
+        <td className="font-medium">
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="whitespace-nowrap">{position.symbolBase}/{position.symbolQuote}</span>
+            {position.kind === "GRID_BOT" && <Badge tone="sky">{t("grids.badge")}</Badge>}
+            {position.edited && <Badge tone="amber">{t("positions.editedBadge")}</Badge>}
+          </div>
         </td>
-        <td>
+        <td className="whitespace-nowrap">
           <Badge tone={position.side === "LONG" ? "green" : "red"}>
             {position.side === "LONG" ? t("positions.long") : t("positions.short")}
           </Badge>
         </td>
-        <td className="hidden whitespace-nowrap text-xs text-gray-500 @min-[1200px]:table-cell dark:text-gray-400">{SOURCE_LABELS[position.source]}</td>
-        <td className="hidden whitespace-nowrap text-gray-600 @min-[760px]:table-cell dark:text-gray-300">{position.exchange ?? "—"}</td>
-        <td className="hidden text-right tabular-nums @min-[1010px]:table-cell">{optional(position.qty, fmtNum)}</td>
-        <td className="hidden text-right tabular-nums @min-[880px]:table-cell" title={position.entryPrice ?? ""}>{optional(position.entryPrice, fmtPrice)}</td>
-        <td className="hidden text-right tabular-nums @min-[880px]:table-cell" title={position.exitPrice ?? ""}>{optional(position.exitPrice, fmtPrice)}</td>
-        <td className={cn("text-right font-medium tabular-nums", pnlTone(position.netPnl))}>
+        <td className="hidden whitespace-nowrap text-xs text-gray-500 @min-[1220px]:table-cell dark:text-gray-400">{SOURCE_LABELS[position.source]}</td>
+        <td className="hidden whitespace-nowrap text-gray-600 @min-[830px]:table-cell dark:text-gray-300">{position.exchange ?? "—"}</td>
+        <td className="hidden whitespace-nowrap text-right tabular-nums @min-[1090px]:table-cell">{optional(position.qty, fmtNum)}</td>
+        <td className="hidden whitespace-nowrap text-right tabular-nums @min-[1010px]:table-cell" title={position.entryPrice ?? ""}>{optional(position.entryPrice, fmtPrice)}</td>
+        <td className="hidden whitespace-nowrap text-right tabular-nums @min-[1010px]:table-cell" title={position.exitPrice ?? ""}>{optional(position.exitPrice, fmtPrice)}</td>
+        <td className={cn("whitespace-nowrap text-right font-medium tabular-nums", pnlTone(position.netPnl))}>
           {fmtUsd(position.netPnl, { sign: true })}
         </td>
         <td className="w-[1%] whitespace-nowrap">
           {origen && <OrigenSelect origen={origen} value={currentTagId} onChange={onTagChange} width={origenWidth} />}
         </td>
-        <td className="sticky right-0 w-[1%] whitespace-nowrap bg-inherit text-right">
+        <td className="w-[1%] whitespace-nowrap text-right">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
@@ -640,7 +651,7 @@ function PositionCard({ profileId, position, origen, origenWidth, selected, sele
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{position.symbolBase}/{position.symbolQuote}</span>
               {position.kind === "GRID_BOT" && <Badge tone="sky">{t("grids.badge")}</Badge>}
               {position.edited && <Badge tone="amber">{t("positions.editedBadge")}</Badge>}
@@ -648,7 +659,7 @@ function PositionCard({ profileId, position, origen, origenWidth, selected, sele
                 {position.side === "LONG" ? t("positions.long") : t("positions.short")}
               </Badge>
             </div>
-            <span className={cn("font-medium tabular-nums", pnlTone(position.netPnl))}>
+            <span className={cn("shrink-0 font-medium tabular-nums", pnlTone(position.netPnl))}>
               {fmtUsd(position.netPnl, { sign: true })}
             </span>
           </div>
@@ -719,7 +730,7 @@ function ExpandedPanel({ profileId, position }: { profileId: string; position: P
                 <th>{t("positions.action")}</th>
                 <th>{t("positions.time")}</th>
                 <th className="text-right">{t("positions.price")}</th>
-                <th className="hidden text-right @min-[1010px]:table-cell">{t("positions.qty")}</th>
+                <th className="text-right">{t("positions.qty")}</th>
                 <th className="text-right">{t("positions.value")}</th>
               </tr>
             </thead>

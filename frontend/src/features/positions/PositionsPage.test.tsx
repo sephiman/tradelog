@@ -1,20 +1,23 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Position } from "@/api/positions";
+import type { Tag, TagGroup } from "@/api/taxonomy";
 import i18n from "@/i18n";
 import { PositionsPage } from "./PositionsPage";
 
 const mockUsePositions = vi.fn();
+const mockUseTaxonomy = vi.fn<() => { data: TagGroup[] }>(() => ({ data: [] }));
+const mockUsePositionDetail = vi.fn(() => ({ data: undefined as unknown, isLoading: false }));
 
 vi.mock("@/features/profiles/ActiveProfile", () => ({
   useActiveProfile: () => ({ activeProfileId: "prof-1" }),
 }));
 
 vi.mock("@/api/taxonomy", () => ({
-  isArchived: () => false,
-  useTaxonomy: () => ({ data: [] }),
+  isArchived: (tag: Tag) => tag.archivedAt !== null,
+  useTaxonomy: () => mockUseTaxonomy(),
 }));
 
 vi.mock("@/api/positions", () => ({
@@ -26,7 +29,7 @@ vi.mock("@/api/positions", () => ({
   useClearTag: () => ({ mutate: vi.fn() }),
   useSetNote: () => ({ mutate: vi.fn(), isPending: false }),
   useDeletePosition: () => ({ mutate: vi.fn(), isPending: false }),
-  usePositionDetail: () => ({ data: undefined, isLoading: false }),
+  usePositionDetail: () => mockUsePositionDetail(),
 }));
 
 function makePosition(id: string, openedAt: string, closedAt: string, fillCount = 2): Position {
@@ -83,6 +86,8 @@ beforeAll(async () => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mockUseTaxonomy.mockReturnValue({ data: [] });
+  mockUsePositionDetail.mockReturnValue({ data: undefined, isLoading: false });
 });
 
 describe("PositionsPage duration column", () => {
@@ -108,5 +113,60 @@ describe("PositionsPage duration column", () => {
     expect(screen.getAllByText("3h5m")).toHaveLength(2);
     expect(screen.getAllByText("6m")).toHaveLength(2);
     expect(screen.getAllByText("<1m")).toHaveLength(2);
+  });
+});
+
+describe("PositionsPage row layout flexibility", () => {
+  it("excludes unused archived origen tags from the width sizer while keeping active and used archived tags", () => {
+    mockUseTaxonomy.mockReturnValue({
+      data: [
+        {
+          id: "g-origen",
+          code: "origen",
+          name: "Origen",
+          sortOrder: 1,
+          tags: [
+            { id: "t-own", code: "own", name: "Own", sortOrder: 1, archivedAt: null },
+            { id: "t-old-unused", code: "old_unused", name: "Very Long Unused Archived Tag", sortOrder: 2, archivedAt: "2026-01-01T00:00:00Z" },
+            { id: "t-old-used", code: "old_used", name: "Old Used Tag", sortOrder: 3, archivedAt: "2026-01-01T00:00:00Z" },
+          ],
+        },
+      ],
+    });
+
+    const p = makePosition("p1", "2026-07-10T00:00:00Z", "2026-07-11T03:02:30Z");
+    p.tags = [{ groupId: "g-origen", groupCode: "origen", groupName: "Origen", tagId: "t-old-used", tagName: "Old Used Tag" }];
+    const { container } = renderPage([p]);
+
+    const sizer = container.querySelector("select[aria-hidden='true']");
+    expect(sizer).not.toBeNull();
+    const sizerOptions = Array.from(sizer!.querySelectorAll("option")).map((o) => o.textContent);
+    expect(sizerOptions).toContain("Own");
+    expect(sizerOptions).toContain("Old Used Tag (archived)");
+    expect(sizerOptions).not.toContain("Very Long Unused Archived Tag (archived)");
+
+    // Expand toggle cell is not pinned sticky right-0 where it would overlap the origen select.
+    const table = screen.getByRole("table");
+    const toggleBtn = within(table).getByRole("button", { name: "Show details" });
+    expect(toggleBtn.closest("td")).not.toHaveClass("sticky");
+  });
+
+  it("keeps the expanded operations Quantity header visible to match its cells", () => {
+    mockUsePositionDetail.mockReturnValue({
+      data: {
+        ...makePosition("p1", "2026-07-10T00:00:00Z", "2026-07-11T03:02:30Z"),
+        fills: [{ seq: 1, action: "OPEN", side: "BUY", ts: "2026-07-10T00:00:00Z", price: "50000", qty: "0.5", value: "25000" }],
+      },
+      isLoading: false,
+    });
+
+    renderPage([makePosition("p1", "2026-07-10T00:00:00Z", "2026-07-11T03:02:30Z")]);
+    const mainTable = screen.getByRole("table");
+    fireEvent.click(within(mainTable).getByRole("button", { name: "Show details" }));
+
+    const tables = within(mainTable).getAllByRole("table");
+    expect(tables).toHaveLength(1);
+    const qtyHeader = within(tables[0]).getByRole("columnheader", { name: "Quantity" });
+    expect(qtyHeader).not.toHaveClass("hidden");
   });
 });
