@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
+import { filenameFrom, saveDownload } from "@/lib/saveDownload";
 
 export type PositionSide = "LONG" | "SHORT";
 /** Mirrors the backend `SourceKind`. See `lib/sourceKinds.ts` for the per-kind facts the UI needs. */
@@ -107,23 +108,39 @@ export interface PositionFilters {
   sort?: string;
 }
 
+function filterParams(filters: PositionFilters): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (filters.symbol) params.symbol = filters.symbol;
+  if (filters.side) params.side = filters.side;
+  if (filters.source) params.source = filters.source;
+  if (filters.exchange) params.exchange = filters.exchange;
+  if (filters.from) params.from = filters.from;
+  if (filters.to) params.to = filters.to;
+  if (filters.tagId) params.tagId = filters.tagId;
+  if (filters.untaggedGroupId) params.untaggedGroupId = filters.untaggedGroupId;
+  params.sort = filters.sort ?? "closed_desc";
+  return params;
+}
+
+/** Downloads every position matching [filters] — all pages, in the list's sort order — as CSV. */
+export async function downloadPositionsCsv(profileId: string, filters: PositionFilters): Promise<void> {
+  const res = await apiClient.get<Blob>(`/profiles/${profileId}/positions/export`, {
+    params: filterParams(filters),
+    responseType: "blob",
+  });
+  saveDownload(res.data, filenameFrom(res.headers["content-disposition"], "tradelog-positions.csv"));
+}
+
 export function usePositions(profileId: string | null, filters: PositionFilters) {
   return useQuery({
     enabled: !!profileId,
     queryKey: ["positions", profileId, filters],
     queryFn: async () => {
-      const params: Record<string, string> = {};
-      if (filters.symbol) params.symbol = filters.symbol;
-      if (filters.side) params.side = filters.side;
-      if (filters.source) params.source = filters.source;
-      if (filters.exchange) params.exchange = filters.exchange;
-      if (filters.from) params.from = filters.from;
-      if (filters.to) params.to = filters.to;
-      if (filters.tagId) params.tagId = filters.tagId;
-      if (filters.untaggedGroupId) params.untaggedGroupId = filters.untaggedGroupId;
-      params.page = String(filters.page ?? 0);
-      params.size = String(filters.size ?? 50);
-      params.sort = filters.sort ?? "closed_desc";
+      const params = {
+        ...filterParams(filters),
+        page: String(filters.page ?? 0),
+        size: String(filters.size ?? 50),
+      };
       const res = await apiClient.get<PageResponse<Position>>(`/profiles/${profileId}/positions`, { params });
       return res.data;
     },

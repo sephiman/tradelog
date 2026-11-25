@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { useActiveProfile } from "@/features/profiles/ActiveProfile";
 import { NoActiveProfile } from "@/features/profiles/NoActiveProfile";
 import {
+  downloadPositionsCsv,
   useBulkDeletePositions,
   useBulkSetTag,
   useClearTag,
@@ -83,6 +84,7 @@ export function PositionsPage() {
   const [bulkTagId, setBulkTagId] = useState("");
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const bulkSetTag = useBulkSetTag(activeProfileId ?? "");
   const bulkDelete = useBulkDeletePositions(activeProfileId ?? "");
 
@@ -180,11 +182,27 @@ export function PositionsPage() {
     });
   };
 
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      await downloadPositionsCsv(activeProfileId, filters);
+    } catch {
+      showToast(t("positions.exportFailed"), "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{t("positions.title")}</h1>
-        <Button onClick={() => setAdding(true)}>{t("trades.addByHand")}</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" disabled={exporting || total === 0} onClick={() => void exportCsv()}>
+            {t("positions.exportCsv")}
+          </Button>
+          <Button onClick={() => setAdding(true)}>{t("trades.addByHand")}</Button>
+        </div>
       </div>
 
       <ManualEntryDialog open={adding} onClose={() => setAdding(false)} profileId={activeProfileId} />

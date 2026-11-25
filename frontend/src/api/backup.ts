@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { filenameFrom, saveDownload } from "@/lib/saveDownload";
 
 export interface ImportSummary {
   profiles: number;
@@ -8,26 +9,13 @@ export interface ImportSummary {
   tags: number;
 }
 
-/** Reads the Content-Disposition filename, falling back to a sensible default. */
-function filenameFrom(header: unknown): string {
-  if (typeof header === "string") {
-    const match = /filename="?([^"]+)"?/.exec(header);
-    if (match) return match[1];
-  }
-  return "tradelog-export.json";
-}
-
-/** Downloads the current user's full backup as a JSON file via a transient object URL. */
+/** Downloads the current user's full backup as a JSON file. */
 export async function downloadBackup(): Promise<void> {
   const res = await apiClient.get("/backup/export", { responseType: "blob" });
-  const url = URL.createObjectURL(new Blob([res.data], { type: "application/json" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filenameFrom(res.headers["content-disposition"]);
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  saveDownload(
+    new Blob([res.data], { type: "application/json" }),
+    filenameFrom(res.headers["content-disposition"], "tradelog-export.json"),
+  );
 }
 
 /** Thrown when the chosen file isn't valid JSON, before anything is sent to the server. */

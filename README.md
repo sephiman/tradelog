@@ -119,6 +119,10 @@ anyone running a modified version as a network service must publish the source.
 - **Read-only, encrypted credentials**: API keys are AES-GCM encrypted at rest and decrypted only in
   the sync worker — never returned to the browser. Use **read-only keys** (no trading, no withdrawal);
   the app warns on permission errors but cannot enforce this on the exchange.
+- **CSV export**: **Export CSV** on the Positions page downloads every position matching the current
+  filters — all pages, in the chosen sort order — in the [Journal CSV](#journal-csv-import) dialect
+  (`;` separator, `.` decimals, UTC ISO timestamps), so exported trades re-import as-is. Extra columns
+  after `note` (net PnL, currency, volume, leverage, investment, kind, source, tags) are export-only.
 - **Backup & restore**: one-click **JSON export** of everything the authenticated user owns —
   including the capital history and risk settings, but never secrets — and a matching **import** that
   replaces the account's data, guarded by an explicit confirmation so a stray request can't wipe

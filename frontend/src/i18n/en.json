@@ -98,6 +98,8 @@
     "from": "From",
     "to": "To",
     "clearFilters": "Clear",
+    "exportCsv": "Export CSV",
+    "exportFailed": "Couldn't export the positions.",
     "sort": "Sort",
     "addNote": "Add a note…",
     "action": "Action",

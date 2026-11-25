@@ -10,6 +10,7 @@ import { PositionsPage } from "./PositionsPage";
 const mockUsePositions = vi.fn();
 const mockUseTaxonomy = vi.fn<() => { data: TagGroup[] }>(() => ({ data: [] }));
 const mockUsePositionDetail = vi.fn(() => ({ data: undefined as unknown, isLoading: false }));
+const mockDownloadCsv = vi.fn<(profileId: string, filters: unknown) => Promise<void>>(() => Promise.resolve());
 
 vi.mock("@/features/profiles/ActiveProfile", () => ({
   useActiveProfile: () => ({ activeProfileId: "prof-1" }),
@@ -21,6 +22,7 @@ vi.mock("@/api/taxonomy", () => ({
 }));
 
 vi.mock("@/api/positions", () => ({
+  downloadPositionsCsv: (profileId: string, filters: unknown) => mockDownloadCsv(profileId, filters),
   usePositions: (...args: unknown[]) => mockUsePositions(...args),
   usePositionExchanges: () => ({ data: [] }),
   useBulkSetTag: () => ({ mutate: vi.fn(), isPending: false }),
@@ -168,5 +170,25 @@ describe("PositionsPage row layout flexibility", () => {
     expect(tables).toHaveLength(1);
     const qtyHeader = within(tables[0]).getByRole("columnheader", { name: "Quantity" });
     expect(qtyHeader).not.toHaveClass("hidden");
+  });
+});
+
+describe("PositionsPage CSV export", () => {
+  it("exports with the filters currently applied", () => {
+    renderPage([makePosition("p1", "2026-03-01T10:00:00Z", "2026-03-01T12:00:00Z")]);
+    fireEvent.change(screen.getByPlaceholderText("BTC"), { target: { value: "ETH" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Side" }), { target: { value: "SHORT" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+
+    expect(mockDownloadCsv).toHaveBeenCalledWith(
+      "prof-1",
+      expect.objectContaining({ symbol: "ETH", side: "SHORT", sort: "closed_desc" }),
+    );
+  });
+
+  it("disables export when no position matches", () => {
+    renderPage([]);
+    expect(screen.getByRole("button", { name: "Export CSV" })).toBeDisabled();
   });
 });

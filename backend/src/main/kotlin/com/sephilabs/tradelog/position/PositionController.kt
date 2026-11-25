@@ -6,8 +6,11 @@ import com.sephilabs.tradelog.datasource.SourceKind
 import com.sephilabs.tradelog.identity.auth.CurrentUser
 import jakarta.validation.Valid
 import org.springframework.format.annotation.DateTimeFormat
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.io.StringWriter
 import java.time.Instant
 import java.util.UUID
 
@@ -38,6 +41,32 @@ class PositionController(
                 profileId, symbol, side, source, exchange, from, to, tagId, untaggedGroupId, page, size, sort
             )
         )
+
+    @GetMapping("/export")
+    fun exportCsv(
+        @PathVariable profileId: UUID,
+        @RequestParam(required = false) symbol: String?,
+        @RequestParam(required = false) side: PositionSide?,
+        @RequestParam(required = false) source: SourceKind?,
+        @RequestParam(required = false) exchange: String?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) from: Instant?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) to: Instant?,
+        @RequestParam(required = false) tagId: UUID?,
+        @RequestParam(required = false) untaggedGroupId: UUID?,
+        @RequestParam(defaultValue = "closed_desc") sort: String,
+    ): ResponseEntity<String> {
+        val rows = service.findAllMatching(
+            PositionSearchCriteria(
+                profileId, symbol, side, source, exchange, from, to, tagId, untaggedGroupId, sort = sort
+            )
+        )
+        val csv = StringWriter().also { PositionCsv.write(rows, it) }.toString()
+        val filename = "tradelog-positions-${Instant.now().toString().take(10)}.csv"
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$filename\"")
+            .contentType(MediaType("text", "csv", Charsets.UTF_8))
+            .body(csv)
+    }
 
     @GetMapping("/exchanges")
     fun exchanges(@PathVariable profileId: UUID): List<String> = service.exchanges(profileId)

@@ -29,22 +29,31 @@ class PositionService(
 
     @Transactional(readOnly = true)
     fun search(criteria: PositionSearchCriteria): PageResponse<PositionDto> {
-        val sort = when (criteria.sort) {
-            "closed_asc" -> Sort.by(Sort.Order.asc("closedAt"))
-            "opened_desc" -> Sort.by(Sort.Order.desc("openedAt"))
-            "pnl_desc" -> Sort.by(Sort.Order.desc("netPnl"), Sort.Order.desc("closedAt"))
-            "pnl_asc" -> Sort.by(Sort.Order.asc("netPnl"), Sort.Order.desc("closedAt"))
-            else -> Sort.by(Sort.Order.desc("closedAt"))
-        }
         val size = criteria.size.coerceIn(1, 200)
-        val pageable = PageRequest.of(criteria.page, size, sort)
+        val pageable = PageRequest.of(criteria.page, size, sortOf(criteria.sort))
         val page = positions.findAll(PositionSpecs.fromCriteria(criteria), pageable)
-        val ids = page.content.map { it.id }
+        // Echo the coerced size — reporting the raw requested size would break pagination math.
+        return PageResponse.of(toDtos(page.content), criteria.page, size, page.totalElements)
+    }
+
+    /** Every position matching [criteria] in its sort order, ignoring paging — the CSV export's rows. */
+    @Transactional(readOnly = true)
+    fun findAllMatching(criteria: PositionSearchCriteria): List<PositionDto> =
+        toDtos(positions.findAll(PositionSpecs.fromCriteria(criteria), sortOf(criteria.sort)))
+
+    private fun sortOf(key: String): Sort = when (key) {
+        "closed_asc" -> Sort.by(Sort.Order.asc("closedAt"))
+        "opened_desc" -> Sort.by(Sort.Order.desc("openedAt"))
+        "pnl_desc" -> Sort.by(Sort.Order.desc("netPnl"), Sort.Order.desc("closedAt"))
+        "pnl_asc" -> Sort.by(Sort.Order.asc("netPnl"), Sort.Order.desc("closedAt"))
+        else -> Sort.by(Sort.Order.desc("closedAt"))
+    }
+
+    private fun toDtos(rows: List<Position>): List<PositionDto> {
+        val ids = rows.map { it.id }
         val tagViews = tagViewsByPosition(ids)
         val fillCounts = fillCountsByPosition(ids)
-        val items = page.content.map { it.toDto(tagViews[it.id] ?: emptyList(), fillCounts[it.id] ?: 0) }
-        // Echo the coerced size — reporting the raw requested size would break pagination math.
-        return PageResponse.of(items, criteria.page, size, page.totalElements)
+        return rows.map { it.toDto(tagViews[it.id] ?: emptyList(), fillCounts[it.id] ?: 0) }
     }
 
     @Transactional(readOnly = true)
